@@ -2004,7 +2004,7 @@ class FaceSimulator:
                 "forehead", "glabella", "nose_area", "jawline_area", 
                 "lip_lower", "lip_upper", "eyes", "iris", "mouth_area",
                 "eyebrows", "eyebrow_area", "cheek_area_left", "cheek_area_right",
-                "nasolabial_left", "nasolabial_right"
+                "nasolabial_left", "nasolabial_right", "nose_bridge", "nose_wings"
             ]
             
             for group_name in line_groups:
@@ -2087,14 +2087,14 @@ class FaceSimulator:
     def draw_lines_for_group(self, points, color, group_name):
         """특정 그룹에 대한 선 그리기"""
         try:
-            line_width = max(1, int(2 * self.zoom_factor))
+            line_width = max(1, int(1 * self.zoom_factor))
             
             # 지원되는 그룹만 선 연결
             line_supported_groups = [
                 "forehead", "glabella", "nose_area", "jawline_area", 
                 "lip_lower", "lip_upper", "eyes", "iris", "mouth_area",
                 "eyebrows", "eyebrow_area", "cheek_area_left", "cheek_area_right",
-                "nasolabial_left", "nasolabial_right"
+                "nasolabial_left", "nasolabial_right", "nose_bridge", "nose_wings"
             ]
             
             if group_name not in line_supported_groups:
@@ -2113,6 +2113,10 @@ class FaceSimulator:
                 self._draw_cheek_area_lines(points, color, line_width, group_name)
             elif group_name in ["nasolabial_left", "nasolabial_right"]:
                 self._draw_nasolabial_lines(points, color, line_width, group_name)
+            elif group_name == "nose_bridge":
+                self._draw_nose_bridge_lines(points, color, line_width)
+            elif group_name == "nose_wings":
+                self._draw_nose_wings_lines(points, color, line_width)
             else:
                 # 일반적인 연속 선 그리기
                 for i in range(len(points) - 1):
@@ -2177,7 +2181,7 @@ class FaceSimulator:
                 
                 # 간단한 선 그리기
                 if len(points) > 1:
-                    line_width = max(1, int(2 * self.zoom_factor))
+                    line_width = max(1, int(1 * self.zoom_factor))
                     
                     # 연속된 점들을 선으로 연결
                     for i in range(len(points) - 1):
@@ -2277,7 +2281,7 @@ class FaceSimulator:
                 print(f"  -> 수집된 좌표 개수: {len(points)}")
                 
                 if len(points) > 1:
-                    line_width = max(1, int(2 * self.zoom_factor))
+                    line_width = max(1, int(1 * self.zoom_factor))
                     line_count = 0
                     
                     # 기본 연속 연결
@@ -2318,7 +2322,7 @@ class FaceSimulator:
     def _draw_group_lines(self, points, color, group_name):
         """특정 그룹의 선 그리기"""
         try:
-            line_width = max(1, int(2 * self.zoom_factor))  # 줌에 따른 선 두께 조정
+            line_width = max(1, int(1 * self.zoom_factor))  # 줌에 따른 선 두께 조정 (50% 감소)
             
             # 특별 처리가 필요한 그룹들
             if group_name == "eyes":
@@ -2342,6 +2346,12 @@ class FaceSimulator:
             elif group_name in ["nasolabial_left", "nasolabial_right"]:
                 # 팔자주름의 경우 특별 처리
                 self._draw_nasolabial_lines(points, color, line_width, group_name)
+            elif group_name == "nose_bridge":
+                # 코 기둥의 경우 연속 선
+                self._draw_nose_bridge_lines(points, color, line_width)
+            elif group_name == "nose_wings":
+                # 콧볼의 경우 좌우 분리 연결
+                self._draw_nose_wings_lines(points, color, line_width)
             else:
                 # 일반적인 연속 선 그리기
                 for i in range(len(points) - 1):
@@ -2611,6 +2621,9 @@ class FaceSimulator:
                 
                 # 일반 연속 연결
                 for i in range(len(filtered_points) - 1):
+                    # 147-205 연결 건너뛰기 (인덱스 9->10)
+                    if i == 9:  # 205 -> 147 연결 건너뛰기
+                        continue
                     # 123-187 연결 건너뛰기 (인덱스 12->11)
                     if i == 11:  # 187 -> 123 연결 건너뛰기
                         continue
@@ -2625,14 +2638,14 @@ class FaceSimulator:
                         tags="landmarks"
                     )
                 
-                # 특별 연결: 123(인덱스 12)-147(인덱스 10), 187(인덱스 11)-205(인덱스 9)
+                # 특별 연결들
                 if len(filtered_points) > 12:
                     # 123-147 연결
                     x1, y1 = filtered_points[12]  # 123
                     x2, y2 = filtered_points[10]  # 147
                     self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
                     
-                    # 187-205 연결 (206이 없으므로 205로)
+                    # 187-205 연결 추가
                     x1, y1 = filtered_points[11]  # 187
                     x2, y2 = filtered_points[9]   # 205
                     self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
@@ -2651,6 +2664,9 @@ class FaceSimulator:
                 
                 # 일반 연속 연결
                 for i in range(len(filtered_points) - 1):
+                    # 425-376 연결 건너뛰기 (인덱스 9->10)
+                    if i == 9:  # 425 -> 376 연결 건너뛰기
+                        continue
                     # 352-411 연결 건너뛰기 (인덱스 12->11)
                     if i == 11:  # 411 -> 352 연결 건너뛰기
                         continue
@@ -2665,16 +2681,16 @@ class FaceSimulator:
                         tags="landmarks"
                     )
                 
-                # 특별 연결: 352(인덱스 12)-376(인덱스 10), 411(인덱스 11)-425(인덱스 9)
+                # 특별 연결들
                 if len(filtered_points) > 12:
-                    # 352-376 연결 (152 대신 352)
+                    # 352-376 연결
                     x1, y1 = filtered_points[12]  # 352
                     x2, y2 = filtered_points[10]  # 376
                     self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
                     
-                    # 411-425 연결
-                    x1, y1 = filtered_points[11]  # 411
-                    x2, y2 = filtered_points[9]   # 425
+                    # 425-411 연결 추가
+                    x1, y1 = filtered_points[9]   # 425
+                    x2, y2 = filtered_points[11]  # 411
                     self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
                 
                 # 닫힌 다각형 연결
@@ -2758,6 +2774,122 @@ class FaceSimulator:
                 
         except Exception as e:
             print(f"팔자주름 선 그리기 오류: {str(e)}")
+    
+    def _draw_nose_bridge_lines(self, points, color, line_width):
+        """코 기둥 선 그리기 - 사용자 지정 연결 순서"""
+        try:
+            if len(points) < 2:
+                return
+            
+            # 코 기둥 랜드마크: [4, 5, 6, 19, 94, 168, 195, 197]
+            # 인덱스:           [0, 1, 2, 3,  4,  5,   6,   7]
+            # 사용자 지정 연결 순서: 168->6->197->195->5->4->19->94
+            
+            # 랜드마크를 딕셔너리로 매핑 (랜드마크 번호 -> 좌표)
+            landmark_map = {}
+            landmark_indices = [4, 5, 6, 19, 94, 168, 195, 197]  # 원본 순서
+            for i, landmark_num in enumerate(landmark_indices):
+                if i < len(points):
+                    landmark_map[landmark_num] = points[i]
+            
+            # 사용자 지정 연결 순서
+            connection_sequence = [168, 6, 197, 195, 5, 4, 19, 94]
+            
+            # 지정된 순서대로 선 연결
+            for i in range(len(connection_sequence) - 1):
+                start_landmark = connection_sequence[i]
+                end_landmark = connection_sequence[i + 1]
+                
+                # 해당 랜드마크가 존재하는지 확인
+                if start_landmark in landmark_map and end_landmark in landmark_map:
+                    x1, y1 = landmark_map[start_landmark]
+                    x2, y2 = landmark_map[end_landmark]
+                    
+                    self.canvas.create_line(
+                        x1, y1, x2, y2,
+                        fill=color,
+                        width=line_width,
+                        tags="landmarks"
+                    )
+                
+        except Exception as e:
+            print(f"코 기둥 선 그리기 오류: {str(e)}")
+    
+    def _draw_nose_wings_lines(self, points, color, line_width):
+        """콧볼 선 그리기 - 기존 연결 유지하며 새 연결 추가"""
+        try:
+            if len(points) < 4:
+                return
+            
+            # 콧볼 랜드마크: [45, 129, 64, 98, 97, 115, 220, 275, 278, 294, 326, 327, 344, 440]
+            # 인덱스:        [0,  1,   2,  3,  4,  5,   6,   7,   8,   9,   10,  11,  12,  13]
+            
+            # 기존에 건너뛰던 연결들 + 새로 삭제할 연결들:
+            # 기존: 115-97 (5->4), 344-327 (12->11), 275-278 (7->8), 45-129 (0->1), 294-326 (9->10)
+            # 새로 삭제: 220-275 (6->7), 275-278 (7->8) 확실히 삭제
+            skip_connections = [4, 8, 11, 0, 9, 6, 7]  # 다음 인덱스로의 연결을 건너뛸 인덱스들
+            
+            # 일반 순차 연결 (제외할 연결 건너뛰기)
+            for i in range(len(points) - 1):
+                if i in skip_connections:
+                    continue
+                
+                x1, y1 = points[i]
+                x2, y2 = points[i + 1]
+                
+                self.canvas.create_line(
+                    x1, y1, x2, y2,
+                    fill=color,
+                    width=line_width,
+                    tags="landmarks"
+                )
+            
+            # 특별 연결들:
+            if len(points) > 13:
+                # 기존 특별 연결들 유지
+                # 97-326 연결 (인덱스 4->10) - 기존 유지
+                x1, y1 = points[4]   # 97
+                x2, y2 = points[10]  # 326
+                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                
+                # 45-275 연결 (인덱스 0->7) - 기존 유지
+                x1, y1 = points[0]   # 45
+                x2, y2 = points[7]   # 275
+                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                
+                # 새로 추가할 연결들
+                # 129-115 연결 (인덱스 1->5)
+                x1, y1 = points[1]   # 129
+                x2, y2 = points[5]   # 115
+                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                
+                # 327-294 연결 (인덱스 11->9)
+                x1, y1 = points[11]  # 327
+                x2, y2 = points[9]   # 294
+                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                
+                # 294-278 연결 (인덱스 9->8)
+                x1, y1 = points[9]   # 294
+                x2, y2 = points[8]   # 278
+                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                
+                # 278-344 연결 (인덱스 8->12)
+                x1, y1 = points[8]   # 278
+                x2, y2 = points[12]  # 344
+                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                
+                # 440-275 연결 (인덱스 13->7)
+                x1, y1 = points[13]  # 440
+                x2, y2 = points[7]   # 275
+                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                
+                # 220-45 연결 (인덱스 6->0) - 새로 추가
+                x1, y1 = points[6]   # 220
+                x2, y2 = points[0]   # 45
+                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                
+        except Exception as e:
+            print(f"콧볼 선 그리기 오류: {str(e)}")
     
     def draw_landmark_legend(self):
         """랜드마크 범례 표시"""
