@@ -97,8 +97,7 @@ class FaceSimulator:
             "jawline_area": tk.BooleanVar(value=True),
             "mouth_area": tk.BooleanVar(value=True),
             "nose_area": tk.BooleanVar(value=True),
-            "nasolabial_left": tk.BooleanVar(value=True),
-            "nasolabial_right": tk.BooleanVar(value=True),
+            "nasolabial": tk.BooleanVar(value=True),
             "eyebrow_area": tk.BooleanVar(value=True),
             "eyebrows": tk.BooleanVar(value=True),
             "forehead": tk.BooleanVar(value=True),
@@ -111,6 +110,9 @@ class FaceSimulator:
         # 랜드마크 크기 설정
         self.landmark_point_size = 3  # 기본 점 크기
         self.landmark_font_size = 5  # 기본 폰트 크기 (50% 더 작게)
+        
+        # 선 연결 표시 상태
+        self.show_landmark_lines = False
         
         self.setup_ui()
         
@@ -391,6 +393,11 @@ class FaceSimulator:
         self.landmark_numbers_button = ttk.Button(landmark_frame, text="🔢 번호 보기", 
                                                 command=self.toggle_landmark_numbers)
         self.landmark_numbers_button.pack(fill=tk.X, pady=2)
+        
+        # 선 연결 표시 버튼
+        self.landmark_lines_button = ttk.Button(landmark_frame, text="📏 선 연결 보기", 
+                                              command=self.toggle_landmark_lines)
+        self.landmark_lines_button.pack(fill=tk.X, pady=2)
         
         # 새로고침 버튼
         ttk.Button(landmark_frame, text="🔄 새로고침", 
@@ -1750,6 +1757,22 @@ class FaceSimulator:
         self.update_display()
         print(f"랜드마크 번호 표시: {'ON' if self.show_landmark_numbers else 'OFF'}")
     
+    def toggle_landmark_lines(self):
+        """랜드마크 선 연결 토글"""
+        if not self.show_landmarks:
+            print("먼저 랜드마크를 표시해주세요.")
+            return
+        
+        self.show_landmark_lines = not self.show_landmark_lines
+        
+        if self.show_landmark_lines:
+            self.landmark_lines_button.config(text="📏 선 연결 숨기기")
+        else:
+            self.landmark_lines_button.config(text="📏 선 연결 보기")
+        
+        self.update_display()
+        print(f"랜드마크 선 연결: {'ON' if self.show_landmark_lines else 'OFF'}")
+    
     def update_point_size(self, value):
         """점 크기 업데이트"""
         self.landmark_point_size = int(float(value))
@@ -1796,6 +1819,10 @@ class FaceSimulator:
                 },
                 "iris_right": {
                     "indices": [469, 470, 471, 472],  # 오른쪽 눈동자
+                    "color": "#00ccff"  # 밝은 청록색
+                },
+                "iris": {
+                    "indices": [470, 471, 472, 469, 475, 476, 477, 474],  # 통합 눈동자 (순서 수정)
                     "color": "#00ccff"  # 밝은 청록색
                 },
                 "eyelid_upper_left": {
@@ -1959,11 +1986,778 @@ class FaceSimulator:
                                 tags="landmarks"
                             )
             
+            # 선 연결 그리기 (활성화된 경우)
+            if self.show_landmark_lines:
+                self.draw_landmark_lines(landmark_groups, img_width, img_height)
+            
             # 범례 표시
             self.draw_landmark_legend()
             
         except Exception as e:
             print(f"랜드마크 표시 오류: {str(e)}")
+    
+    def draw_landmark_lines(self, landmark_groups, img_width, img_height):
+        """랜드마크 그룹별 선 연결 그리기"""
+        try:
+            # 선 연결을 지원하는 그룹 정의
+            line_groups = [
+                "forehead", "glabella", "nose_area", "jawline_area", 
+                "lip_lower", "lip_upper", "eyes", "iris", "mouth_area",
+                "eyebrows", "eyebrow_area", "cheek_area_left", "cheek_area_right",
+                "nasolabial_left", "nasolabial_right"
+            ]
+            
+            for group_name in line_groups:
+                # 해당 그룹이 가시화되어 있는지 확인
+                visibility_key = self.get_visibility_key(group_name) or group_name
+                if (visibility_key in self.landmark_group_visibility and 
+                    not self.landmark_group_visibility[visibility_key].get()):
+                    continue
+                
+                # 그룹 데이터 찾기
+                if group_name not in landmark_groups:
+                    continue
+                    
+                group_data = landmark_groups[group_name]
+                indices = group_data["indices"]
+                color = group_data["color"]
+                
+                # 랜드마크 좌표 수집
+                points = []
+                for idx in indices:
+                    if idx < len(self.face_landmarks.landmark):
+                        landmark = self.face_landmarks.landmark[idx]
+                        
+                        # 이미지 좌표를 화면 좌표로 변환
+                        img_x = landmark.x * img_width
+                        img_y = landmark.y * img_height
+                        
+                        # 화면 좌표로 변환 (줌 및 이동 고려)
+                        screen_x = img_x * self.scale_factor * self.zoom_factor + self.offset_x + self.pan_x
+                        screen_y = img_y * self.scale_factor * self.zoom_factor + self.offset_y + self.pan_y
+                        
+                        points.append((screen_x, screen_y))
+                
+                # 연속된 점들을 선으로 연결
+                if len(points) > 1:
+                    self._draw_group_lines(points, color, group_name)
+        
+        except Exception as e:
+            print(f"랜드마크 선 그리기 오류: {str(e)}")
+    
+    def draw_all_landmark_lines(self, landmark_groups, img_width, img_height):
+        """모든 랜드마크 그룹의 선 연결 그리기"""
+        try:
+            # 각 그룹별로 선 연결 처리
+            for group_name, group_data in landmark_groups.items():
+                # 그룹이 가시화되어 있는지 확인
+                visibility_key = self.get_visibility_key(group_name)
+                if (visibility_key in self.landmark_group_visibility and 
+                    not self.landmark_group_visibility[visibility_key].get()):
+                    continue
+                
+                indices = group_data["indices"]
+                color = group_data["color"]
+                
+                # 랜드마크 좌표 수집
+                points = []
+                for idx in indices:
+                    if idx < len(self.face_landmarks.landmark):
+                        landmark = self.face_landmarks.landmark[idx]
+                        
+                        # 이미지 좌표를 화면 좌표로 변환
+                        img_x = landmark.x * img_width
+                        img_y = landmark.y * img_height
+                        
+                        # 화면 좌표로 변환 (줌 및 이동 고려)
+                        screen_x = img_x * self.scale_factor * self.zoom_factor + self.offset_x + self.pan_x
+                        screen_y = img_y * self.scale_factor * self.zoom_factor + self.offset_y + self.pan_y
+                        
+                        points.append((screen_x, screen_y))
+                
+                # 그룹별 선 그리기
+                if len(points) > 1:
+                    self.draw_lines_for_group(points, color, group_name)
+        
+        except Exception as e:
+            print(f"모든 랜드마크 선 그리기 오류: {str(e)}")
+            import traceback
+            traceback.print_exc()
+    
+    def draw_lines_for_group(self, points, color, group_name):
+        """특정 그룹에 대한 선 그리기"""
+        try:
+            line_width = max(1, int(2 * self.zoom_factor))
+            
+            # 지원되는 그룹만 선 연결
+            line_supported_groups = [
+                "forehead", "glabella", "nose_area", "jawline_area", 
+                "lip_lower", "lip_upper", "eyes", "iris", "mouth_area",
+                "eyebrows", "eyebrow_area", "cheek_area_left", "cheek_area_right",
+                "nasolabial_left", "nasolabial_right"
+            ]
+            
+            if group_name not in line_supported_groups:
+                return
+            
+            # 그룹별 특별 처리
+            if group_name == "eyes":
+                self._draw_eye_lines(points, color, line_width)
+            elif group_name == "iris":
+                self._draw_circular_lines(points, color, line_width)
+            elif group_name == "jawline_area":
+                self._draw_jawline_lines(points, color, line_width)
+            elif group_name == "eyebrows":
+                self._draw_eyebrow_lines(points, color, line_width)
+            elif group_name in ["cheek_area_left", "cheek_area_right"]:
+                self._draw_cheek_area_lines(points, color, line_width, group_name)
+            elif group_name in ["nasolabial_left", "nasolabial_right"]:
+                self._draw_nasolabial_lines(points, color, line_width, group_name)
+            else:
+                # 일반적인 연속 선 그리기
+                for i in range(len(points) - 1):
+                    x1, y1 = points[i]
+                    x2, y2 = points[i + 1]
+                    
+                    self.canvas.create_line(
+                        x1, y1, x2, y2,
+                        fill=color,
+                        width=line_width,
+                        tags="landmarks"
+                    )
+                
+                # 닫힌 다각형이 필요한 그룹들
+                closed_groups = ["forehead", "glabella", "nose_area", 
+                               "lip_lower", "lip_upper", "mouth_area", "eyebrow_area"]
+                
+                if group_name in closed_groups and len(points) > 2:
+                    x1, y1 = points[-1]
+                    x2, y2 = points[0]
+                    
+                    self.canvas.create_line(
+                        x1, y1, x2, y2,
+                        fill=color,
+                        width=line_width,
+                        tags="landmarks"
+                    )
+                    
+        except Exception as e:
+            print(f"그룹 선 그리기 오류 ({group_name}): {str(e)}")
+    
+    def draw_simple_lines_for_all_groups(self, landmark_groups, img_width, img_height):
+        """모든 그룹에 대해 간단한 선 그리기 테스트"""
+        try:
+            # 테스트용 그룹들만 선 그리기
+            test_groups = ["mouth_area", "eyebrows", "iris", "forehead", "lip_upper", "lip_lower"]
+            
+            for group_name in test_groups:
+                if group_name not in landmark_groups:
+                    continue
+                    
+                # 그룹 가시성 확인
+                visibility_key = self.get_visibility_key(group_name)
+                if (visibility_key in self.landmark_group_visibility and 
+                    not self.landmark_group_visibility[visibility_key].get()):
+                    continue
+                
+                group_data = landmark_groups[group_name]
+                indices = group_data["indices"]
+                color = group_data["color"]
+                
+                # 좌표 수집
+                points = []
+                for idx in indices:
+                    if idx < len(self.face_landmarks.landmark):
+                        landmark = self.face_landmarks.landmark[idx]
+                        img_x = landmark.x * img_width
+                        img_y = landmark.y * img_height
+                        screen_x = img_x * self.scale_factor * self.zoom_factor + self.offset_x + self.pan_x
+                        screen_y = img_y * self.scale_factor * self.zoom_factor + self.offset_y + self.pan_y
+                        points.append((screen_x, screen_y))
+                
+                # 간단한 선 그리기
+                if len(points) > 1:
+                    line_width = max(1, int(2 * self.zoom_factor))
+                    
+                    # 연속된 점들을 선으로 연결
+                    for i in range(len(points) - 1):
+                        x1, y1 = points[i]
+                        x2, y2 = points[i + 1]
+                        
+                        self.canvas.create_line(
+                            x1, y1, x2, y2,
+                            fill=color,
+                            width=line_width,
+                            tags="landmarks"
+                        )
+                    
+                    # 닫힌 다각형 (첫점과 마지막점 연결)
+                    if len(points) > 2:
+                        x1, y1 = points[-1]
+                        x2, y2 = points[0]
+                        
+                        self.canvas.create_line(
+                            x1, y1, x2, y2,
+                            fill=color,
+                            width=line_width,
+                            tags="landmarks"
+                        )
+                        
+        except Exception as e:
+            print(f"간단한 선 그리기 오류: {str(e)}")
+            import traceback
+            traceback.print_exc()
+    
+    def draw_actual_landmark_lines(self, landmark_groups, img_width, img_height):
+        """실제 랜드마크 선 연결 그리기"""
+        try:
+            print("실제 랜드마크 선 연결 시작")
+            
+            # 선 연결을 지원하는 그룹들 (하나씩 테스트)
+            line_groups = [
+                "mouth_area",     # 입 주변 (이미 작동했던 것)
+                "eyebrows",       # 눈썹 (특별 처리)
+                "iris",           # 눈동자 (원형)
+                "forehead",       # 이마 (닫힌 다각형)
+                "lip_upper",      # 윗입술
+                "lip_lower",      # 아래입술
+            ]
+            
+            for group_name in line_groups:
+                print(f"처리 중: {group_name}")
+                
+                if group_name not in landmark_groups:
+                    print(f"  -> {group_name} 그룹이 landmark_groups에 없음")
+                    continue
+                
+                # 그룹 가시성 확인 (간단한 직접 체크)
+                skip_group = False
+                if group_name in self.landmark_group_visibility:
+                    if not self.landmark_group_visibility[group_name].get():
+                        print(f"  -> {group_name} 그룹이 비활성화됨")
+                        skip_group = True
+                elif group_name == "mouth_area" and not self.landmark_group_visibility["mouth_area"].get():
+                    print(f"  -> {group_name} 그룹이 비활성화됨")
+                    skip_group = True
+                elif group_name == "eyebrows" and not self.landmark_group_visibility["eyebrows"].get():
+                    print(f"  -> {group_name} 그룹이 비활성화됨") 
+                    skip_group = True
+                elif group_name == "iris" and not self.landmark_group_visibility["iris"].get():
+                    print(f"  -> {group_name} 그룹이 비활성화됨")
+                    skip_group = True
+                elif group_name == "forehead" and not self.landmark_group_visibility["forehead"].get():
+                    print(f"  -> {group_name} 그룹이 비활성화됨")
+                    skip_group = True
+                elif group_name in ["lip_upper", "lip_lower"] and not self.landmark_group_visibility.get("lip_upper", tk.BooleanVar(value=True)).get():
+                    print(f"  -> {group_name} 그룹이 비활성화됨")
+                    skip_group = True
+                
+                if skip_group:
+                    continue
+                
+                print(f"  -> {group_name} 그룹 처리 시작")
+                
+                group_data = landmark_groups[group_name]
+                indices = group_data["indices"]
+                color = group_data["color"]
+                
+                print(f"  -> 랜드마크 인덱스 개수: {len(indices)}")
+                
+                # 좌표 수집
+                points = []
+                for idx in indices:
+                    if idx < len(self.face_landmarks.landmark):
+                        landmark = self.face_landmarks.landmark[idx]
+                        img_x = landmark.x * img_width
+                        img_y = landmark.y * img_height
+                        screen_x = img_x * self.scale_factor * self.zoom_factor + self.offset_x + self.pan_x
+                        screen_y = img_y * self.scale_factor * self.zoom_factor + self.offset_y + self.pan_y
+                        points.append((screen_x, screen_y))
+                
+                print(f"  -> 수집된 좌표 개수: {len(points)}")
+                
+                if len(points) > 1:
+                    line_width = max(1, int(2 * self.zoom_factor))
+                    line_count = 0
+                    
+                    # 기본 연속 연결
+                    for i in range(len(points) - 1):
+                        x1, y1 = points[i]
+                        x2, y2 = points[i + 1]
+                        
+                        self.canvas.create_line(
+                            x1, y1, x2, y2,
+                            fill=color,
+                            width=line_width,
+                            tags="landmarks"
+                        )
+                        line_count += 1
+                    
+                    # 닫힌 다각형 (첫점과 마지막점 연결)
+                    if len(points) > 2:
+                        x1, y1 = points[-1]
+                        x2, y2 = points[0]
+                        
+                        self.canvas.create_line(
+                            x1, y1, x2, y2,
+                            fill=color,
+                            width=line_width,
+                            tags="landmarks"
+                        )
+                        line_count += 1
+                    
+                    print(f"  -> {group_name}: {line_count}개 선 그리기 완료")
+                else:
+                    print(f"  -> {group_name}: 포인트 부족 ({len(points)}개)")
+                    
+        except Exception as e:
+            print(f"실제 랜드마크 선 그리기 오류: {str(e)}")
+            import traceback
+            traceback.print_exc()
+    
+    def _draw_group_lines(self, points, color, group_name):
+        """특정 그룹의 선 그리기"""
+        try:
+            line_width = max(1, int(2 * self.zoom_factor))  # 줌에 따른 선 두께 조정
+            
+            # 특별 처리가 필요한 그룹들
+            if group_name == "eyes":
+                # 눈 그룹의 경우 좌우 눈을 별도로 처리
+                self._draw_eye_lines(points, color, line_width)
+            elif group_name == "iris":
+                # 눈동자의 경우 원형으로 연결
+                self._draw_circular_lines(points, color, line_width)
+            elif group_name == "jawline_area":
+                # 턱선 영역의 경우 특별 처리
+                self._draw_jawline_lines(points, color, line_width)
+            elif group_name == "eyebrows":
+                # 눈썹의 경우 좌우 분리 처리
+                self._draw_eyebrow_lines(points, color, line_width)
+            elif group_name == "eyebrow_area":
+                # 눈썹 주변 영역의 경우 닫힌 다각형
+                self._draw_closed_polygon_lines(points, color, line_width)
+            elif group_name in ["cheek_area_left", "cheek_area_right"]:
+                # 볼영역의 경우 50, 280 제외하고 연결
+                self._draw_cheek_area_lines(points, color, line_width, group_name)
+            elif group_name in ["nasolabial_left", "nasolabial_right"]:
+                # 팔자주름의 경우 특별 처리
+                self._draw_nasolabial_lines(points, color, line_width, group_name)
+            else:
+                # 일반적인 연속 선 그리기
+                for i in range(len(points) - 1):
+                    x1, y1 = points[i]
+                    x2, y2 = points[i + 1]
+                    
+                    self.canvas.create_line(
+                        x1, y1, x2, y2,
+                        fill=color,
+                        width=line_width,
+                        tags="landmarks"
+                    )
+                
+                # 닫힌 다각형이 필요한 그룹들
+                closed_groups = ["forehead", "glabella", "nose_area", 
+                               "lip_lower", "lip_upper", "mouth_area"]
+                
+                if group_name in closed_groups and len(points) > 2:
+                    x1, y1 = points[-1]
+                    x2, y2 = points[0]
+                    
+                    self.canvas.create_line(
+                        x1, y1, x2, y2,
+                        fill=color,
+                        width=line_width,
+                        tags="landmarks"
+                    )
+        
+        except Exception as e:
+            print(f"그룹 선 그리기 오류 ({group_name}): {str(e)}")
+    
+    def _draw_eye_lines(self, points, color, line_width):
+        """눈 그룹 특별 처리 - 좌우 눈 개별 연결"""
+        try:
+            # 눈 랜드마크는 일반적으로 좌우 눈이 섞여있어서 
+            # 연속 연결보다는 각 눈의 윤곽선을 그리는 것이 좋음
+            if len(points) > 6:  # 충분한 점이 있을 때만
+                mid_point = len(points) // 2
+                
+                # 첫 번째 눈 (좌측)
+                left_eye_points = points[:mid_point]
+                if len(left_eye_points) > 2:
+                    for i in range(len(left_eye_points)):
+                        x1, y1 = left_eye_points[i]
+                        x2, y2 = left_eye_points[(i + 1) % len(left_eye_points)]
+                        
+                        self.canvas.create_line(
+                            x1, y1, x2, y2,
+                            fill=color,
+                            width=line_width,
+                            tags="landmarks"
+                        )
+                
+                # 두 번째 눈 (우측)
+                right_eye_points = points[mid_point:]
+                if len(right_eye_points) > 2:
+                    for i in range(len(right_eye_points)):
+                        x1, y1 = right_eye_points[i]
+                        x2, y2 = right_eye_points[(i + 1) % len(right_eye_points)]
+                        
+                        self.canvas.create_line(
+                            x1, y1, x2, y2,
+                            fill=color,
+                            width=line_width,
+                            tags="landmarks"
+                        )
+        except Exception as e:
+            print(f"눈 선 그리기 오류: {str(e)}")
+    
+    def _draw_circular_lines(self, points, color, line_width):
+        """원형 선 그리기 (홍채 등) - 좌우 눈동자 분리 처리"""
+        try:
+            if len(points) < 4:
+                return
+            
+            # 눈동자는 좌우로 분리되어 있음 (각각 4개씩)
+            mid_point = len(points) // 2
+            
+            # 왼쪽 눈동자 (첫 4개: 470, 471, 469, 472)
+            left_iris = points[:mid_point]
+            if len(left_iris) >= 4:
+                for i in range(len(left_iris)):
+                    x1, y1 = left_iris[i]
+                    x2, y2 = left_iris[(i + 1) % len(left_iris)]
+                    
+                    self.canvas.create_line(
+                        x1, y1, x2, y2,
+                        fill=color,
+                        width=line_width,
+                        tags="landmarks"
+                    )
+            
+            # 오른쪽 눈동자 (나머지 4개: 475, 476, 474, 477)
+            right_iris = points[mid_point:]
+            if len(right_iris) >= 4:
+                for i in range(len(right_iris)):
+                    x1, y1 = right_iris[i]
+                    x2, y2 = right_iris[(i + 1) % len(right_iris)]
+                    
+                    self.canvas.create_line(
+                        x1, y1, x2, y2,
+                        fill=color,
+                        width=line_width,
+                        tags="landmarks"
+                    )
+                    
+        except Exception as e:
+            print(f"원형 선 그리기 오류: {str(e)}")
+    
+    def _draw_jawline_lines(self, points, color, line_width):
+        """턱선 영역 특별 처리 - 58번과 172번을 연결하고 특정 선 제거"""
+        try:
+            if len(points) < 3:
+                return
+            
+            # 턱선 영역의 랜드마크 순서
+            # jawline_area indices: [172, 136, 150, 149, 176, 148, 152, 377, 400, 378, 379, 365, 397, 288, 361, 323, 58, 132, 137, 123, 50, 207, 212, 202, 204, 194, 201, 200, 421, 418, 424, 422, 432, 427, 280, 352]
+            
+            # 연속된 점들을 선으로 연결 (일반적인 연결)
+            for i in range(len(points) - 1):
+                x1, y1 = points[i]
+                x2, y2 = points[i + 1]
+                
+                # 58-323과 172-352 연결은 제외 (인덱스 기준)
+                # 58은 인덱스 16, 323은 인덱스 15
+                # 172는 인덱스 0, 352는 인덱스 35 (마지막)
+                skip_connection = False
+                
+                # 58(idx 16) -> 323(idx 15) 연결 제외 (역순이므로 15->16)
+                if i == 15:  # 323 -> 58
+                    skip_connection = True
+                
+                if not skip_connection:
+                    self.canvas.create_line(
+                        x1, y1, x2, y2,
+                        fill=color,
+                        width=line_width,
+                        tags="landmarks"
+                    )
+            
+            # 특별 연결: 58번(인덱스 16)과 172번(인덱스 0)을 연결
+            if len(points) > 16:
+                x1, y1 = points[16]  # 58번
+                x2, y2 = points[0]   # 172번
+                
+                self.canvas.create_line(
+                    x1, y1, x2, y2,
+                    fill=color,
+                    width=line_width,
+                    tags="landmarks"
+                )
+            
+            # 마지막 점(352, 인덱스 35)과 첫 번째 점(172, 인덱스 0)의 연결은 제외
+            # (닫힌 다각형을 만들지 않음)
+            
+        except Exception as e:
+            print(f"턱선 선 그리기 오류: {str(e)}")
+    
+    def _draw_eyebrow_lines(self, points, color, line_width):
+        """눈썹 선 그리기 - 좌우 눈썹 분리 처리 및 특별 연결"""
+        try:
+            if len(points) < 4:
+                return
+            
+            # 눈썹은 좌우로 분리되어 있으므로 중간 지점으로 나눔
+            mid_point = len(points) // 2
+            
+            # 왼쪽 눈썹 연결 (첫 10개)
+            left_eyebrow = points[:mid_point]
+            if len(left_eyebrow) > 1:
+                for i in range(len(left_eyebrow) - 1):
+                    x1, y1 = left_eyebrow[i]
+                    x2, y2 = left_eyebrow[i + 1]
+                    
+                    self.canvas.create_line(
+                        x1, y1, x2, y2,
+                        fill=color,
+                        width=line_width,
+                        tags="landmarks"
+                    )
+                
+                # 65(인덱스 9)와 55(인덱스 0) 연결
+                if len(left_eyebrow) >= 10:
+                    x1, y1 = left_eyebrow[9]  # 65
+                    x2, y2 = left_eyebrow[0]  # 55
+                    
+                    self.canvas.create_line(
+                        x1, y1, x2, y2,
+                        fill=color,
+                        width=line_width,
+                        tags="landmarks"
+                    )
+            
+            # 오른쪽 눈썹 연결 (나머지 10개)
+            right_eyebrow = points[mid_point:]
+            if len(right_eyebrow) > 1:
+                for i in range(len(right_eyebrow) - 1):
+                    x1, y1 = right_eyebrow[i]
+                    x2, y2 = right_eyebrow[i + 1]
+                    
+                    self.canvas.create_line(
+                        x1, y1, x2, y2,
+                        fill=color,
+                        width=line_width,
+                        tags="landmarks"
+                    )
+                
+                # 295(인덱스 9)와 285(인덱스 0) 연결
+                if len(right_eyebrow) >= 10:
+                    x1, y1 = right_eyebrow[9]  # 295
+                    x2, y2 = right_eyebrow[0]  # 285
+                    
+                    self.canvas.create_line(
+                        x1, y1, x2, y2,
+                        fill=color,
+                        width=line_width,
+                        tags="landmarks"
+                    )
+                    
+        except Exception as e:
+            print(f"눈썹 선 그리기 오류: {str(e)}")
+    
+    def _draw_closed_polygon_lines(self, points, color, line_width):
+        """닫힌 다각형 선 그리기"""
+        try:
+            if len(points) < 3:
+                return
+                
+            # 연속된 점들을 선으로 연결
+            for i in range(len(points) - 1):
+                x1, y1 = points[i]
+                x2, y2 = points[i + 1]
+                
+                self.canvas.create_line(
+                    x1, y1, x2, y2,
+                    fill=color,
+                    width=line_width,
+                    tags="landmarks"
+                )
+            
+            # 마지막 점과 첫 번째 점을 연결하여 닫힌 다각형 만들기
+            x1, y1 = points[-1]
+            x2, y2 = points[0]
+            
+            self.canvas.create_line(
+                x1, y1, x2, y2,
+                fill=color,
+                width=line_width,
+                tags="landmarks"
+            )
+            
+        except Exception as e:
+            print(f"닫힌 다각형 선 그리기 오류: {str(e)}")
+    
+    def _draw_cheek_area_lines(self, points, color, line_width, group_name):
+        """볼영역 선 그리기 - 특별 연결 처리"""
+        try:
+            if len(points) < 3:
+                return
+            
+            # 볼영역 랜드마크에서 50(왼쪽)과 280(오른쪽) 제외하고 연결
+            if group_name == "cheek_area_left":
+                # 왼쪽 볼: 50 제외 (마지막에서 두번째), 특별 연결 추가
+                # indices: [116, 117, 118, 119, 120, 121, 126, 142, 36, 205, 147, 187, 123, 50]
+                # 123-147 연결, 187-206 연결 (206은 없으므로 205로 가정)
+                filtered_points = points[:-1]  # 50 제외
+                
+                # 일반 연속 연결
+                for i in range(len(filtered_points) - 1):
+                    # 123-187 연결 건너뛰기 (인덱스 12->11)
+                    if i == 11:  # 187 -> 123 연결 건너뛰기
+                        continue
+                        
+                    x1, y1 = filtered_points[i]
+                    x2, y2 = filtered_points[i + 1]
+                    
+                    self.canvas.create_line(
+                        x1, y1, x2, y2,
+                        fill=color,
+                        width=line_width,
+                        tags="landmarks"
+                    )
+                
+                # 특별 연결: 123(인덱스 12)-147(인덱스 10), 187(인덱스 11)-205(인덱스 9)
+                if len(filtered_points) > 12:
+                    # 123-147 연결
+                    x1, y1 = filtered_points[12]  # 123
+                    x2, y2 = filtered_points[10]  # 147
+                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                    
+                    # 187-205 연결 (206이 없으므로 205로)
+                    x1, y1 = filtered_points[11]  # 187
+                    x2, y2 = filtered_points[9]   # 205
+                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                
+                # 닫힌 다각형 연결
+                if len(filtered_points) > 2:
+                    x1, y1 = filtered_points[-1]
+                    x2, y2 = filtered_points[0]
+                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                    
+            elif group_name == "cheek_area_right":
+                # 오른쪽 볼: 280 제외, 특별 연결 추가
+                # indices: [345, 346, 347, 348, 349, 350, 355, 371, 266, 425, 376, 411, 352, 280]
+                # 152-376 연결, 411-425 연결 (152가 없으므로 352로 가정)
+                filtered_points = points[:-1]  # 280 제외
+                
+                # 일반 연속 연결
+                for i in range(len(filtered_points) - 1):
+                    # 352-411 연결 건너뛰기 (인덱스 12->11)
+                    if i == 11:  # 411 -> 352 연결 건너뛰기
+                        continue
+                        
+                    x1, y1 = filtered_points[i]
+                    x2, y2 = filtered_points[i + 1]
+                    
+                    self.canvas.create_line(
+                        x1, y1, x2, y2,
+                        fill=color,
+                        width=line_width,
+                        tags="landmarks"
+                    )
+                
+                # 특별 연결: 352(인덱스 12)-376(인덱스 10), 411(인덱스 11)-425(인덱스 9)
+                if len(filtered_points) > 12:
+                    # 352-376 연결 (152 대신 352)
+                    x1, y1 = filtered_points[12]  # 352
+                    x2, y2 = filtered_points[10]  # 376
+                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                    
+                    # 411-425 연결
+                    x1, y1 = filtered_points[11]  # 411
+                    x2, y2 = filtered_points[9]   # 425
+                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                
+                # 닫힌 다각형 연결
+                if len(filtered_points) > 2:
+                    x1, y1 = filtered_points[-1]
+                    x2, y2 = filtered_points[0]
+                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+            else:
+                # 기본 연결
+                self._draw_closed_polygon_lines(points, color, line_width)
+                
+        except Exception as e:
+            print(f"볼영역 선 그리기 오류: {str(e)}")
+    
+    def _draw_continuous_lines(self, points, color, line_width):
+        """연속 선 그리기 (팔자주름 등)"""
+        try:
+            if len(points) < 2:
+                return
+                
+            # 연속된 점들을 선으로 연결
+            for i in range(len(points) - 1):
+                x1, y1 = points[i]
+                x2, y2 = points[i + 1]
+                
+                self.canvas.create_line(
+                    x1, y1, x2, y2,
+                    fill=color,
+                    width=line_width,
+                    tags="landmarks"
+                )
+                
+        except Exception as e:
+            print(f"연속 선 그리기 오류: {str(e)}")
+    
+    def _draw_nasolabial_lines(self, points, color, line_width, group_name):
+        """팔자주름 선 그리기 - 특별 연결 처리"""
+        try:
+            if len(points) < 2:
+                return
+                
+            if group_name == "nasolabial_right":
+                # 우측 팔자주름 특별 연결: 360-363, 363-355
+                # indices: [355, 371, 266, 436, 432, 422, 424, 418, 405, 291, 391, 278, 360, 321, 363]
+                # 363-321 삭제, 360-321 삭제, 360-363 연결, 363-355 연결
+                
+                # 일반 연속 연결 (특정 연결 제외)
+                for i in range(len(points) - 1):
+                    # 360-321 연결 건너뛰기 (인덱스 12->13)
+                    if i == 12:  # 360 -> 321
+                        continue
+                    # 363-321 역방향 연결 건너뛰기 (인덱스 14->13)  
+                    if i == 13:  # 321 -> 363
+                        continue
+                        
+                    x1, y1 = points[i]
+                    x2, y2 = points[i + 1]
+                    
+                    self.canvas.create_line(
+                        x1, y1, x2, y2,
+                        fill=color,
+                        width=line_width,
+                        tags="landmarks"
+                    )
+                
+                # 특별 연결 추가
+                if len(points) > 14:
+                    # 360-363 연결 (인덱스 12->14)
+                    x1, y1 = points[12]  # 360
+                    x2, y2 = points[14]  # 363
+                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                    
+                    # 363-355 연결 (인덱스 14->0)
+                    x1, y1 = points[14]  # 363
+                    x2, y2 = points[0]   # 355
+                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                    
+            else:
+                # 좌측 팔자주름은 일반 연속 연결
+                self._draw_continuous_lines(points, color, line_width)
+                
+        except Exception as e:
+            print(f"팔자주름 선 그리기 오류: {str(e)}")
     
     def draw_landmark_legend(self):
         """랜드마크 범례 표시"""
@@ -2030,7 +2824,7 @@ class FaceSimulator:
         group_definitions = [
             # 눈 영역
             ("eyes", "👀 눈", "#00ff00"),
-            ("iris", "👁️ 동자", "#00ccff"),
+            ("iris", "👁️ 눈동자", "#00ccff"),
             ("eyelid_upper", "👆 상꺼풀", "#66ff66"),
             ("eyelid_lower", "👇 하꺼풀", "#99ff99"),
             ("eyelid_surround_upper", "🔍 상주변", "#ccffcc"),
@@ -2048,8 +2842,7 @@ class FaceSimulator:
             ("jawline_area", "🦴 턱선영역", "#0088ff"),
             ("mouth_area", "👄 입주변영역", "#ff9966"),
             ("nose_area", "👃 코주변영역", "#ffdd66"),
-            ("nasolabial_left", "😔 좌측팔자주름", "#cc99ff"),
-            ("nasolabial_right", "😔 우측팔자주름", "#dd99ff"),
+            ("nasolabial", "😔 팔자주름", "#cc99ff"),
             ("eyebrow_area", "🤨 눈썹주변영역", "#bb77ff"),
             ("eyebrows", "🤨 눈썹", "#9900ff"),
             ("forehead", "🏛️ 이마", "#ffdd99"),
@@ -2145,8 +2938,8 @@ class FaceSimulator:
             "jawline_area": "jawline_area",
             "mouth_area": "mouth_area",
             "nose_area": "nose_area",
-            "nasolabial_left": "nasolabial_left",
-            "nasolabial_right": "nasolabial_right",
+            "nasolabial_left": "nasolabial",
+            "nasolabial_right": "nasolabial",
             "eyebrow_area": "eyebrow_area",
             "eyebrows": "eyebrows",
             "forehead": "forehead",
