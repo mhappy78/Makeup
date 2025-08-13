@@ -2126,6 +2126,7 @@ class FaceSimulator:
                 
                 # 연속된 점들을 선으로 연결
                 if len(points) > 1:
+                    print(f"draw_landmark_lines에서 {group_name} 그룹 처리 중, 점 개수: {len(points)}")
                     self._draw_group_lines(points, color, group_name)
         
         except Exception as e:
@@ -2171,9 +2172,11 @@ class FaceSimulator:
             traceback.print_exc()
     
     def _draw_smooth_curve(self, points, color, line_width):
-        """부드러운 곡선 그리기"""
+        """매우 부드러운 곡선 그리기 - 수동 베지어 곡선 구현"""
         if len(points) < 2:
             return
+        
+        print(f"_draw_smooth_curve 호출됨: {len(points)}개 점, 색상: {color}")
         
         try:
             # 2개 점이면 직선
@@ -2184,58 +2187,51 @@ class FaceSimulator:
                     x1, y1, x2, y2,
                     fill=color,
                     width=line_width,
-                    smooth=True,  # Tkinter의 smooth 옵션 사용
-                    splinesteps=12,  # 더 부드러운 곡선을 위해 스플라인 단계 증가
                     tags="landmarks"
                 )
                 return
             
-            # 3개 이상의 점이면 부드러운 곡선
+            # 3개 이상의 점이면 수동 베지어 곡선으로 그리기
             if len(points) >= 3:
-                # 모든 점을 하나의 부드러운 곡선으로 연결
-                coords = []
-                for point in points:
-                    coords.extend([point[0], point[1]])
+                print(f"베지어 곡선 생성 중: {len(points)}개 원본 점")
+                # 많은 작은 선분들로 부드러운 곡선 만들기
+                curve_points = self._generate_bezier_curve_points(points)
+                print(f"생성된 곡선 점 개수: {len(curve_points)}")
                 
-                self.canvas.create_line(
-                    *coords,
-                    fill=color,
-                    width=line_width,
-                    smooth=True,  # 부드러운 곡선 활성화
-                    splinesteps=20,  # 곡선의 세밀함 조절
-                    tags="landmarks"
-                )
-            else:
-                # 점이 적으면 연속된 부드러운 선분으로 그리기
-                for i in range(len(points) - 1):
-                    x1, y1 = points[i]
-                    x2, y2 = points[i + 1]
+                # 더 부드러운 곡선을 위해 polygon 사용 시도
+                try:
+                    # 모든 곡선 점을 하나의 부드러운 선으로 그리기
+                    coords = []
+                    for point in curve_points:
+                        coords.extend([point[0], point[1]])
                     
-                    # 중간점을 계산하여 더 부드럽게
-                    if i < len(points) - 2:
-                        x3, y3 = points[i + 2]
-                        # 베지어 곡선 근사를 위한 중간점 계산
-                        mid_x = (x1 + 2*x2 + x3) / 4
-                        mid_y = (y1 + 2*y2 + y3) / 4
+                    # Tkinter의 smooth polygon 사용
+                    self.canvas.create_line(
+                        *coords,
+                        fill=color,
+                        width=line_width,
+                        smooth=True,
+                        splinesteps=50,  # 매우 높은 스플라인 단계
+                        tags="landmarks"
+                    )
+                    print(f"polygon으로 곡선 그리기 완료")
+                    
+                except Exception as e:
+                    print(f"polygon 방식 실패, 개별 선분으로 대체: {e}")
+                    # 실패시 작은 선분들로 곡선 그리기
+                    for i in range(len(curve_points) - 1):
+                        x1, y1 = curve_points[i]
+                        x2, y2 = curve_points[i + 1]
                         
-                        self.canvas.create_line(
-                            x1, y1, mid_x, mid_y, x2, y2,
-                            fill=color,
-                            width=line_width,
-                            smooth=True,
-                            splinesteps=15,
-                            tags="landmarks"
-                        )
-                    else:
                         self.canvas.create_line(
                             x1, y1, x2, y2,
                             fill=color,
                             width=line_width,
                             smooth=True,
-                            splinesteps=12,
+                            splinesteps=10,
                             tags="landmarks"
                         )
-                        
+            
         except Exception as e:
             print(f"부드러운 곡선 그리기 오류: {str(e)}")
             # 오류 발생시 기본 직선으로 대체
@@ -2248,6 +2244,118 @@ class FaceSimulator:
                     width=line_width,
                     tags="landmarks"
                 )
+    
+    def _generate_catmull_rom_points(self, control_points, segments_per_curve=10):
+        """카테인 롬 스플라인을 사용하여 부드러운 보간점 생성"""
+        if len(control_points) < 3:
+            return control_points
+            
+        smooth_points = []
+        
+        # 첫 번째 점 추가
+        smooth_points.append(control_points[0])
+        
+        # 각 구간에 대해 카테인 롬 스플라인 적용
+        for i in range(len(control_points) - 1):
+            # 제어점 4개 선택 (현재 구간의 양 끝 + 전후 점)
+            p0 = control_points[max(0, i - 1)]
+            p1 = control_points[i]
+            p2 = control_points[i + 1]
+            p3 = control_points[min(len(control_points) - 1, i + 2)]
+            
+            # 구간을 여러 작은 세그먼트로 나누어 부드러운 곡선 생성
+            for t in range(1, segments_per_curve + 1):
+                t_normalized = t / segments_per_curve
+                point = self._catmull_rom_interpolate(p0, p1, p2, p3, t_normalized)
+                smooth_points.append(point)
+        
+        return smooth_points
+    
+    def _catmull_rom_interpolate(self, p0, p1, p2, p3, t):
+        """카테인 롬 스플라인 보간 공식"""
+        x0, y0 = p0
+        x1, y1 = p1
+        x2, y2 = p2
+        x3, y3 = p3
+        
+        # t의 제곱과 세제곱
+        t2 = t * t
+        t3 = t2 * t
+        
+        # 카테인 롬 스플라인 계수
+        # P(t) = 0.5 * [(2*P1) + (-P0 + P2)*t + (2*P0 - 5*P1 + 4*P2 - P3)*t^2 + (-P0 + 3*P1 - 3*P2 + P3)*t^3]
+        
+        x = 0.5 * (
+            2 * x1 +
+            (-x0 + x2) * t +
+            (2 * x0 - 5 * x1 + 4 * x2 - x3) * t2 +
+            (-x0 + 3 * x1 - 3 * x2 + x3) * t3
+        )
+        
+        y = 0.5 * (
+            2 * y1 +
+            (-y0 + y2) * t +
+            (2 * y0 - 5 * y1 + 4 * y2 - y3) * t2 +
+            (-y0 + 3 * y1 - 3 * y2 + y3) * t3
+        )
+        
+        return (x, y)
+    
+    def _generate_bezier_curve_points(self, control_points, resolution=100):
+        """베지어 곡선 점들을 생성하여 부드러운 곡선 만들기"""
+        if len(control_points) < 3:
+            return control_points
+        
+        curve_points = []
+        
+        # 각 3개 점씩 그룹으로 나누어 2차 베지어 곡선 생성
+        for i in range(len(control_points) - 2):
+            p0 = control_points[i]
+            p1 = control_points[i + 1]
+            p2 = control_points[i + 2]
+            
+            # 중점을 제어점으로 사용하여 더 부드러운 곡선 생성
+            if i == 0:
+                # 첫 번째 구간
+                start_point = p0
+            else:
+                # 이전 구간과 연결되는 중점
+                prev_p1 = control_points[i]
+                start_point = ((prev_p1[0] + p1[0]) / 2, (prev_p1[1] + p1[1]) / 2)
+            
+            if i == len(control_points) - 3:
+                # 마지막 구간
+                end_point = p2
+            else:
+                # 다음 구간과 연결되는 중점
+                next_p1 = control_points[i + 2]
+                end_point = ((p1[0] + next_p1[0]) / 2, (p1[1] + next_p1[1]) / 2)
+            
+            # 2차 베지어 곡선 점들 생성
+            segment_points = self._quadratic_bezier_points(start_point, p1, end_point, resolution // (len(control_points) - 2))
+            
+            if i == 0:
+                curve_points.extend(segment_points)
+            else:
+                # 첫 번째 점은 이전 구간의 마지막 점과 겹치므로 제외
+                curve_points.extend(segment_points[1:])
+        
+        return curve_points
+    
+    def _quadratic_bezier_points(self, p0, p1, p2, num_points=50):
+        """2차 베지어 곡선의 점들을 생성"""
+        points = []
+        
+        for i in range(num_points + 1):
+            t = i / num_points
+            
+            # 2차 베지어 곡선 공식: B(t) = (1-t)²P0 + 2(1-t)tP1 + t²P2
+            x = (1 - t) ** 2 * p0[0] + 2 * (1 - t) * t * p1[0] + t ** 2 * p2[0]
+            y = (1 - t) ** 2 * p0[1] + 2 * (1 - t) * t * p1[1] + t ** 2 * p2[1]
+            
+            points.append((x, y))
+        
+        return points
 
     def draw_lines_for_group(self, points, color, group_name):
         """특정 그룹에 대한 선 그리기"""
@@ -2457,6 +2565,7 @@ class FaceSimulator:
     def _draw_group_lines(self, points, color, group_name):
         """특정 그룹의 선 그리기"""
         try:
+            print(f"_draw_group_lines 호출: {group_name}, 점 개수: {len(points)}")
             line_width = max(1, int(1 * self.zoom_factor))  # 줌에 따른 선 두께 조정 (50% 감소)
             
             # 특별 처리가 필요한 그룹들
@@ -2500,32 +2609,18 @@ class FaceSimulator:
                 # 상꺼풀영역의 경우 특별 연결 처리
                 self._draw_eyelid_upper_area_lines(points, color, line_width)
             else:
-                # 일반적인 연속 선 그리기
-                for i in range(len(points) - 1):
-                    x1, y1 = points[i]
-                    x2, y2 = points[i + 1]
-                    
-                    self.canvas.create_line(
-                        x1, y1, x2, y2,
-                        fill=color,
-                        width=line_width,
-                        tags="landmarks"
-                    )
+                # 부드러운 곡선으로 그리기
+                print(f"일반 그룹 {group_name}에 대해 _draw_smooth_curve 호출")
+                self._draw_smooth_curve(points, color, line_width)
                 
                 # 닫힌 다각형이 필요한 그룹들
                 closed_groups = ["forehead", "glabella", "nose_area", 
                                "lip_lower", "lip_upper", "mouth_area"]
                 
                 if group_name in closed_groups and len(points) > 2:
-                    x1, y1 = points[-1]
-                    x2, y2 = points[0]
-                    
-                    self.canvas.create_line(
-                        x1, y1, x2, y2,
-                        fill=color,
-                        width=line_width,
-                        tags="landmarks"
-                    )
+                    # 첫 번째와 마지막 점도 부드럽게 연결
+                    closing_points = [points[-1], points[0]]
+                    self._draw_smooth_curve(closing_points, color, line_width)
         
         except Exception as e:
             print(f"그룹 선 그리기 오류 ({group_name}): {str(e)}")
@@ -2743,18 +2838,18 @@ class FaceSimulator:
                     # 123-147 연결
                     x1, y1 = filtered_points[12]  # 123
                     x2, y2 = filtered_points[10]  # 147
-                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
                     
                     # 187-205 연결 추가
                     x1, y1 = filtered_points[11]  # 187
                     x2, y2 = filtered_points[9]   # 205
-                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
                 
                 # 닫힌 다각형 연결
                 if len(filtered_points) > 2:
                     x1, y1 = filtered_points[-1]
                     x2, y2 = filtered_points[0]
-                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
                     
             elif group_name == "cheek_area_right":
                 # 오른쪽 볼: 280 제외, 특별 연결 추가
@@ -2786,18 +2881,18 @@ class FaceSimulator:
                     # 352-376 연결
                     x1, y1 = filtered_points[12]  # 352
                     x2, y2 = filtered_points[10]  # 376
-                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
                     
                     # 425-411 연결 추가
                     x1, y1 = filtered_points[9]   # 425
                     x2, y2 = filtered_points[11]  # 411
-                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
                 
                 # 닫힌 다각형 연결
                 if len(filtered_points) > 2:
                     x1, y1 = filtered_points[-1]
                     x2, y2 = filtered_points[0]
-                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
             else:
                 # 기본 연결
                 self._draw_closed_polygon_lines(points, color, line_width)
@@ -2852,12 +2947,12 @@ class FaceSimulator:
                     # 360-363 연결 (인덱스 12->14)
                     x1, y1 = points[12]  # 360
                     x2, y2 = points[14]  # 363
-                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
                     
                     # 363-355 연결 (인덱스 14->0)
                     x1, y1 = points[14]  # 363
                     x2, y2 = points[0]   # 355
-                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
                     
             else:
                 # 좌측 팔자주름은 일반 연속 연결
@@ -2941,43 +3036,43 @@ class FaceSimulator:
                 # 97-326 연결 (인덱스 4->10) - 기존 유지
                 x1, y1 = points[4]   # 97
                 x2, y2 = points[10]  # 326
-                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
                 
                 # 45-275 연결 (인덱스 0->7) - 기존 유지
                 x1, y1 = points[0]   # 45
                 x2, y2 = points[7]   # 275
-                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
                 
                 # 새로 추가할 연결들
                 # 129-115 연결 (인덱스 1->5)
                 x1, y1 = points[1]   # 129
                 x2, y2 = points[5]   # 115
-                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
                 
                 # 327-294 연결 (인덱스 11->9)
                 x1, y1 = points[11]  # 327
                 x2, y2 = points[9]   # 294
-                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
                 
                 # 294-278 연결 (인덱스 9->8)
                 x1, y1 = points[9]   # 294
                 x2, y2 = points[8]   # 278
-                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
                 
                 # 278-344 연결 (인덱스 8->12)
                 x1, y1 = points[8]   # 278
                 x2, y2 = points[12]  # 344
-                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
                 
                 # 440-275 연결 (인덱스 13->7)
                 x1, y1 = points[13]  # 440
                 x2, y2 = points[7]   # 275
-                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
                 
                 # 220-45 연결 (인덱스 6->0) - 새로 추가
                 x1, y1 = points[6]   # 220
                 x2, y2 = points[0]   # 45
-                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
                 
         except Exception as e:
             print(f"콧볼 선 그리기 오류: {str(e)}")
@@ -3274,53 +3369,53 @@ class FaceSimulator:
                 if i + 1 < len(points):
                     x1, y1 = points[i]
                     x2, y2 = points[i + 1]
-                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
             
             # 2. 오른쪽 하꺼풀 연속 연결 (인덱스 9-17)
             for i in range(9, 17):
                 if i + 1 < len(points):
                     x1, y1 = points[i]
                     x2, y2 = points[i + 1]
-                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
             
             # 3. 왼쪽 눈 하단 연속 연결 (인덱스 18-26)
             for i in range(18, 26):
                 if i + 1 < len(points):
                     x1, y1 = points[i]
                     x2, y2 = points[i + 1]
-                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
             
             # 4. 오른쪽 눈 하단 연속 연결 (인덱스 27-35)
             for i in range(27, 35):
                 if i + 1 < len(points):
                     x1, y1 = points[i]
                     x2, y2 = points[i + 1]
-                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
             
             # 5. 특별 연결: 하꺼풀과 눈 하단 연결 (사용자 요청에 따른 수정)
             # 463(인덱스9) - 362(인덱스27) 연결
             if len(points) > 27:
                 x1, y1 = points[9]   # 463
                 x2, y2 = points[27]  # 362
-                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
             
             # 359(인덱스35) - 446(인덱스17) 연결
             if len(points) > 35:
                 x1, y1 = points[35]  # 359
                 x2, y2 = points[17]  # 446
-                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
             
             # 226(인덱스0) - 33(인덱스18) 연결
             if len(points) > 18:
                 x1, y1 = points[0]   # 226
                 x2, y2 = points[18]  # 33
-                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
             
             # 133(인덱스26) - 243(인덱스8) 연결
             if len(points) > 26:
                 x1, y1 = points[26]  # 133
                 x2, y2 = points[8]   # 243
-                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
                 
         except Exception as e:
             print(f"하꺼풀영역 선 그리기 오류: {str(e)}")
@@ -3344,53 +3439,53 @@ class FaceSimulator:
                 if i + 1 < len(points):
                     x1, y1 = points[i]
                     x2, y2 = points[i + 1]
-                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
             
             # 2. 왼쪽 상주변 연속 연결 (인덱스 9-17)
             for i in range(9, 17):
                 if i + 1 < len(points):
                     x1, y1 = points[i]
                     x2, y2 = points[i + 1]
-                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
             
             # 3. 오른쪽 상꺼풀 연속 연결 (인덱스 18-25)
             for i in range(18, 25):
                 if i + 1 < len(points):
                     x1, y1 = points[i]
                     x2, y2 = points[i + 1]
-                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
             
             # 4. 오른쪽 상주변 연속 연결 (인덱스 26-34)
             for i in range(26, 34):
                 if i + 1 < len(points):
                     x1, y1 = points[i]
                     x2, y2 = points[i + 1]
-                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
             
             # 5. 특별 연결: 상꺼풀과 상주변 연결
             # 왼쪽: 226(인덱스0) - 35(인덱스9) 연결
             if len(points) > 9:
                 x1, y1 = points[0]   # 226
                 x2, y2 = points[9]   # 35
-                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
             
             # 왼쪽: 243(인덱스8) - 244(인덱스17) 연결
             if len(points) > 17:
                 x1, y1 = points[8]   # 243
                 x2, y2 = points[17]  # 244
-                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
             
             # 오른쪽: 463(인덱스18) - 465(인덱스26) 연결
             if len(points) > 26:
                 x1, y1 = points[18]  # 463
                 x2, y2 = points[26]  # 465
-                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
             
             # 오른쪽: 446(인덱스25) - 265(인덱스34) 연결
             if len(points) > 34:
                 x1, y1 = points[25]  # 446
                 x2, y2 = points[34]  # 265
-                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
                 
         except Exception as e:
             print(f"상주변영역 선 그리기 오류: {str(e)}")
@@ -3414,53 +3509,53 @@ class FaceSimulator:
                 if i + 1 < len(points):
                     x1, y1 = points[i]
                     x2, y2 = points[i + 1]
-                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
             
             # 2. 오른쪽 상꺼풀 연속 연결 (인덱스 9-16)
             for i in range(9, 16):
                 if i + 1 < len(points):
                     x1, y1 = points[i]
                     x2, y2 = points[i + 1]
-                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
             
             # 3. 왼쪽 눈 상단 연속 연결 (인덱스 17-25)
             for i in range(17, 25):
                 if i + 1 < len(points):
                     x1, y1 = points[i]
                     x2, y2 = points[i + 1]
-                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
             
             # 4. 오른쪽 눈 상단 연속 연결 (인덱스 26-35)
             for i in range(26, 35):
                 if i + 1 < len(points):
                     x1, y1 = points[i]
                     x2, y2 = points[i + 1]
-                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                    self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
             
             # 5. 특별 연결: 상꺼풀과 눈 상단 연결
             # 왼쪽: 226(인덱스0) - 33(인덱스17) 연결
             if len(points) > 17:
                 x1, y1 = points[0]   # 226
                 x2, y2 = points[17]  # 33
-                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
             
             # 왼쪽: 243(인덱스8) - 133(인덱스25) 연결
             if len(points) > 25:
                 x1, y1 = points[8]   # 243
                 x2, y2 = points[25]  # 133
-                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
             
             # 오른쪽: 463(인덱스9) - 362(인덱스26) 연결
             if len(points) > 26:
                 x1, y1 = points[9]   # 463
                 x2, y2 = points[26]  # 362
-                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
             
             # 오른쪽: 446(인덱스16) - 359(인덱스35) 연결
             if len(points) > 35:
                 x1, y1 = points[16]  # 446
                 x2, y2 = points[35]  # 359
-                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, tags="landmarks")
+                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=line_width, smooth=True, tags="landmarks")
                 
         except Exception as e:
             print(f"상꺼풀영역 선 그리기 오류: {str(e)}")
