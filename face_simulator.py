@@ -440,6 +440,7 @@ class FaceSimulator:
                                               command=self.toggle_landmark_lines)
         self.landmark_lines_button.pack(fill=tk.X, pady=2)
         
+        
         # 새로고침 버튼
         ttk.Button(landmark_frame, text="🔄 새로고침", 
                   command=self.refresh_landmarks).pack(fill=tk.X, pady=2)
@@ -471,6 +472,7 @@ class FaceSimulator:
                  command=self.update_font_size).pack(side=tk.LEFT, fill=tk.X, expand=True)
         self.font_size_label = ttk.Label(font_size_frame, text=f"{self.landmark_font_size}pt", width=4)
         self.font_size_label.pack(side=tk.RIGHT)
+        
         
         # 랜드마크 그룹 선택 프레임
         group_frame = ttk.LabelFrame(landmark_frame, text="🎨 부위별 표시", padding=5)
@@ -2356,6 +2358,7 @@ class FaceSimulator:
             points.append((x, y))
         
         return points
+    
 
     def draw_lines_for_group(self, points, color, group_name):
         """특정 그룹에 대한 선 그리기"""
@@ -2368,7 +2371,7 @@ class FaceSimulator:
                 "lip_lower", "lip_upper", "eyes", "iris", "mouth_area",
                 "eyebrows", "eyebrow_area", "cheek_area_left", "cheek_area_right",
                 "nasolabial_left", "nasolabial_right", "nose_bridge", "nose_wings",
-                "eyelid_lower_surround_area"
+                "eyelid_lower_surround_area", "eyelid_lower_area", "eyelid_upper_surround_area", "eyelid_upper_area"
             ]
             
             if group_name not in line_supported_groups:
@@ -2566,7 +2569,7 @@ class FaceSimulator:
         """특정 그룹의 선 그리기"""
         try:
             print(f"_draw_group_lines 호출: {group_name}, 점 개수: {len(points)}")
-            line_width = max(1, int(1 * self.zoom_factor))  # 줌에 따른 선 두께 조정 (50% 감소)
+            line_width = max(1, int(1 * self.zoom_factor))  # 줄에 따른 선 두께 조정 (50% 감소)
             
             # 특별 처리가 필요한 그룹들
             if group_name == "eyes":
@@ -2793,7 +2796,7 @@ class FaceSimulator:
         try:
             if len(points) < 3:
                 return
-                
+            
             # 부드러운 닫힌 곡선으로 연결 (마지막 점과 첫 번째 점도 자동 연결)
             closed_points = points + [points[0]]
             self._draw_smooth_curve(closed_points, color, line_width)
