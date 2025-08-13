@@ -4,29 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a dual-platform makeup and facial transformation application with:
+This is a Python-based makeup and facial transformation application providing:
 
-1. **Android Application** (`app/`): Native Android app for real-time makeup application and facial feature modifications
-2. **Python Applications** (`python_makeup_app/`): Python ports providing desktop and web-based makeup tools with advanced image warping capabilities
+**Python Applications** (`python_makeup_app/`): Desktop and web-based makeup tools with advanced image warping capabilities
 
 ## Build and Development Commands
-
-### Android Application
-
-```bash
-# Build the Android app
-./gradlew build
-
-# Clean build artifacts
-./gradlew clean
-
-# Install on connected device
-./gradlew installDebug
-
-# Run tests
-./gradlew test
-./gradlew connectedAndroidTest
-```
 
 ### Python Applications
 
@@ -53,26 +35,6 @@ python python_makeup_app/simple_warping.py
 
 ## Architecture
 
-### Android App Structure (`app/src/main/java/com/ding/makeup/`)
-
-**Core Activities:**
-
-- `MainActivity.java`: Main entry point, handles makeup application and eye magnification
-- `MagnifyActivity.java`: Dedicated eye enlargement interface
-- `SmallFaceActivity.java`: Face slimming functionality
-- `AdjustLegActivity.java`: Leg lengthening feature
-
-**Key Components:**
-
-- `beauty/`: Contains transformation algorithms (`MagnifyEyeUtils`, `SmallFaceUtils`, `LongLegsUtils`)
-- `draw/`: Makeup rendering classes (`BlushDraw`, `BrowDraw`, `EyeDraw`, `FoundationDraw`, `LipDraw`)
-- `utils/`: Utility classes for bitmap processing, face point detection, and drawing operations
-
-**Makeup Types (Region.java):**
-
-- Foundation, Blush, Lip, Brow
-- Eye Lash, Eye Contact, Eye Double, Eye Line, Eye Shadow
-
 ### Python App Structure (`python_makeup_app/`)
 
 **Applications:**
@@ -91,9 +53,8 @@ python python_makeup_app/simple_warping.py
 
 ## Face Detection and Processing
 
-- **Android**: Uses custom face point detection with JSON-based landmark storage (`face_point.json`, `face_point1.json`)
-- **Python**: Uses MediaPipe Face Mesh for real-time facial landmark detection
-- Both implementations support similar transformation algorithms with mathematical warping formulas
+- Uses MediaPipe Face Mesh for real-time facial landmark detection (468 landmarks)
+- Supports advanced transformation algorithms with mathematical warping formulas
 
 ## Image Warping Algorithm
 
@@ -111,28 +72,27 @@ Where:
 
 ## Assets and Resources
 
-- **Android**: Images and face point data stored in `app/src/main/assets/`
-- **Python**: Uses MediaPipe for dynamic face detection, no static assets required
-- Sample images available in `doc/` directory for testing
+- Uses MediaPipe for dynamic face detection, no static assets required
+- Sample images available in `samples/` and `doc/` directories for testing
 
 ## Native Dependencies
 
-- **Android**: Uses `libAmniXSkinSmooth.so` for skin smoothing (ARM and x86 versions in `jniLibs/`)
-- **Python**: Pure Python implementation, no native dependencies
+- Pure Python implementation, no native dependencies required
 
 ## Testing
 
-- **Android**: Standard Android testing with JUnit and Espresso
-- **Python**: No formal test structure, but applications include built-in validation
+- Comprehensive test suite with 30+ test files covering various functionality
+- Applications include built-in validation and error handling
 
 ## Development Notes
 
-- The Android version uses a fixed 200x200 mesh grid for transformations
 - Python versions support flexible resolution and real-time parameter adjustment
-- Both platforms implement similar core algorithms but with platform-specific optimizations
+- Uses advanced algorithms like Thin Plate Spline (TPS) for natural image transformations
 - Face point coordinates are normalized and scaled appropriately for different image sizes
+- Modular architecture allows easy extension of makeup styles and surgical modifications
 
 ## Rules
 
 - 코드 수정 시 자동으로 .claude 폴더에 필요한 사항을 저장하고 업데이트해라
 - 코드 수정 시 자동으로 이 파일에 필요한 부분이 있으면 수정을 해라
+- 필요하면 자동 compact를 실행해라.

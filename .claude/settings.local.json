@@ -4,5 +4,14 @@
       "Bash"
     ],
     "deny": []
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "mcp-taskmanager",
+    "exa",
+    "mcp-sequentialthinking-tools"
+  ],
+  "disabledMcpjsonServers": [
+    "sequential-thinking"
+  ]
 }

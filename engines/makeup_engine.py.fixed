@@ -1,0 +1,1072 @@
+ 반환피부톤시 기본  # 오류 80, 140) r(220, 1lo   return Co        ception:
+    except Ex        
+      톤
+        피부 기본)  #180, 140olor(220, eturn C   r        else:
+          b)
+       g_g, avg_or(avg_r, avurn Colret             count)
+    sample_(b_sum /g_b = int     av           le_count)
+/ sampt(g_sum _g = in avg             
+  nt)/ sample_couint(r_sum vg_r =     a     
+       nt > 0:f sample_cou       i    
+     
+        ount += 1e_c      sampl              
+     b_sum += b                      m += g
+    g_su                     = r
+     r_sum +                  40:
+  < b < 2 240 and 50and 50 < g <0 24 < r <   if 50                 림자 등)
+ , 그 (하이라이트 필터링 # 극단적인 값                     
+            
+      BGR 순서e[y, x]  # imag, r =  g   b,         
+        1]:mage.shape[d 0 <= x < i ane.shape[0]<= y < imag   if 0       
+       1][i]_indices[0][i], masks[ce = mask_indi  y, x          :
+    ep)mple_st saes[0]),icen(mask_inde(0, lr i in rang       fo
+           
+      _count = 0    sample0
+        um = 0, 0,  g_sum, b_s    r_sum,
+        플링 샘   # 피부톤
+                )
+      max_samplesdices[0]) //(mask_inax(1, len = mample_step     s     0
+  = 100max_samples           수 제한
+    픽셀할 최대   # 샘플링               
+  기본 피부톤
+    80, 140)  # , 1Color(220rn  retu            0:
+   es[0]) == sk_indic(ma   if len)
+          > 128maskhere(face_s = np.w_indicemask       
+     링에서 피부톤 샘플마스크 영역     #           
+   s)
+      markndsk(image, lace_ma_fa= self._gete_mask     fac
+         마스크 생성영역      # 얼굴 y:
+              tr""
+ 추출"얼굴에서 피부톤"""
+        > Color:) -nt3D]t[Poindmarks: Lislaray, np.ndarf, image: one(selt_skin_tf ge    
+    de [], 0.0)
+t(image,MakeupResuln      retur    {e}")
+   : 적용 중 오류 발생크업 "메이    print(f       on as e:
+ cept Excepti        ex       
+)
+     g_timerocessinects, pied_effpplge, alt_imaResult(resun Makeupetur  r        
+          
+    art_time - stme() time.tie =essing_timproc         
+           
+    ")klipsticpend("ffects.ap  applied_e             ick)
+ ig.lipst, conflandmarksge, ult_imaick(reslipstpply_.aage = selfimsult_         re       y > 0:
+nsitinteipstick.config.land .lipstick ig   if conf       용)
+  가장 마지막에 적 5. 립스틱 적용 (          #      
+    r")
+    yeline.append("elied_effects    app            eyeliner)
+config.dmarks, ge, lanesult_imayeliner(rf.apply_e sel_image =esult  r          > 0:
+    ickness ner.thnfig.eyeliliner and co.eye  if config          . 아이라이너 적용
+    # 4             
+ 
+      ")shadowpend("eyeapffects.d_e    applie          dow)
+  ig.eyeshaconfrks, mage, landma(result_ieshadowy_ey.applmage = selfesult_i       r     lors:
+    .cooweyeshadand config.y > 0 ow.intensitig.eyeshadonfhadow and cesnfig.eyif co           용
+ 섀도 적3. 아이         #        
+   )
+     ush""blcts.append(pplied_effe a           blush)
+    s, config.markmage, landh(result_ily_bluse = self.appt_imagules   r            :
+  0ensity >blush.intfig. conblush and if config.            블러셔 적용
+  # 2.    
+               
+   tion")dafounts.append("ed_effecppli     a         ion)
+  fig.foundatrks, con, landmaresult_imagedation(pply_founf.a selge =t_ima resul               ge > 0:
+coveraoundation. config.fndion andatnfig.fouco     if 용)
+       (가장 먼저 적적용 # 1. 파운데이션               
+        ts = []
+  pplied_effec    a  ()
+      ge.copy = imaimage   result_      time()
+   ime. = t  start_time         
+           
+  ge, [], 0.0)imaupResult(eturn Make    r           nfig):
+ onfig(coate_makeup_calidelf.vf not s  i                    
+0)
+  age, [], 0.lt(imkeupResu Maeturn      r      :
+    .shape) != 3 len(images None orif image i         력 검증
+    # 입     y:
+              tr"
+"
+        ") 목록, 처리 시간(적용된 이미지, 효과t 객체 esulMakeupR        urns:
+         Ret       
+   설정
+      메이크업     config:       : 얼굴 랜드마크
+ andmarks         l
+    이미지image: 입력          :
+    Args 
+         
+    서드 한 번에 적용하는 메효과를업  모든 메이크"
+       ""     t:
+   akeupResulConfig) -> Meup config: Mak                     int3D],
+   ks: List[Poar, landm np.ndarrayf, image:selkeup(may_full_pl def ap   age
+    
+eturn im           r {e}")
+ 적용 중 오류 발생:이라이너   print(f"아
+          n as e:pt Exceptio    exce   
+            ult_image
+ es  return r
+              .r
+        ornfig.col, x, 2] = coe[y_imagsult re                           ig.color.g
+] = confx, 1ge[y, lt_ima resu                           .b
+color0] = config., e[y, x result_imag                          상만 적용
+ 임계값 이:  # rength > 0.3mask_stif                       
+   직접 적용 없이아이라이너는 블렌딩      #                    
+                     
+   255.0, x] /r_mask[yne eyeliength =  mask_str            
+          렌딩 따른 블크 강도에    # 마스                   hape[1]:
+ e.sx < imag 0 <= e[0] ande.shapag 0 <= y < im      if           s[1]):
+   k_indicees[0], masindiczip(mask_for y, x in          
+       0:0]) > ask_indices[(m if len         k > 0)
+  ner_masyelip.where(ees = n  mask_indic        아이라이너 적용
+  역에만 크가 있는 영       # 마스  
+               .copy()
+maget_image = i resul        이라이너 적용
+      # 아        
+   
+          ness).thickig confmarks,, land_mask(imageeyelinerelf._get_sk = s_ma   eyeliner    생성
+      이라이너 마스크   # 아          
+           e
+ imag   return             ss <= 0:
+ig.thickne   if conf         
+           e
+ eturn imag          r     :
+ .shape) != 3mageor len(iis None  if image   
+          검증     # 입력
+            try:""
+         "  너가 적용된 이미지
+ 아이라이         :
+  eturns       R        
+ 이너 설정
+    g: 아이라     confi    
+    얼굴 랜드마크dmarks:        lan력 이미지
+     입   image:    rgs:
+     
+        A      너 적용 메서드
+         아이라이""
+    "ray:
+     > np.ndarnfig) -Coinerfig: Eyel con                     ],
+3Dist[Pointlandmarks: Lrray, np.nda image: f,selr(eyelinef apply_ 
+    den mask
+   tur   re 
+        3), 0)
+    , r(mask, (3lusianB cv2.Gaus     mask =게 처리
+   크 부드럽 # 마스
+       )
+        al_thickness actuend, 255,start, wing_ng_e(mask, wiinv2.l c               // 2)
+ _length wingtart[1] - wing_sength,ing_l] + wart[0g_std = (win wing_en             
+   * 5)+ thickness = int(5 gth  wing_len         
+     깥쪽 모서리s[0]  # 눈 바ight_pointrt = r   wing_sta            효과
+   오른쪽 눈 캣 아이          #> 0:
+      nts) en(right_poiif l    
+             s)
+       kneshic_tual5, acting_end, 25t, wg_starwinsk, mav2.line(      c     
+     th // 2)- wing_lengt[1] arh, wing_stwing_lengtart[0] - ng_stwi = (end    wing_       
+     께에 따른 길이 두  #ckness * 5) + thih = int(5_lengtwing            리
+    # 눈 바깥쪽 모서[0]  pointsart = left_ing_st      w      효과
+      눈 캣 아이# 왼쪽          > 0:
+      t_points)  if len(lef          ss > 0.7:
+ hickne  if t이)
+       (캣 아이라이너 효과  # 날카로운 아       
+    s)
+   esknicctual_th 255, apoints[i+1],i], right_ight_points[mask, rv2.line(    c          ) - 1):
+  ht_pointse(len(rigin rang    for i 
+         그리기아닌 윗부분만   # 폐곡선이         2:
+ oints) >= t_pif len(righ
+        
+        t.y)))oin.x), int(pntnt(poi((ipendints.ap  right_po              x]
+[id = landmarks     point           andmarks):
+x < len(lid     if :
+       utline_eye_odx in rightor i       fints = []
+    right_po     쪽 눈 아이라이너
+ # 오른           
+  
+  ness)tual_thick+1], 255, acoints[ileft_ppoints[i], left_.line(mask,        cv2:
+         - 1)) left_pointsn range(len(     for i i그리기
+       선이 아닌 윗부분만  # 폐곡
+           s) >= 2:_point len(left       if     
+    t.y)))
+nt(poin, ix)(int(point.pend(points.ap left_      
+         marks[idx]t = land        poin   rks):
+     dmaanidx < len(l      if e:
+      t_eye_outlin idx in lef  for      ts = []
+  left_poin     이너
+ # 왼쪽 눈 아이라                
+ss * 4)
+(1 + thicknekness = intctual_thic       a
+ (1-5 픽셀) 계산  실제 두께    #     
+    
+   rn masketu        r
+    ed_idx: max_requirlandmarks) <f len()
+        iult=0), defae_outlinet_eyx(righult=0), maefa, dline_outeyeleft_(max(ed_idx = max_requirmax       마스크 반환
+  경우 빈 충분하지 않은랜드마크가 #           
+ 
+     int8), dtype=np.uape[:2]mage.shzeros(imask = np.
+        
+        6, 263] 466, 387, 388,38384, 385, 362, 398, line = [ght_eye_out    ri
+    33] 17, 173, 15158,, 159, 1, 160 1633, 246,ine = [eye_outl     left_
+    466, 26387, 388,85, 386, 3 38, 384,39윤곽: 362,  오른쪽 눈    # 133
+     73,58, 157, 159, 1, 16, 161, 16024, 윤곽: 33 왼쪽 눈      #)
+   덱스 (눈 윤곽e 얼굴 랜드마크 인Pipia  # Med              
+import cv2
+
+        "마스크 생성"""""아이라이너 :
+        p.ndarrayoat) -> ness: fl, thickn[Point3D] Listndmarks:.ndarray, lamage: npself, ik(eliner_maset_ey
+    def _g
+    t resul   return         
+   
+ h)engt* mask_strx, c] rred[y,    blu                                
+          trength) + k_s- mas* (1 x, c] nt(image[y, y, x, c] = i result[                        range(3):
+for c in                    
+                   
+ trength.0 * s, x] / 255 mask[ygth =stren   mask_             e[1]:
+    mage.shapx < id 0 <= pe[0] anha y < image.sf 0 <= i             [1]):
+  mask_indices, ndices[0]k_imasin zip(x  for y,    
+         0:ices[0]) >n(mask_ind     if le 
+   
+        0) >skere(maes = np.wh mask_indic     .copy()
+  ult = image    res
+    이미지 블렌딩# 원본과 블러              
+), 0)
+    blur_amountblur_amount,mage, (r(inBlucv2.Gaussiaed = lurr b         
+   만들기
+    1  # 홀수로 += blur_amount     
+        % 2 == 0:r_amountblu       if 7)
+ (3-른 블러 크기 도에 따th * 4)  # 강+ strengunt = int(3 mo_a   blur블러 처리
+     역만 # 마스크 영            
+    e
+urn imag     ret      th <= 0:
+ reng       if st    
+ t cv2
+       impor    "
+ 과"""피부 스무딩 효     ""  ndarray:
+ .5) -> np. = 0oat flngth:trearray, smask: np.ndy, arrand, image: np.othing(self_skin_smolyf _app   
+    den result
+ etur r             
+  ength)
+* mask_strl eased_vath) + incrtreng(1 - mask_sinal_val * (orig c] = intult[y, x,        res       
+                         가
+        ))  # 5% 증val * 1.05inal_, int(origmin(255 = _val   increased                     e[y, x, c]
+imagal = l_vgina      ori                  :
+ range(3) in     for c           
+     듀이 효과 밝기 증가로     # 약간의            
+                     간 강한 효과
+  0.15  # 약 / 255.0 * , x]th = mask[yask_streng       m        
+     [1]: image.shape= x <nd 0 <hape[0] a y < image.s     if 0 <=         [1]):
+  ask_indicesndices[0], mask_iip(m in zr y, x          fo0:
+  ) > ndices[0]k_if len(mas 
+        i        > 0)
+re(mask.whedices = np  mask_in
+      opy().csult = image      re"""
+  effectsh ni"Dewy fi   "":
+     np.ndarraydarray) -> .ny, mask: npp.ndarraage: n, iminish(selfply_dewy_f   def _ap
+ 
+    turn result
+        re        rength)
+k_stasal * meduced_v) + rask_strength (1 - miginal_val *ornt(, c] = iult[y, xres                        
+                   감소
+      # 5%.95))  * 0l (original_vax(0, int= mal ced_vaedu           r       
+      age[y, x, c]l_val = imna  origi                    (3):
+  r c in range    fo      
+          도 약간 감소  # 채               
+               
+         약한 효과0.2  #5.0 * x] / 25[y, gth = maskenstr      mask_              1]:
+e.shape[ imag <] and 0 <= xe.shape[0mag0 <= y < i       if :
+         indices[1])], mask__indices[0 zip(masky, x in        for 0:
+     > es[0])ndicsk_iif len(ma    
+            )
+ere(mask > 0ces = np.whsk_indi   ma     py()
+ = image.co result""
+       리 효과"트 마무"매      ""
+  ndarray:p.array) -> n.nday, mask: npndarrmage: np.elf, i_finish(sply_matte
+    def _apmage
+    eturn i    r       ")
+ e}생: { 중 오류 발(f"파운데이션 적용     print
+       e:n as ceptio Ex     except
+              lt_image
+ rn resutu         re
+               )
+trengthoothing_s, sm face_maskmage,lt_ioothing(resusmy_skin_._apple = selfaglt_im     resu 강도
+       커버리지에 따른 스무딩* 0.5  # overage  = config.cstrengthothing_    smo       운 경계 블러링)
+ (자연스러효과 적용       # 스무딩 
+              ask)
+    _mmage, faceh(result_i_finispply_dewyself._aage = sult_im   re      
+       추가 하이라이트  효과 -   # 듀이          ":
+    == "dewyonfig.finishlif c         emask)
+   , face_imageesult_e_finish(rtt_malyself._appt_image =        resul      도 감소
+   간의 채 # 매트 효과 - 약             e":
+   == "mattfinishf config.   i        용
+ 시 효과 적     # 피니   
+              .b
+  ded_color = blene[y, x, 0]imagsult_          re            lor.g
+  ended_co] = bly, x, 1age[sult_im          re      r
+        nded_color.2] = ble, x, _image[y   result                     B to BGR)
+지에 적용 (RG     # 결과 이미                    
+                       )
+                 
+       nal_opacityMAL, findMode.NOR Ble.color,l, configiginal_pixe   or                         olors(
+nd_clelender.b = ColorBd_color blende                     블렌딩
+  # 색상                          
+               
+        strengthty * mask_lend_opaciity = bal_opac     fin                  0
+ / 255.ask[y, x] gth = face_mren  mask_st                 
+      블렌딩스크 강도에 따른   # 마                  
+                              )
+                            255
+                     
+0]), x, (image[y,       int                ), 
+     x, 1], t(image[y       in                   
+  o RGB# BGR t x, 2]),  image[y,t(  in                         olor(
+ xel = Coriginal_pi                     ape[1]:
+   shimage.nd 0 <= x < ape[0] aage.sh < imf 0 <= y  i               es[1]):
+   mask_indic, s[0]indicesk_n zip(mar y, x i       fo
+         0: > 0])ices[mask_ind if len(           > 0)
+ask _m.where(facedices = npask_in           m 적용
+ 역에만 파운데이션스크가 있는 영        # 마
+            y()
+    e.copimage = imag    result_    데이션 적용
+          # 파운    
+      정
+        명도 조른 불투리지에 따* 0.7  # 커버age verconfig.coy = opacitlend_  b          연스럽게 블렌딩)
+ 자 색상 조정 (피부톤과    # 파운데이션        
+   
+         ndmarks)e, laagn_tone(imkiet_s.gselftone =        skin_    색상 계산
+ 화시킨 파운데이션 부톤과 조        # 피     
+       arks)
+    age, landmask(im_face_m = self._getskce_ma     fa     
+   얼굴 마스크 생성      #        
+          image
+n       retur        != 3:
+   e.shape)n(imagne or le image is No       if
+          # 입력 검증ry:
+       
+        t"""        
+ 적용된 이미지  파운데이션이
+              Returns:
+      
+          : 파운데이션 설정    config  드마크
+      arks: 얼굴 랜     landm   이미지
+     image: 입력            rgs:
+ 
+        A       현
+적용 알고리즘 구데이션    전체 얼굴 파운  "
+          ""y:
+ darrag) -> np.nndationConfi: Fou   config                    nt3D],
+ : List[Poirksmaay, landp.ndarrage: nelf, imoundation(s_f def apply   
+    
+eturn mask
+        r   )
+      (5, 5), 0(mask,urGaussianBlcv2.     mask = 처리
+   럽게 부드      # 마스크 
+     55)
+     e_points], 2(mask, [facPolyfill    cv2.
+        t32)=np.indtype, e_pointsacrray(f np.ae_points = fac
+           s: face_point       if  
+ 
+      t.y)])in), int(pont(point.x[iappend(ts. face_poin             dx]
+  [iandmarks= l     point        ):
+    andmarks< len(l     if idx 
+       s:diceal_inn face_ovx i  for id
+      ints = []po     face_킹
+    마스확한를 사용한 정  # 실제 랜드마크        
+   ask
+   urn m        ret
+    255, -1) 0, 0, 360, ),ghth, face_heie_widt (facter_y),enter_x, cenpse(mask, (c    cv2.elli       
+           .7)
+  nt(h * 0/ 2, it = w /ace_heigh face_width,   f
+          h // 2= w // 2,_y  center  center_x,      pe[:2]
+     image.sha, w =     h    추정
+   굴 영역  기본 얼    #    ):
+    efault=0dices, dce_oval_inax(fa mlandmarks) < if len(
+       본 마스크 생성분하지 않은 경우 기 랜드마크가 충
+        #       int8)
+ dtype=np.u2], .shape[:(imagenp.zeros    mask =      
+       109]
+103, 67, , 21, 54, , 16234, 12793, 232, , 16, 172, 58150, 13 149, 148, 176,152, 377, , 400,  378, 365, 379,97 288, 33, 361, 32 356, 454,1, 389,284, 2532, 97, 3, 20, 338es = [1al_indic  face_ov
+      곽) 인덱스 (얼굴 윤마크 랜드pe 얼굴iaPi  # Med
+              cv2
+ import  
+      """"얼굴 영역 마스킹""  y:
+      p.ndarra3D]) -> nt[Pointarks: Lisarray, landmnp.ndlf, image: mask(seace_ef _get_f
+    d
+    urn image        ret    
+e}")오류 발생: { 중 "블러셔 적용   print(f      as e:
+   Exception except      
+           age
+    rn result_im       retu             
+ b
+   _color.nded] = ble[y, x, 0imaget_esul        r            
+    r.gded_colox, 1] = blen_image[y,     result                 or.r
+   ded_col= blen[y, x, 2] age   result_im              
+       )B to BGR 적용 (RG# 결과 이미지에                          
+                          )
+                   y
+ d_opacitlen bode,d_mnfig.blenr, conal_coloal_pixel, figinri  o                      s(
+    lend_colorr.b ColorBlende =d_colorlende    b             
+       상 블렌딩        # 색                
+                        더 연하게
+  # 블러셔는h * 0.5 trengtsk_s * maintensity= config.ity end_opac   bl                55.0
+     x] / 2ek_mask[y,  = cheask_strength  m                 딩
+      강도에 따른 블렌       # 마스크           
+                                   )
+                  255
+                       ,
+      x, 0])[y, nt(image        i                    , x, 1]), 
+ int(image[y                         GB
+   BGR to R 2]),  #image[y, x,    int(                    Color(
+    al_pixel = origin                      1]:
+  mage.shape[ i0 <= x <e[0] and image.shap y < if 0 <=                    es[1]):
+indics[0], mask_sk_indicen zip(mar y, x ifo             
+   [0]) > 0:ndicesn(mask_i      if le     )
+ _mask > 0re(cheekhep.w= nces mask_indi             블러셔 적용
+는 영역에만마스크가 있      #       
+           py()
+  = image.coage  result_im     용
+       # 블러셔 적               
+)
+       itytens config.in_color,ted(adjusintensitynder.adjust_le = ColorB_color final     
+      따른 색상 조정 # 강도에                      
+0.3)
+  one, skin_tnfig.color, (cone_skin_toender.matchorBl = Cololor adjusted_c       arks)
+    ndmimage, laskin_tone(f.get_ sel = skin_tone        계산
+     조화시킨 블러셔 색상      # 피부톤과    
+              acement)
+g.plfidmarks, conmage, laneek_mask(i._get_chselfeek_mask =        ch크 생성
+        # 볼 영역 마스         
+           n image
+       retur          3:
+ e.shape) !=or len(imagge is None     if ima        검증
+ 입력      #   
+     try:""
+         " 이미지
+      셔가 적용된블러          
+    Returns:    
+            정
+  g: 블러셔 설onfi           c: 얼굴 랜드마크
+ arkslandm            : 입력 이미지
+      image       Args:
+         
+  메서드
+      블러셔 적용       ""
+
+        "ray:> np.ndarConfig) -lush   config: B              t3D],
+  oinList[Pandmarks: y, lrandarnp. image: self,ly_blush(  def app
+    
+  ask    return m     
+  , 0)
+     sk, (15, 15)ssianBlur(mask = cv2.Gau    ma        else:
+)
+        k, (5, 5), 0sianBlur(mas = cv2.Gausask     m처리
+       은 덜 블러  영역       # 코:
+      == "nose"ntme    if place
+     마스크 부드럽게 처리     #
+     
+       -1)360, 255,ht), 0, 0, _heignose, thse_widnter_y), (nonose_cee_center_x, , (nosskipse(ma cv2.ell         / 10
+  15, h /= w // nose_height th, wid    nose_        5)
+ int(h * 0.55),nt(w * 0.nter_y = iose_ce n_center_x,       nose2]
+     pe[:sha image.    h, w =        랜드마크 기반
+ - 터용) 코 영역 (하이라이      #      
+ "nose":==ment  elif place             
+ -1)
+  , 255,, 30_center)(rightk, tuplemas2.circle(        cv       )
+ .astype(int, axis=0)ight_points np.mean(rer =ntright_ce          
+       중심점 계산    # 볼        nts:
+    oi right_p     if      
+         
+    5, -1)25, 30ft_center), le(lek, tupe(masrclcv2.ci            nt)
+    =0).astype(is, axis(left_pointnp.meanter = en  left_c           계산
+     중심점   # 볼           oints:
+   if left_p           영역 그리기
+ # 볼 
+                )])
+       oint.yt.x), int(pnt(poins.append([iight_point           r
+         [idx]rkslandmaoint =  p                 dmarks):
+  ann(l lef idx < i              s:
+ icek_indht_cheeigfor idx in r            ]
+points = [ht_  rig      
+    른쪽 볼 포인트        # 오
+              ])
+  int(point.y)t(point.x), .append([ineft_points         l    x]
+       ks[idnt = landmar poi                 dmarks):
+  x < len(lan     if id         ndices:
+  heek_ileft_cx in   for id     
+     nts = []_poi     left인트
+       쪽 볼 포       # 왼     "]:
+es "templ"cheeks",n [ent i placemif
+        사용한 정확한 마스킹 랜드마크를        # 실제      
+   eturn mask
+ r              
+          255, -1)
+360, 0, 0, _height),noseth, , (nose_widter_y), nose_cenenter_xse_cnose(mask, ( cv2.ellip        
+        // 10 15, h//_height = w idth, noseose_w     n     
+      55)t(h * 0. 0.5), inint(w *_center_y = nter_x, nose  nose_ce            
+   (하이라이터용) # 코 영역          se":
+     == "nof placement   eli
+                    , -1)
+  60, 255t), 0, 0, 3heek_heighidth, c, (cheek_wy)r_ight_centex, rnter_ceask, (right_v2.ellipse(m    c       
+     * 0.55)h  int((w * 0.75),ntnter_y = i right_ceht_center_x,       rig
+         # 오른쪽 볼 영역            
+                -1)
+     360, 255, 0, 0,ght), heek_hei ceek_width,), (cht_center_y_x, lefeft_center(le(mask,   cv2.ellips        
+       // 12 // 10, h wek_height =cheheek_width,           c  55)
+     * 0.t(h 0.25), in * int(wter_y = left_center_x,eft_cen  l    
+          영역     # 왼쪽 볼          
+  emples"]: "teks","cheement in [ac pl    if             
+      
+ :2]shape[mage. h, w = i      
+      추정본 볼 영역 기         #d_idx:
+    max_requirendmarks) <  if len(la))
+      ault=0dices, defk_inight_cheemax(rult=0), , defaeek_indicesch(max(left_idx = maxd_quirere       max_생성
+ 은 경우 기본 마스크 드마크가 충분하지 않  # 랜  
+            t8)
+type=np.uin d2],hape[:ge.s.zeros(ima = npsk        ma 
+1]
+       16, 376, 417, 436, 442, 425, 426, , 371, 266350, 355, 3497, 348, 6, 34345, 34ndices = [t_cheek_i        righ7, 187]
+13, 192, 146, 207, 2, 20, 36, 205 142 121, 126,0,, 119, 1218[116, 117, 1ndices = _icheek    left_  , 376
+  36, 416427, 476, 411, 436, 416, 3, 25, 426, 4276, 4371, 26 355, , 349, 350,46, 347, 348: 345, 3  # 오른쪽 볼7
+      213, 192, 1407, 87, 2 147, 1213, 192,6, 207, 36, 205, 20142, 26, 121, 10, 119, 127, 118, 6, 11 11# 왼쪽 볼:   )
+     (볼 영역굴 랜드마크 인덱스 iaPipe 얼ed      # M       
+  
+ import cv2      
+   마스킹"""자동 감지 및 영역   """볼:
+      np.ndarray-> heeks")  "cstr =lacement: 3D], pintist[Po Lrks:maray, landndarnp.age:  imelf,cheek_mask(st_ge def _   age
+    
+eturn im       r")
+     오류 발생: {e}중 용 섀도 적print(f"아이         as e:
+   ption  Exceept     exc
+       ge
+         result_imaurn     ret  
+                r.b
+ ded_coloen bl[y, x, 0] =age result_im                         color.g
+  = blended_y, x, 1] e[lt_imagesu        r          
+          _color.r2] = blended[y, x, imageesult_   r                     GR)
+    (RGB to B이미지에 적용 # 결과                              
+                         
+     )                     city
+    end_opaend_mode, blblnfig. cocolor,l_pixel, finaal_  origin                       rs(
+       nd_cololender.blerBolo = Ced_color  blend                      
+     블렌딩색상  #                    
+                                
+   하게다 연섀도는 립스틱보.6  # 아이strength * 0ity * mask_onfig.intensacity = c  blend_op                           / 255.0
+ask[y, x]_mer = laystrength  mask_                
+           강도에 따른 블렌딩 마스크     #                              
+                     )
+                             255
+                                0]),
+age[y, x,ult_im int(res                        ), 
+       y, x, 1]age[(result_im    int                        o RGB
+    ]),  # BGR te[y, x, 2t_imag(resul    int                            Color(
+  =iginal_pixel      or                   ]:
+   .shape[1 imageand 0 <= x <[0] mage.shapef 0 <= y < i         i        
+       ces[1]):k_indis[0], massk_indicex in zip(ma y,       for            0]) > 0:
+  ndices[len(mask_i    if           
+  _mask > 0)e(layers = np.wherindicemask_           섀도 적용
+     있는 영역에만 아이    # 마스크가           
+                  r.a)
+l_colomer_b, finahim, sr, shimmer_g(shimmer_olor = Coloral_cfin                  0.3)))
+  g.shimmer * fi + conor.b * (1t(final_coln(255, inr_b = mi     shimme           )
+     0.3)).shimmer *onfig* (1 + c_color.g alinn(255, int(fmmer_g = mi    shi                )))
+r * 0.3shimme(1 + config.r.r * l_colo5, int(fina min(25himmer_r =  s                
+  간 밝게 만듦 약색상을    # 시머는            
+     r > 0:meconfig.shim     if 
+            # 시머 효과 추가               
+             
+   tensity)inig.nfd_color, costeadjuy(nsitnter.adjust_inder = ColorBlefinal_colo             조정
+            # 강도     
+            5)
+       _tone, 0.1 skinr,one(coloatch_skin_t.mnderBlelord_color = Co    adjuste            조화
+  # 피부톤과        
+                  ]
+     fig.colors[iolor = con           c   
+             k
+     ea    br                rs):
+loonfig.co>= len(cf i    i         :
+    .items())skst_maate(gradienerenum_mask) in name, layerr_ i, (laye   for        적용
+  각 색상 레이어        #
+               )
+  image.copy(lt_image =        resu         
+        ks)
+ndmare, la(imag_tonef.get_skinn_tone = sel ski           계산
+킨 색상 화시톤과 조# 피부  
+                    yle)
+  nfig.st, cofig.colors, con(eye_maskadienteyeshadow_grf._apply_sks = seladient_ma gr      생성
+     크 그라데이션 마스스타일에 따른      # 아이섀도    
+                ")
+hks, "bote, landmarsk(imagmalf._get_eye_sk = seeye_ma      성
+      눈 마스크 생          #       
+     age
+   turn im         re
+       ors:.colnfig not co if    
+                  image
+     return             
+!= 3:e) apshen(image.ne or lis Noge     if ima  검증
+       # 입력       try:
+           """
+          용된 이미지
+섀도가 적       아이s:
+         Return  
+    
+          ig: 아이섀도 설정      conf  크
+     랜드마 얼굴landmarks:            력 이미지
+: 입 image           
+s:      Arg    
+      메서드
+  적용      아이섀도"""
+     
+     rray:np.ndaConfig) -> yeshadow   config: E                
+    [Point3D],ks: List landmarndarray,p.image: nhadow(self, es apply_ey    def 
+masks
+   nt_n gradieretur 
+              ask
+ '] = m['baset_masksen  gradi
+          자연스러운 스타일 사용 # 기본값으로         :
+         else
+          int8)
+    pe(np.u255).astyk * y_mas = (smoky']mok'sks[radient_mas g
+                    0.7)
+   m * orst_transf= (1.0 - dik *asoky_msm          55.0
+  / 22) float3(np.stypeask.a mk =ky_mas  smo      는 연하게
+    진하게, 가장자리앙은     # 중        
+         max()
+   _transform.ist/ dransform rm = dist_tdist_transfo          0:
+       max() >rm._transfoistif d        
+    IST_L2, 5)ask, cv2.Dsform(meTranstanc cv2.diorm =sfrant_tdis        바깥쪽으로
+    - 중앙에서 과      # 스모키 효     
+  Y:tyle.SMOKowSad== Eyeshelif style   
+              
+        p.uint8)ype(n55).astyer_mask * 2lar_{i}'] = ('colot_masks[fienad        gr           
+           nt * 0.6
+  adiesk *= gr layer_ma               하이라이트)
+     두 번째 색상 (   else:  #        0.8
+     k *=    layer_mas            베이스)
+      # 첫 번째 색상 ( == 0:   if i    
+          5.0 / 25loat32).astype(np.fask.copy()yer_mask = m          la 사용
+      대 2개 색상:2]):  # 최s[ate(colornumercolor in e    for i, 
+        성이어 생색상 레  # 여러                 
+ ity
+      = intensient[y, x]     grad          
+     y)x_y - min_ maax(1,y) / mn_ - mi (yity = 1.0 -  intens             
+      아래쪽은 연하게 위쪽은 진하게,          #        
+  rds[1]):ask_coo[0], mk_coordsip(masin z  for y, x         0])
+      coords[x(mask_np.maoords[0]), (mask_cnp.min= _y   min_y, max            ]) > 0:
+  ords[0coif len(mask_            (mask > 0)
+= np.whereask_coords        m    
+  그라데이션 생성마스크 영역에서     #                
+   float32)
+ np.mask, dtype=zeros_like(t = np. gradien          e
+ k.shaph, w = mas          위에서 아래로
+  효과 -    # 그라데이션 
+         e.GRADIENT:wStylyeshadostyle == Elif       e 
+           = mask
+   ks['base']asient_m      grad 적용
+      일 색상운 단     # 자연스러
+       :tyle.NATURALyeshadowStyle == Eif s
+               
+ s = {}dient_mask    gra            
+v2
+port c       im"""
+ 아이섀도 블렌딩 기능중 색상     """다
+    p.ndarray]:str, nt[ -> Dictyle)shadowSle: Eyeolor], sty[Ccolors: Listndarray, k: np.elf, masient(saddow_grapply_eyeshadef _
+    
+     return mask 
+             , 5), 0)
+ ur(mask, (5ussianBlask = cv2.Ga
+        m 처리크 부드럽게마스      #      
+  =2)
+    iterations, kernel,askilate(msk = cv2.d  ma
+      , np.uint8)nes((5, 5)np.okernel =       )
+   전체에 적용이섀도는 눈꺼풀(아 확장  마스크 
+        #     s], 255)
+  [right_pointlPoly(mask, cv2.fil         )
+       32e=np.ints, dtypight_point(rarray np.t_points =      righ
+          nts:ght_poi     if ri          
+
+         point.y)]), int((point.x)ntnd([ints.appeoiright_p                 
+   idx]dmarks[ = lan   point         ):
+        arkslen(landm idx <   if             
+ ces:_indiht_eye idx in rig       for
+     oints = []_p       right
+      # 오른쪽 눈 포인트        th"]:
+   "bo", "rightn [ide i_s   if eye  
+          ts], 255)
+ _poink, [lefty(masllPol  cv2.fi            2)
+  np.int3ts, dtype=t_poinlefarray(= np.ts t_poin   lef         nts:
+     left_poi        if      
+    
+      int.y)])int(po(point.x), intd([ints.appenleft_po              x]
+      landmarks[idt = in po               ks):
+    landmaren(if idx < l             ces:
+   eye_indidx in left_  for i          s = []
+_point      left
+        # 왼쪽 눈 포인트
+          "]:thft", "bo in ["leside   if eye_마스킹
+     한 정확한 를 사용   # 실제 랜드마크 
+     
+       askurn m     ret
+               
+    5, -1) 0, 360, 25ight), 0,h, eye_he, (eye_widtr_y)t_centeer_x, righght_cent(mask, (ri.ellipse  cv2         15
+      h //12,  w // ght = eye_hei  eye_width,     
+         4)(h * 0. int0.65), = int(w * ter_yight_cen renter_x,t_crigh               
+ )미지 기준 왼쪽쪽 눈 영역 (이        # 오른    "]:
+    ", "both"righte in [ if eye_sid   
+                   
+ , -1) 0, 360, 255, 0,height)idth, eye_y), (eye_wer__centter_x, left, (left_censk.ellipse(mav2     c            // 15
+w // 12, hht = h, eye_heig  eye_widt           
+   t(h * 0.4)), inw * 0.35 = int(er_yft_centcenter_x, le       left_       
+  른쪽)영역 (이미지 기준 오왼쪽 눈    #            "]:
+  oth", "b ["leftide in eye_s        if    
+        pe[:2]
+    ge.sha ima w =        h, 추정
+    눈 영역     # 기본      dx:
+  d_irex_requi) < maarksn(landm    if le
+    ault=0))ndices, defeye_i max(right_efault=0),dices, d(left_eye_inx(max= mared_idx _requi      max성
+  경우 기본 마스크 생충분하지 않은 # 랜드마크가      
+           8)
+ype=np.uint[:2], dtimage.shape = np.zeros(       mask   
+     8]
+ 395, 384, 6, 38 38 388, 387,263, 466,49, 0, 2, 373, 39380, 3742, 381, = [362, 38ndices eye_iht_     rig6]
+   160, 161, 24, 159, , 157, 158733, 1, 13, 155 15453, 145, 144,3, 7, 163, 1s = [3ye_indiceft_e       le98
+ 385, 384, 386, , 387, 33, 466, 388390, 249, 26 373, , 380, 374,82, 381쪽 눈: 362, 3  # 오른   1, 246
+   16,  159, 160, 158,33, 173, 157, 13, 154, 1551545,  144, 1 7, 163,33,왼쪽 눈:     # 눈 영역)
+     (랜드마크 인덱스diaPipe 얼굴     # Me  
+        cv2
+    import   """
+     알고리즘감지 및 매핑"""눈꺼풀 영역    
+     np.ndarray:th") -> = "bo_side: str int3D], eyes: List[Poay, landmarkndarr np.ge: imamask(self,t_eye_f _ge de   
+    
+rn imagetu         re
+   ) {e}"생: 적용 중 오류 발f"립스틱t(        prinas e:
+    ception pt Ex    exce 
+            
+   magelt_iesueturn r       r  
+           lor.b
+    ed_co= blend 0] age[y, x,lt_im    resu                  .g
+  _color blended 1] =ge[y, x,ult_ima      res         
+         color.rd_= blendey, x, 2] image[    result_                   BGR)
+   to이미지에 적용 (RGB과     # 결                      
+               
+             )             acity
+     end_opnd_mode, blconfig.blecolor,  final_nal_pixel,       origi                    s(
+ d_colorlender.blenrBloColor = blended_co                       블렌딩
+    # 색상                    
+                     h
+     ask_strengtsity * mnfig.intenacity = co    blend_op            .0
+        255y, x] /  lip_mask[gth =_stren  mask                 
+     도에 따른 블렌딩    # 마스크 강                              
+                   )
+                      255
+                         0]),
+e[y, x,    int(imag                  
+        ]),mage[y, x, 1t(i         in               
+     BGR to RGB x, 2]),  #t(image[y,   in                         Color(
+el = nal_pix   origi              
+       e[1]:hapge.s ima < <= xape[0] and 0image.sh= y < f 0 <       i       1]):
+      ndices[_i0], maskces[_indimask in zip(    for y, x       색상 추출
+     # 원본 픽셀            :
+     > 0dices[0]) en(mask_in l         if)
+   k > 0p_mas.where(lis = npdiceask_in           m립스틱 적용
+ 는 영역에만   # 마스크가 있        
+           
+   opy()mage.cage = i   result_im      
+    립스틱 적용        #
+           
+     g.intensity)fior, condjusted_colity(ajust_intensr.adorBlendeol_color = C       final상 조정
+     따른 색강도에   #             
+         .2)
+ _tone, 0color, skinone(config.h_skin_tender.matc ColorBlor =usted_col         adj   ndmarks)
+e, laone(imagskin_tself.get_n_tone =      ski계산
+       색상 립스틱 킨 조화시부톤과 # 피                   
+ )
+    s * 0.3sinesos.glonfigp_mask, cect(li_effadientpply_grself._ask =       lip_ma       과 추가
+    그라데이션 효스틱은한 립  # 글로시0.5:ess > glossinonfig.      if c 적용
+      이션 효과   # 그라데   
+                 ks)
+ arage, landmmask(imlf._get_lip__mask = se  lip
+          # 입술 마스크 생성       
+               age
+    return im            3:
+  = ge.shape) !len(imas None or  if image i
+           증 # 입력 검         try:
+  "
+        "      " 적용된 이미지
+  틱이   립스  ns:
+       Retur  
+           
+       설정fig: 립스틱          con
+   마크ks: 얼굴 랜드ndmar        la미지
+    입력 이image:             rgs:
+     A    
+       적용 메서드
+ 연스러운 립스틱 색상   자     ""
+    "    y:
+ np.ndarra) ->stickConfigg: Lip  confi            , 
+        Point3D]t[Lisarks: landmray, darimage: np.nick(self, y_lipstpl  def ap)
+    
+  t8pe(np.uinty, 0, 255).as255* adient_mask p.clip(gr    return n  
+         ngth
+ t_strediensform * gra dist_tran +gth)stren- gradient_mask * (1 gradient_ient_mask =   grad0
+      32) / 255.(np.float.astype = mask_maskentdi gra
+       라데이션 강도 적용  # 그            
+  )
+x(.maormtransf/ dist_nsform dist_traform = trans dist_         0:
+    >()rm.maxist_transfo        if d
+   # 정규화   
+     , 5)
+     ST_L2mask, cv2.DIrm(tanceTransfo2.dis = cvormtransf     dist_   한 그라데이션 생성
+변환을 사용 거리        #  
+  cv2
+            import구현"""
+  션 효과 입술 윤곽 및 그라데이  """     rray:
+ da-> np.noat = 0.3) gth: flt_strenradien g np.ndarray,k:f, mast_effect(sel_gradienplyap    def _sk
+    
+  return ma  
+      
+      , 3), 0), (3Blur(maskv2.Gaussian = c  mask게 처리
+        # 마스크 부드럽   
+          s], 255)
+ _pointk, [lowerlPoly(mas  cv2.fil        
+  .int32)ype=npints, dter_poarray(lownp. = r_points   lowe
+         nts:_poi lower        if
+
+        oints], 255)sk, [upper_pfillPoly(ma  cv2.      32)
+    .intnpts, dtype=_poinperay(ups = np.arr_pointper    up    s:
+    er_point upp       if곽 그리기
+   # 입술 윤 
+           
+  point.y)]) int(t(point.x),end([inoints.appwer_p       lo         dx]
+ndmarks[i = lapoint              ):
+  andmarksdx < len(l    if i       ces:
+ _indiin lower_lip idx       for]
+  _points = [  lower 포인트
+       # 하단 입술  
+            .y)])
+ t(point.x), ind([int(pointppen_points.a  upper            x]
+  [idksandmar   point = l           s):
+  n(landmarkf idx < le       i
+     ndices:r_lip_iidx in uppefor        []
+  r_points =   uppe술 포인트
+      입상단      #    
+  
+     p.uint8)pe=n2], dtyape[:mage.shp.zeros(imask = n       스킹
+ 한 마정확용한 제 랜드마크를 사      # 실  
+sk
+        eturn ma      r -1)
+      55, 0, 360, 2, 0,p_height), lidthy), (lip_wi_x, center_(centerask, (m.ellipse   cv2
+         e=np.uint8)w), dtyp.zeros((h,   mask = np  
+                 20
+    h //// 8, ht = w p_heig_width, li      lip   * 0.75)
+   2, int(h  = w // enter_y_x, c   center
+         e[:2]age.shap h, w = im           얼굴 중앙 하단)
+ 영역 추정 (   # 기본 입술:
+         ult=0))dices, defainwer_lip_ max(lo default=0),ices,indupper_lip_ < max(max(s)len(landmark       if 성
+ 기본 마스크 생하지 않은 경우 드마크가 충분# 랜          
+    24, 308]
+  402, 318, 3, 317, 148, 87,  95, 88, 17= [78,ices indip_  lower_l    24, 318]
+  321, 308, 3307, 375, 405, 320, 7, 314, 1, 84, 1= [6dices inper_lip_       up8
+ , 308, 324, 310217, 487, 14, 38, 8, 17술: 78, 95, 8     # 하단 입18
+   8, 324, 3, 321, 3037507, 20, 3 314, 405, 317,: 61, 84, 입술    # 상단  기준)
+    peMediaPi덱스 (마크 인 # 입술 랜드
+         v2
+       import c
+        알고리즘"""영역 정확한 마스킹""입술    "     p.ndarray:
+> noint3D]) -s: List[Pay, landmarkrrage: np.nda, imp_mask(self_get_lidef    
+    ender()
+ orBlolr = Cdecolor_blen   self.):
+     lf__init__(sef   de    
+   구현"""
+메이크업 엔진시간 "실
+    ""ine):MakeupEngine(ngMakeupEimelt
+class Reaalse
+
+   return F
+         tion:Except cep
+        exis not None)eyeliner nfig.  co                 t None and
+ion is nog.foundatfi         con         e and
+ not Non is sh config.blu                 
+ ot None anddow is nhaeyes config.               e and
+   not Nonpstick is g.lin (confi retur          
+      try:증"""
+   업 설정 유효성 검   """메이크   
+  ool:onfig) -> b MakeupConfig:nfig(self, ccoakeup_lidate_m    def va    
+ 피부톤
+ 기본0)  #14(220, 180,  Color return
+       """굴에서 피부톤 추출""얼
+        "> Color:oint3D]) -arks: List[Pay, landmdarr np.nself, image:n_tone(et_skief g
+    d    pass
+
+        """)
+        효과 목록, 처리 시간미지,  (적용된 이lt 객체 MakeupResu
+              Returns:  
+         업 설정
+      nfig: 메이크       co크
+     ks: 얼굴 랜드마ndmar          la   입력 이미지
+   image:
+         rgs:
+        A      용하는 메서드
+   한 번에 적 효과를메이크업든       모""
+     "     Result:
+up-> MakeConfig) keup Maconfig:                         Point3D],
+List[landmarks: p.ndarray, , image: nakeup(selfly_full_m  def appd
+  actmethobstr
+    @as
+       pas   ay:
+  -> np.ndarrConfig)  Eyelinerig:   conf            D],
+       Point3rks: List[landmay, .ndarra npmage:iner(self, i_eyel def applyhod
+   bstractmet
+    @a  pass
+        ""
+    "
+      용된 이미지데이션이 적   파운         ns:
+    Retur  
+           정
+   데이션 설 파운fig:         con크
+   얼굴 랜드마ks:   landmar        
+   이미지 image: 입력        :
+     Args     
+        
+ 현용 알고리즘 구파운데이션 적굴    전체 얼    ""
+     "array:
+    p.ndig) -> ntionConfg: Founda       confi                ,
+ nt3D] List[Poiandmarks:array, lage: np.ndelf, imndation(sy_fouf applhod
+    detmet   @abstrac
+    
+   passray:
+      -> np.ndarnfig) shCo config: Blu               
+   D],nt3List[Pois: landmarkay, rrda image: np.n_blush(self,ef applyhod
+    dctmetbstra
+    @a  pass
+  
+        .ndarray:fig) -> npeshadowCon: Ey  config                    ],
+ ist[Point3Ddmarks: Lay, lanrre: np.ndalf, imagyeshadow(sedef apply_e   thod
+ ractmestab  @s
+    
+     pas:
+      np.ndarray) ->pstickConfig  config: Li            
+         t[Point3D],: Lisks, landmar.ndarrayage: npick(self, imy_lipstpl apod
+    defctmethra    @abst
+"
+    " 기본 인터페이스""메이크업 엔진 ""C):
+   upEngine(ABss Makecla
+
+ha)
+alpjusted_r.b, ad.g, colo colorr(color.r,loeturn Co)
+        rensityor.a * intcola = int(ted_alph   adjus정
+     도에 따라 알파 값 조  # 강          
+   )
+ , intensity).0, min(1.0max(0= ty   intensi          <= 1.0:
+ sitytenot 0.0 <= inif n
+         기능"""딩 강도 조절   """블렌lor:
+     loat) -> Consity: fColor, inte: (colorst_intensityju   def admethod
+ static
+    @a)
+    keup_color.d_b, mausted_g, adjjusteadd_r, steColor(adjueturn    r  
+     
+      color.bmakeup_justed_b =          adcolor.g
+   up_= make_g edjust      adr.r
+      oloeup_cak= mjusted_r   ad
+          중성 피부톤lse:  #   e  )
+    r * 0.2))mony_facto+ har * (1 olor.bt(makeup_c(255, in= min adjusted_b   
+         lor.gco_g = makeup_    adjusted
+        )))factor * 0.2ny_armo(1 - h_color.r * makeup int( max(0,r =adjusted_     음)
+       강보다 많(파랑이 빨# 차가운 피부톤  -0.1:  in_warmth <elif sk        
+r * 0.2)))factormony_ (1 - halor.b *_co(makeup max(0, intadjusted_b =   
+         .g_color = makeupusted_g      adj
+      tor * 0.2)))facrmony_+ har * (1 or.eup_col(mak int55,= min(2usted_r   adj      
+     파랑보다 많음)피부톤 (빨강이0.1:  # 따뜻한 mth > if skin_war      
+  뜻하게 조정상도 따 색면 메이크업뜻한 피부톤이     # 따 
+   
+        녹색으로 정규화차이를)  # 빨강-파랑 in_tone.gax(1, ske.b) / monin_t sk -.r= (skin_toneh armtskin_w   )
+     한 공식지수 계산 (더 정확/차가움 의 따뜻함  # 피부톤 
+      
+       factor = 0.3  harmony_          = 1.0:
+tor <mony_fac 0.0 <= harif not"
+         알고리즘""과 조화시키는색상을 피부톤"메이크업      ""  
+ lor:> Co.3) -float = 0_factor:  harmony Color,ne: skin_toColor,lor: up_coe(makein_tondef match_sk
+    hodstaticmet
+    @  
+  g, b, a)Color(r, n uret
+        r    색상 유지
+    파 값은 베이스 # 알or.a  colase_ b   a =   5)))
+  lt_b * 25resuin(255, int( m(0,  b = max   )))
+   t_g * 255int(resul(255, x(0, min g = ma
+       55)))sult_r * 25, int(reax(0, min(25      r = m
+  램핑 클환하고255 범위로 변        # 0-
+        
+ * opacity + overlay_b1 - opacity) base_b * (sult_b =          re
+  acityay_g * op) + overl(1 - opacityase_g * ult_g = b res          opacity
+  overlay_r *) + opacity* (1 - _r baseesult_r =          r 사용
+   ormal 블렌딩   # 기본값으로 N     se:
+          el
+            pacity
+  rlay_b * oty) + ove- opacie_b * (1 ult_b = bases         racity
+   y_g * opy) + overla - opacitse_g * (1t_g = ba  resul   ity
+       ay_r * opacoverlopacity) +  * (1 -  base_r_r =sult re                 
+
+      ay_b)_b, overld(baseerlay_blenerlay_b = ov ov
+           verlay_g)ase_g, oay_blend(berlg = ovay_ overl
+           erlay_r)d(base_r, ovy_bleny_r = overlaerla         ov     
+        lay)
+   (1 - overse) * - ba(1* 2 turn 1 -       re            else:
+                 overlay
+  2 * base *  return              0.5:
+     if base <          :
+       erlay)ovse, baend(y_blef overla d          강화
+  - 대비ay 블렌딩   # Overl    LAY:
+      dMode.OVER== Blenlif mode 
+        e      ty
+      _b * opaci multpacity) + - o(1 base_b * ult_b =   res         ity
+ult_g * opac + m- opacity)1 base_g * ( result_g =         city
+   mult_r * opa opacity) + se_r * (1 -esult_r = ba     r
+               y_b
+    erla ovb = base_b *mult_        y_g
+    verlae_g * olt_g = bas   mu         lay_r
+over = base_r *   mult_r    효과
+      어두운 - iply 블렌딩       # Mult    PLY:
+  ndMode.MULTImode == Ble     elif           
+   city
+  rlay_b * opacity) + oveb * (1 - opae_ult_b = bas         resacity
+   lay_g * opy) + over1 - opacitbase_g * ( = esult_g r           pacity
+* oay_r ity) + overl opac - (1 base_r *_r =      result      간)
+렌딩 (선형 보 Alpha 블    #      ORMAL:
+  Mode.NendBlmode ==         if    
+   55.0
+  color.b / 2lay_er255.0, ovg / y_color..0, overla255.r / rlay_colorlay_b = oveververlay_g, olay_r, over   o.0
+     or.b / 255ol0, base_c55.olor.g / 2base_c0, r / 255.lor. base_co =se_g, base_b, ba   base_r
+      범위로 정규화0-1  # 색상 값을   
+      
+      lay_colorurn overret         AL:
+   NORMode.BlendM== nd mode ity >= 1 af opac
+        in base_color   retur        <= 0:
+   opacity    if"""
+    모드로 블렌딩정된 """두 색상을 지        -> Color:
+) floate, opacity: : BlendMod  mode             
+      lor,: Cocolorr, overlay_or: Colos(base_cold_color   def blenticmethod
+     @sta   
+"
+ ay 모드 지원"", Overliply Alpha, Mult딩 유틸리티 -상 블렌"색
+    ""orBlender:class Col
+ot None
+
+ge is nlf.imaand se0 ts) > pplied_effec len(self.aturn
+        re"""했는지 확인이크업 적용이 성공   """메ool:
+     l(self) -> bs_successfuef i    d
+    
+messing_tice_time = proessingelf.proc  s
+      ectsed_effappli= ts effecpplied_     self.a
+   ge = imagef.imael
+        se: float):ssing_timproce         
+        st[str], ts: Liffec applied_endarray,e: np._(self, imag def __init_""
+   과"""메이크업 적용 결  "
+  akeupResult:
+class Mde
+)
+
+Moyle, BlendwSthado,
+    EyesonfigerCing, EyeldationConfifig, FounhCon 
+    Blusnfig,yeshadowCo Eig,ickConfg, LipstkeupConfi (
+    Maeup importels.mak mod
+from ColorPoint3D,t re imporom models.cot time
+fr
+imporas npy t nump
+imporionalict, Opt DList,ing import typom thod
+fr abstractme import ABC,
+from abc""
+"터페이스 인"
+메이크업 엔진""
