@@ -43,6 +43,30 @@ class FaceSimulator:
     BACK_SLIT_FACE_SIZE_LANDMARKS = (234, 447)    # 얼굴 크기 기준 랜드마크
     BACK_SLIT_TARGET_LANDMARKS = (33, 359, (34, 162), (368, 264))  # 변형 대상 랜드마크 (33→34/162중간, 359→368/264중간)
     
+    # 얼굴 황금비율 상수
+    GOLDEN_RATIO = 1.618                           # 황금비율 상수
+    FACE_GOLDEN_RATIOS = {
+        "전체_얼굴_비율": 1.618,                    # 얼굴 길이 : 얼굴 너비
+        "얼굴_삼등분": 1.0,                         # 이마:중간:아래 = 1:1:1
+        "눈_간격": 1.0,                             # 눈 너비 = 눈 사이 간격
+        "입_너비": 1.618,                           # 입 너비 : 코 너비
+        "코_길이": 1.0,                             # 코 길이 비율
+        "턱_각도": 120,                             # 이상적인 턱 각도 (도)
+    }
+    
+    # 얼굴 측정 랜드마크 정의
+    FACE_MEASUREMENT_LANDMARKS = {
+        "얼굴_윤곽": {"top": 10, "bottom": 152, "left": 234, "right": 454},
+        "이마": {"top": 10, "bottom": 9},
+        "중간_얼굴": {"top": 9, "bottom": 164},
+        "아래_얼굴": {"top": 164, "bottom": 152},
+        "왼쪽_눈": {"inner": 133, "outer": 33, "top": 159, "bottom": 145},
+        "오른쪽_눈": {"inner": 362, "outer": 263, "top": 386, "bottom": 374},
+        "코": {"top": 9, "bottom": 2, "left": 129, "right": 358},
+        "입": {"left": 61, "right": 291, "top": 13, "bottom": 14},
+        "턱선": {"left": 172, "right": 397, "center": 18}
+    }
+    
     def __init__(self, root):
         self.root = root
         self.root.title("🔧 얼굴 성형 시뮬레이터")
@@ -521,7 +545,11 @@ class FaceSimulator:
         
         # Before/After 비교 버튼
         ttk.Button(preset_frame, text="📷 Before / After 비교", 
-                  command=self.show_before_after_comparison).pack(fill=tk.X, pady=5)
+                  command=self.show_before_after_comparison).pack(fill=tk.X, pady=2)
+        
+        # 황금비율 분석 버튼
+        ttk.Button(preset_frame, text="📊 얼굴 황금비율 분석", 
+                  command=self.analyze_golden_ratio).pack(fill=tk.X, pady=2)
         
         # 구분선
         ttk.Separator(self.warp_frame, orient='horizontal').pack(fill=tk.X, pady=15)
@@ -4648,6 +4676,2009 @@ class FaceSimulator:
         # 창을 맨 앞으로
         comparison_window.lift()
         comparison_window.focus_set()
+    
+    def measure_face_ratios(self):
+        """얼굴 비율 측정"""
+        if self.face_landmarks is None:
+            return None
+            
+        measurements = {}
+        
+        try:
+            # 1. 전체 얼굴 비율 (길이:너비)
+            face_top = self.get_landmark_coordinates(self.FACE_MEASUREMENT_LANDMARKS["얼굴_윤곽"]["top"])
+            face_bottom = self.get_landmark_coordinates(self.FACE_MEASUREMENT_LANDMARKS["얼굴_윤곽"]["bottom"])
+            face_left = self.get_landmark_coordinates(self.FACE_MEASUREMENT_LANDMARKS["얼굴_윤곽"]["left"])
+            face_right = self.get_landmark_coordinates(self.FACE_MEASUREMENT_LANDMARKS["얼굴_윤곽"]["right"])
+            
+            if all([face_top, face_bottom, face_left, face_right]):
+                face_height = self.calculate_distance(face_top, face_bottom)
+                face_width = self.calculate_distance(face_left, face_right)
+                measurements["전체_얼굴_비율"] = face_height / face_width if face_width > 0 else 0
+            
+            # 2. 얼굴 삼등분 비율
+            forehead_top = self.get_landmark_coordinates(self.FACE_MEASUREMENT_LANDMARKS["이마"]["top"])
+            forehead_bottom = self.get_landmark_coordinates(self.FACE_MEASUREMENT_LANDMARKS["이마"]["bottom"])
+            mid_face_top = self.get_landmark_coordinates(self.FACE_MEASUREMENT_LANDMARKS["중간_얼굴"]["top"])
+            mid_face_bottom = self.get_landmark_coordinates(self.FACE_MEASUREMENT_LANDMARKS["중간_얼굴"]["bottom"])
+            lower_face_top = self.get_landmark_coordinates(self.FACE_MEASUREMENT_LANDMARKS["아래_얼굴"]["top"])
+            lower_face_bottom = self.get_landmark_coordinates(self.FACE_MEASUREMENT_LANDMARKS["아래_얼굴"]["bottom"])
+            
+            if all([forehead_top, forehead_bottom, mid_face_top, mid_face_bottom, lower_face_top, lower_face_bottom]):
+                forehead_height = self.calculate_distance(forehead_top, forehead_bottom)
+                mid_face_height = self.calculate_distance(mid_face_top, mid_face_bottom)
+                lower_face_height = self.calculate_distance(lower_face_top, lower_face_bottom)
+                
+                total_height = forehead_height + mid_face_height + lower_face_height
+                if total_height > 0:
+                    measurements["이마_비율"] = forehead_height / total_height * 3  # 1/3 기준으로 정규화
+                    measurements["중간_얼굴_비율"] = mid_face_height / total_height * 3
+                    measurements["아래_얼굴_비율"] = lower_face_height / total_height * 3
+            
+            # 3. 눈 간격 비율
+            left_eye_inner = self.get_landmark_coordinates(self.FACE_MEASUREMENT_LANDMARKS["왼쪽_눈"]["inner"])
+            left_eye_outer = self.get_landmark_coordinates(self.FACE_MEASUREMENT_LANDMARKS["왼쪽_눈"]["outer"])
+            right_eye_inner = self.get_landmark_coordinates(self.FACE_MEASUREMENT_LANDMARKS["오른쪽_눈"]["inner"])
+            right_eye_outer = self.get_landmark_coordinates(self.FACE_MEASUREMENT_LANDMARKS["오른쪽_눈"]["outer"])
+            
+            if all([left_eye_inner, left_eye_outer, right_eye_inner, right_eye_outer]):
+                left_eye_width = self.calculate_distance(left_eye_inner, left_eye_outer)
+                right_eye_width = self.calculate_distance(right_eye_inner, right_eye_outer)
+                eye_gap = self.calculate_distance(left_eye_inner, right_eye_inner)
+                
+                avg_eye_width = (left_eye_width + right_eye_width) / 2
+                if avg_eye_width > 0:
+                    measurements["눈_간격"] = eye_gap / avg_eye_width
+            
+            # 4. 입과 코 너비 비율
+            nose_left = self.get_landmark_coordinates(self.FACE_MEASUREMENT_LANDMARKS["코"]["left"])
+            nose_right = self.get_landmark_coordinates(self.FACE_MEASUREMENT_LANDMARKS["코"]["right"])
+            mouth_left = self.get_landmark_coordinates(self.FACE_MEASUREMENT_LANDMARKS["입"]["left"])
+            mouth_right = self.get_landmark_coordinates(self.FACE_MEASUREMENT_LANDMARKS["입"]["right"])
+            
+            if all([nose_left, nose_right, mouth_left, mouth_right]):
+                nose_width = self.calculate_distance(nose_left, nose_right)
+                mouth_width = self.calculate_distance(mouth_left, mouth_right)
+                if nose_width > 0:
+                    measurements["입_너비"] = mouth_width / nose_width
+            
+            return measurements
+            
+        except Exception as e:
+            print(f"얼굴 비율 측정 중 오류: {str(e)}")
+            return None
+    
+    def analyze_golden_ratio(self):
+        """황금비율 분석 및 개선 제안"""
+        if self.current_image is None:
+            print("이미지가 로드되지 않았습니다.")
+            return
+            
+        # 랜드마크 검출
+        self.refresh_landmarks()
+        if self.face_landmarks is None:
+            print("얼굴이 검출되지 않았습니다.")
+            return
+            
+        # 현재 얼굴 비율 측정
+        current_ratios = self.measure_face_ratios()
+        if not current_ratios:
+            print("얼굴 비율 측정에 실패했습니다.")
+            return
+            
+        # 분석 창 생성
+        analysis_window = tk.Toplevel(self.root)
+        analysis_window.title("📊 얼굴 황금비율 분석")
+        analysis_window.geometry("1000x700")
+        analysis_window.configure(bg='#f8f9fa')
+        
+        # 제목
+        title_label = ttk.Label(analysis_window, text="얼굴 황금비율 분석 결과", 
+                               font=("Arial", 16, "bold"))
+        title_label.pack(pady=15)
+        
+        # 메인 프레임
+        main_frame = ttk.Frame(analysis_window)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
+        
+        # 좌측: 비율 비교 표
+        left_frame = ttk.LabelFrame(main_frame, text="📏 비율 분석", padding=15)
+        left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
+        
+        # 비율 비교 테이블 생성
+        self.create_ratio_comparison_table(left_frame, current_ratios)
+        
+        # 우측: 개선 제안
+        right_frame = ttk.LabelFrame(main_frame, text="💡 개선 제안", padding=15)
+        right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(10, 0))
+        
+        # 개선 제안 생성
+        self.create_improvement_suggestions(right_frame, current_ratios)
+        
+        # 하단: 시각화 버튼
+        button_frame = ttk.Frame(analysis_window)
+        button_frame.pack(fill=tk.X, padx=20, pady=10)
+        
+        ttk.Button(button_frame, text="📈 비율 시각화", 
+                  command=lambda: self.show_ratio_visualization(current_ratios)).pack(side=tk.LEFT, padx=5)
+        
+        ttk.Button(button_frame, text="🎯 측정점 표시", 
+                  command=self.show_measurement_points).pack(side=tk.LEFT, padx=5)
+        
+        ttk.Button(button_frame, text="📏 비율 라인 표시", 
+                  command=lambda: self.show_ratio_lines(current_ratios)).pack(side=tk.LEFT, padx=5)
+        
+        ttk.Button(button_frame, text="🎯 뷰티 스코어", 
+                  command=lambda: self.show_beauty_score_visualization(current_ratios)).pack(side=tk.LEFT, padx=5)
+        
+        ttk.Button(button_frame, text="🔍 점수 계산 상세", 
+                  command=lambda: self.show_score_calculation_details(current_ratios)).pack(side=tk.LEFT, padx=5)
+        
+        ttk.Button(button_frame, text="닫기", 
+                  command=analysis_window.destroy).pack(side=tk.RIGHT, padx=5)
+        
+        # 창을 맨 앞으로
+        analysis_window.lift()
+        analysis_window.focus_set()
+    
+    def create_ratio_comparison_table(self, parent, current_ratios):
+        """비율 비교 테이블 생성"""
+        # 스크롤 가능한 테이블 프레임
+        table_frame = ttk.Frame(parent)
+        table_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # 테이블 헤더
+        headers = ["측정 항목", "현재 비율", "황금 비율", "차이", "평가"]
+        for i, header in enumerate(headers):
+            label = ttk.Label(table_frame, text=header, font=("Arial", 10, "bold"), 
+                             background="#e9ecef", relief="solid", width=12)
+            label.grid(row=0, column=i, sticky="ew", padx=1, pady=1)
+        
+        # 비율별 데이터
+        ratio_mapping = {
+            "전체_얼굴_비율": ("얼굴 길이:너비", "전체_얼굴_비율"),
+            "이마_비율": ("이마 비율", "얼굴_삼등분"),
+            "중간_얼굴_비율": ("중간얼굴 비율", "얼굴_삼등분"),
+            "아래_얼굴_비율": ("아래얼굴 비율", "얼굴_삼등분"),
+            "눈_간격": ("눈 간격", "눈_간격"),
+            "입_너비": ("입:코 너비", "입_너비")
+        }
+        
+        row = 1
+        for current_key, (display_name, golden_key) in ratio_mapping.items():
+            if current_key in current_ratios:
+                current_value = current_ratios[current_key]
+                golden_value = self.FACE_GOLDEN_RATIOS[golden_key]
+                difference = abs(current_value - golden_value)
+                difference_percent = (difference / golden_value) * 100
+                
+                # 평가 등급
+                if difference_percent <= 5:
+                    grade = "A (우수)"
+                    grade_color = "#28a745"
+                elif difference_percent <= 15:
+                    grade = "B (양호)"
+                    grade_color = "#ffc107"
+                elif difference_percent <= 25:
+                    grade = "C (보통)"
+                    grade_color = "#fd7e14"
+                else:
+                    grade = "D (개선필요)"
+                    grade_color = "#dc3545"
+                
+                # 테이블 행 생성
+                ttk.Label(table_frame, text=display_name).grid(row=row, column=0, sticky="w", padx=5, pady=2)
+                ttk.Label(table_frame, text=f"{current_value:.3f}").grid(row=row, column=1, sticky="w", padx=5, pady=2)
+                ttk.Label(table_frame, text=f"{golden_value:.3f}").grid(row=row, column=2, sticky="w", padx=5, pady=2)
+                ttk.Label(table_frame, text=f"{difference:.3f}").grid(row=row, column=3, sticky="w", padx=5, pady=2)
+                grade_label = ttk.Label(table_frame, text=grade, foreground=grade_color)
+                grade_label.grid(row=row, column=4, sticky="w", padx=5, pady=2)
+                
+                row += 1
+    
+    def create_improvement_suggestions(self, parent, current_ratios):
+        """개선 제안 생성"""
+        suggestions_frame = ttk.Frame(parent)
+        suggestions_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # 스크롤 가능한 텍스트 위젯
+        text_widget = tk.Text(suggestions_frame, wrap=tk.WORD, width=40, height=20,
+                             font=("Arial", 10), bg="#ffffff", relief="solid")
+        scrollbar = ttk.Scrollbar(suggestions_frame, orient="vertical", command=text_widget.yview)
+        text_widget.configure(yscrollcommand=scrollbar.set)
+        
+        text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # 개선 제안 텍스트 생성
+        suggestions = self.generate_improvement_suggestions(current_ratios)
+        text_widget.insert(tk.END, suggestions)
+        text_widget.config(state=tk.DISABLED)  # 읽기 전용
+    
+    def generate_improvement_suggestions(self, current_ratios):
+        """개선 제안 텍스트 생성"""
+        suggestions = "🎯 맞춤형 개선 제안\n\n"
+        
+        # 전체 얼굴 비율 분석
+        if "전체_얼굴_비율" in current_ratios:
+            current = current_ratios["전체_얼굴_비율"]
+            golden = self.FACE_GOLDEN_RATIOS["전체_얼굴_비율"]
+            
+            if current < golden * 0.9:
+                suggestions += "📏 얼굴 길이 개선:\n"
+                suggestions += "• 아래턱 100샷+ 프리셋으로 턱선을 V라인으로 만들어 얼굴을 길어보이게\n"
+                suggestions += "• 중간턱 100샷+ 프리셋으로 중간 얼굴을 슬림하게\n\n"
+            elif current > golden * 1.1:
+                suggestions += "📏 얼굴 너비 개선:\n"
+                suggestions += "• 볼 100샷+ 프리셋으로 볼살을 줄여 얼굴을 좁아보이게\n"
+                suggestions += "• 광대 축소술 고려\n\n"
+        
+        # 눈 관련 개선
+        if "눈_간격" in current_ratios:
+            current = current_ratios["눈_간격"]
+            golden = self.FACE_GOLDEN_RATIOS["눈_간격"]
+            
+            if current < golden * 0.8:
+                suggestions += "👁️ 눈 간격 개선:\n"
+                suggestions += "• 뒷트임+ 프리셋으로 눈을 바깥쪽으로 확장\n"
+                suggestions += "• 외안각 성형술 고려\n\n"
+            elif current > golden * 1.2:
+                suggestions += "👁️ 눈 크기 개선:\n"
+                suggestions += "• 앞튀임+ 프리셋으로 앞트임 효과\n"
+                suggestions += "• 쌍꺼풀 수술로 눈을 더 크게\n\n"
+        
+        # 입과 코 비율
+        if "입_너비" in current_ratios:
+            current = current_ratios["입_너비"]
+            golden = self.FACE_GOLDEN_RATIOS["입_너비"]
+            
+            if current < golden * 0.8:
+                suggestions += "👄 입 크기 개선:\n"
+                suggestions += "• 입꼬리 상승술로 입을 더 크게\n"
+                suggestions += "• 구각 성형술 고려\n\n"
+            elif current > golden * 1.2:
+                suggestions += "👃 코 크기 개선:\n"
+                suggestions += "• 코 날개 축소술 고려\n"
+                suggestions += "• 코끝 성형으로 코를 더 작게\n\n"
+        
+        # 얼굴 삼등분 비율
+        thirds_analysis = []
+        if "이마_비율" in current_ratios:
+            forehead_ratio = current_ratios["이마_비율"]
+            if forehead_ratio > 1.2:
+                thirds_analysis.append("• 이마가 상대적으로 큼 - 앞머리나 헤어라인 교정 고려")
+            elif forehead_ratio < 0.8:
+                thirds_analysis.append("• 이마가 상대적으로 작음 - 이마 확대술 고려")
+        
+        if "중간_얼굴_비율" in current_ratios:
+            mid_ratio = current_ratios["중간_얼굴_비율"]
+            if mid_ratio > 1.2:
+                thirds_analysis.append("• 중간 얼굴이 김 - 코 길이 단축술 고려")
+        
+        if "아래_얼굴_비율" in current_ratios:
+            lower_ratio = current_ratios["아래_얼굴_비율"]
+            if lower_ratio > 1.2:
+                thirds_analysis.append("• 아래 얼굴이 김 - 턱 단축술이나 아래턱 100샷+ 집중 적용")
+            elif lower_ratio < 0.8:
+                thirds_analysis.append("• 아래 얼굴이 짧음 - 턱 연장술 고려")
+        
+        if thirds_analysis:
+            suggestions += "⚖️ 얼굴 비율 균형:\n"
+            suggestions += "\n".join(thirds_analysis) + "\n\n"
+        
+        suggestions += "📝 추가 권장사항:\n"
+        suggestions += "• 정확한 진단을 위해 전문 성형외과 상담 권장\n"
+        suggestions += "• 여러 프리셋을 조합하여 시뮬레이션 후 결정\n"
+        suggestions += "• Before/After 기능으로 변화 확인\n"
+        
+        return suggestions
+    
+    def show_ratio_visualization(self, current_ratios):
+        """비율 시각화 창 표시"""
+        viz_window = tk.Toplevel(self.root)
+        viz_window.title("📈 얼굴 비율 시각화")
+        viz_window.geometry("600x400")
+        
+        # 간단한 막대 그래프 형태로 시각화
+        canvas = tk.Canvas(viz_window, bg='white')
+        canvas.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        
+        # 비율 데이터 시각화
+        y_pos = 50
+        for key, current_value in current_ratios.items():
+            if key in ["전체_얼굴_비율", "눈_간격", "입_너비"]:
+                # 황금비율과 현재 비율 비교
+                golden_key = key if key in self.FACE_GOLDEN_RATIOS else "전체_얼굴_비율"
+                golden_value = self.FACE_GOLDEN_RATIOS.get(golden_key, 1.0)
+                
+                # 막대 그래프
+                bar_width = 200
+                current_bar_length = min(bar_width, (current_value / golden_value) * bar_width)
+                golden_bar_length = bar_width
+                
+                # 라벨
+                canvas.create_text(50, y_pos, text=key, anchor="w", font=("Arial", 10))
+                
+                # 황금비율 막대 (배경)
+                canvas.create_rectangle(150, y_pos-8, 150+golden_bar_length, y_pos+8, 
+                                      fill="#ffd700", outline="#daa520")
+                
+                # 현재 비율 막대
+                bar_color = "#28a745" if abs(current_value - golden_value) / golden_value <= 0.1 else "#dc3545"
+                canvas.create_rectangle(150, y_pos-5, 150+current_bar_length, y_pos+5, 
+                                      fill=bar_color, outline="#000000")
+                
+                # 수치 표시
+                canvas.create_text(370, y_pos, text=f"{current_value:.3f} / {golden_value:.3f}", 
+                                 anchor="w", font=("Arial", 9))
+                
+                y_pos += 40
+        
+        # 범례
+        canvas.create_rectangle(50, y_pos+20, 70, y_pos+30, fill="#ffd700", outline="#daa520")
+        canvas.create_text(80, y_pos+25, text="황금비율", anchor="w", font=("Arial", 9))
+        
+        canvas.create_rectangle(50, y_pos+40, 70, y_pos+50, fill="#28a745", outline="#000000")
+        canvas.create_text(80, y_pos+45, text="현재 비율 (양호)", anchor="w", font=("Arial", 9))
+        
+        canvas.create_rectangle(50, y_pos+60, 70, y_pos+70, fill="#dc3545", outline="#000000")
+        canvas.create_text(80, y_pos+65, text="현재 비율 (개선필요)", anchor="w", font=("Arial", 9))
+    
+    def show_measurement_points(self):
+        """측정점 시각화"""
+        if self.face_landmarks is None:
+            print("얼굴이 검출되지 않았습니다.")
+            return
+            
+        # 기존 시각화 제거
+        self.canvas.delete("measurement_points")
+        
+        # 측정점들을 캔버스에 표시
+        colors = ["#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff", "#00ffff"]
+        color_idx = 0
+        
+        for category, landmarks in self.FACE_MEASUREMENT_LANDMARKS.items():
+            for point_name, landmark_id in landmarks.items():
+                landmark_coord = self.get_landmark_coordinates(landmark_id)
+                if landmark_coord:
+                    screen_coord = self.image_to_screen_coords(landmark_coord[0], landmark_coord[1])
+                    if screen_coord:
+                        x, y = screen_coord
+                        color = colors[color_idx % len(colors)]
+                        
+                        # 점 표시
+                        self.canvas.create_oval(x-3, y-3, x+3, y+3, 
+                                              fill=color, outline="white", width=1,
+                                              tags="measurement_points")
+                        
+                        # 라벨 표시
+                        self.canvas.create_text(x+8, y-8, text=f"{category}_{point_name}", 
+                                              fill=color, font=("Arial", 7, "bold"),
+                                              tags="measurement_points")
+            color_idx += 1
+        
+        # 5초 후 자동 제거
+        self.root.after(5000, lambda: self.canvas.delete("measurement_points"))
+        print("측정점이 5초간 표시됩니다.")
+    
+    def draw_circular_ratio_indicator(self, x, y, radius, percentage, label, color="#ff0000"):
+        """원형 비율 지시기 그리기 (뷰티 스코어 스타일)"""
+        # 원형 테두리
+        self.canvas.create_oval(
+            x - radius, y - radius, x + radius, y + radius,
+            outline=color, width=3, tags="ratio_indicators"
+        )
+        
+        # 퍼센티지 텍스트
+        self.canvas.create_text(
+            x, y - 10, text=f"{percentage:.1f}%",
+            fill=color, font=("Arial", 12, "bold"), tags="ratio_indicators"
+        )
+        
+        # 라벨 텍스트
+        self.canvas.create_text(
+            x, y + 10, text=label,
+            fill=color, font=("Arial", 8), tags="ratio_indicators"
+        )
+
+    def draw_bidirectional_arrow(self, x1, y1, x2, y2, color="blue", width=2, arrow_size=8, dash=None):
+        """양방향 화살표 그리기"""
+        import math
+        
+        # 메인 라인 그리기 (점선 옵션 포함)
+        if dash:
+            self.canvas.create_line(x1, y1, x2, y2, fill=color, width=width, dash=dash, tags="ratio_lines")
+        else:
+            self.canvas.create_line(x1, y1, x2, y2, fill=color, width=width, tags="ratio_lines")
+        
+        # 화살표 방향 계산
+        angle = math.atan2(y2 - y1, x2 - x1)
+        arrow_length = arrow_size
+        arrow_angle = math.pi / 6  # 30도
+        
+        # 시작점 화살표 (역방향)
+        start_arrow_x1 = x1 + arrow_length * math.cos(angle + math.pi + arrow_angle)
+        start_arrow_y1 = y1 + arrow_length * math.sin(angle + math.pi + arrow_angle)
+        start_arrow_x2 = x1 + arrow_length * math.cos(angle + math.pi - arrow_angle)
+        start_arrow_y2 = y1 + arrow_length * math.sin(angle + math.pi - arrow_angle)
+        
+        self.canvas.create_line(x1, y1, start_arrow_x1, start_arrow_y1, fill=color, width=width, tags="ratio_lines")
+        self.canvas.create_line(x1, y1, start_arrow_x2, start_arrow_y2, fill=color, width=width, tags="ratio_lines")
+        
+        # 끝점 화살표 (정방향)
+        end_arrow_x1 = x2 + arrow_length * math.cos(angle + arrow_angle)
+        end_arrow_y1 = y2 + arrow_length * math.sin(angle + arrow_angle)
+        end_arrow_x2 = x2 + arrow_length * math.cos(angle - arrow_angle)
+        end_arrow_y2 = y2 + arrow_length * math.sin(angle - arrow_angle)
+        
+        self.canvas.create_line(x2, y2, end_arrow_x1, end_arrow_y1, fill=color, width=width, tags="ratio_lines")
+        self.canvas.create_line(x2, y2, end_arrow_x2, end_arrow_y2, fill=color, width=width, tags="ratio_lines")
+
+    def show_beauty_score_visualization(self, current_ratios):
+        """뷰티 스코어 시각화 (원형 영역 + 퍼센티지)"""
+        if self.face_landmarks is None:
+            print("얼굴이 검출되지 않았습니다.")
+            return
+            
+        # 기존 표시 제거
+        self.canvas.delete("ratio_indicators")
+        self.canvas.delete("proportion_lines")
+        
+        print("뷰티 스코어 시각화를 표시합니다...")
+        
+        try:
+            # 1. 1/5 세로 비례선 (5등분)
+            self.draw_fifth_proportion_lines()
+            
+            # 2. 1/3 가로 비례선 (3등분) 
+            self.draw_third_proportion_lines()
+            
+            # 3. 각 부위별 원형 점수 표시
+            self.draw_beauty_score_indicators(current_ratios)
+            
+            # 4. 교차점 기반 원 그리기
+            self.draw_intersection_circle()
+            
+            # 5. 두 번째 교차점 원 그리기  
+            self.draw_second_intersection_circle()
+            
+            # 6. 랜드마크 37을 지나는 수평선
+            self.draw_landmark_37_line()
+            
+            # 7. 왼쪽 테두리와 1/3선, 37선 교차점을 지름으로 하는 원
+            self.draw_left_intersection_circle_1()
+            
+            # 8. 왼쪽 테두리와 하단 테두리, 37선 교차점을 지름으로 하는 원  
+            self.draw_left_intersection_circle_2()
+            
+            # 9-13. 상단 테두리 5개 원들
+            self.draw_top_border_circles()
+            
+            # 눈간격 및 입코비율 시각화 제거 (뷰티 스코어에서 삭제)
+            
+            # 14. 턱 곡률 시각화
+            self.draw_jaw_curvature()
+            
+            # 15초 후 자동 제거
+            self.root.after(15000, lambda: [
+                self.canvas.delete("ratio_indicators"),
+                self.canvas.delete("proportion_lines"),
+                self.canvas.delete("intersection_circle"),
+                self.canvas.delete("second_circle"),
+                self.canvas.delete("landmark_37_line"),
+                self.canvas.delete("left_circle_1"),
+                self.canvas.delete("left_circle_2"),
+                self.canvas.delete("top_circles"),
+                self.canvas.delete("jaw_curvature"),  # 턱 곡률 삭제
+                self.canvas.delete("ratio_lines")  # 비율 라인도 삭제
+            ])
+            print("뷰티 스코어 시각화가 15초간 표시됩니다.")
+            
+        except Exception as e:
+            print(f"뷰티 스코어 시각화 중 오류: {str(e)}")
+
+    def show_ratio_lines(self, current_ratios):
+        """얼굴 비율 라인과 수치를 시각적으로 표시"""
+        if self.face_landmarks is None:
+            print("얼굴이 검출되지 않았습니다.")
+            return
+            
+        # 기존 라인 제거
+        self.canvas.delete("ratio_lines")
+        
+        print("얼굴 비율 라인을 표시합니다...")
+        
+        try:
+            # 1. 전체 얼굴 비율 라인 (길이:너비)
+            self.draw_face_outline_ratio(current_ratios)
+            
+            # 2. 얼굴 삼등분 라인
+            self.draw_face_thirds_ratio(current_ratios)
+            
+            # 3. 눈 간격 비율 라인과 수치 표시
+            self.draw_eye_spacing_ratio(current_ratios)
+            self.draw_eye_spacing_percentage(current_ratios)
+            
+            # 4. 입/코 너비 비율 라인과 수치 표시
+            self.draw_mouth_nose_ratio(current_ratios)
+            self.draw_mouth_nose_percentage(current_ratios)
+            
+            # 5. 황금비율 가이드라인
+            self.draw_golden_ratio_guide()
+            
+            # 10초 후 자동 제거
+            self.root.after(10000, lambda: self.canvas.delete("ratio_lines"))
+            print("비율 라인이 10초간 표시됩니다.")
+            
+        except Exception as e:
+            print(f"비율 라인 표시 중 오류: {str(e)}")
+    
+    def draw_fifth_proportion_lines(self):
+        """1/5 세로 비례선 그리기 (각 선이 특정 랜드마크를 지나도록)"""
+        face_top = self.get_landmark_coordinates(10)
+        face_bottom = self.get_landmark_coordinates(152)
+        face_left = self.get_landmark_coordinates(234)
+        face_right = self.get_landmark_coordinates(454)
+        
+        # 각 비례선이 지나는 랜드마크들
+        landmark_33 = self.get_landmark_coordinates(33)   # 1/5: 왼쪽 눈 바깥쪽
+        landmark_133 = self.get_landmark_coordinates(133) # 2/5: 왼쪽 눈 안쪽
+        landmark_362 = self.get_landmark_coordinates(362) # 3/5: 오른쪽 눈 안쪽  
+        landmark_359 = self.get_landmark_coordinates(359) # 4/5: 오른쪽 눈 바깥쪽
+        landmark_447 = self.get_landmark_coordinates(447) # 5/5: 가장 오른쪽
+        
+        landmarks = [None, landmark_33, landmark_133, landmark_362, landmark_359, landmark_447]
+        labels = ["0/5", "1/5 (눈외)", "2/5 (눈내)", "3/5 (눈내)", "4/5 (눈외)", "5/5 (447)"]
+        
+        if all([face_top, face_bottom, face_left, face_right]) and all(landmarks[1:]):
+            face_width = self.calculate_distance(face_left, face_right)
+            top_y = face_top[1]
+            bottom_y = face_bottom[1]
+            
+            # 세로선 그리기 (6개: 0/5, 1/5, 2/5, 3/5, 4/5, 5/5)
+            # 1/3선과 3/3선 y 좌표 구하기 (5/5선 분리용)
+            landmark_8 = self.get_landmark_coordinates(8)   # 1/3선
+            face_bottom = self.get_landmark_coordinates(152) # 3/3선
+            
+            for i in range(6):
+                if i in [1, 2, 3, 4, 5]:  # 랜드마크 기준선들
+                    x = landmarks[i][0]
+                else:  # 외곽선들 (0/5만)
+                    ratio = i / 5.0
+                    x = face_left[0] + (face_width * ratio)
+                
+                # 모든 세로선에서 1/3~3/3 구간을 제외하고 두 개의 선분으로 나누어 그리기
+                if landmark_8 and face_bottom:
+                    # 첫 번째 선분: 상단~1/3선
+                    start_screen_1 = self.image_to_screen_coords(x, top_y)
+                    end_screen_1 = self.image_to_screen_coords(x, landmark_8[1])
+                    
+                    if start_screen_1 and end_screen_1:
+                        # 색상 및 굵기 설정
+                        color = "white"
+                        if i in [1, 2, 3, 4, 5]:  # 랜드마크 기준선들
+                            width = 1.5
+                        else:  # 외곽선 (0/5만)
+                            width = 0.5
+                            
+                        self.canvas.create_line(
+                            start_screen_1[0], start_screen_1[1],
+                            end_screen_1[0], end_screen_1[1],
+                            fill=color, width=width, dash=(3, 2), tags="proportion_lines"
+                        )
+                    
+                    # 두 번째 선분: 3/3선~하단
+                    start_screen_2 = self.image_to_screen_coords(x, face_bottom[1])
+                    end_screen_2 = self.image_to_screen_coords(x, bottom_y)
+                    
+                    if start_screen_2 and end_screen_2:
+                        # 색상 및 굵기 설정
+                        color = "white"
+                        if i in [1, 2, 3, 4, 5]:  # 랜드마크 기준선들
+                            width = 1.5
+                        else:  # 외곽선 (0/5만)
+                            width = 0.5
+                            
+                        self.canvas.create_line(
+                            start_screen_2[0], start_screen_2[1],
+                            end_screen_2[0], end_screen_2[1],
+                            fill=color, width=width, dash=(3, 2), tags="proportion_lines"
+                        )
+                else:
+                    # 다른 세로선들은 기존대로 전체 길이로 그리기
+                    start_screen = self.image_to_screen_coords(x, top_y)
+                    end_screen = self.image_to_screen_coords(x, bottom_y)
+                    
+                    if start_screen and end_screen:
+                        # 색상 및 굵기 설정 (모두 흰색, 굵기 절반)
+                        color = "white"
+                        if i in [1, 2, 3, 4, 5]:  # 랜드마크 기준선들
+                            width = 1.5  # 기존 3에서 절반으로 감소
+                        else:  # 외곽선 (0/5만)
+                            width = 0.5  # 기존 1에서 절반으로 감소
+                        
+                        self.canvas.create_line(
+                            start_screen[0], start_screen[1],
+                            end_screen[0], end_screen[1],
+                            fill=color, width=width, dash=(3, 2), tags="proportion_lines"
+                        )
+                    
+                    # 비례 라벨 제거 (뷰티 스코어에서 텍스트 숨김)
+    
+    def draw_third_proportion_lines(self):
+        """1/3 가로 비례선 그리기 (각 선이 특정 랜드마크를 지나도록)"""
+        face_top = self.get_landmark_coordinates(10)
+        face_bottom = self.get_landmark_coordinates(152)
+        face_left = self.get_landmark_coordinates(234)
+        face_right = self.get_landmark_coordinates(454)
+        
+        # 각 비례선이 지나는 랜드마크들
+        landmark_8 = self.get_landmark_coordinates(8) # 1/3: 이마-눈썹 경계
+        landmark_2 = self.get_landmark_coordinates(2)     # 2/3: 코 끝
+        
+        landmarks = [None, landmark_8, landmark_2, None]
+        labels = ["0/3", "1/3 (이마)", "2/3 (코)", "3/3"]
+        
+        if all([face_top, face_bottom, face_left, face_right]) and all([landmark_8, landmark_2]):
+            face_height = self.calculate_distance(face_top, face_bottom)
+            left_x = face_left[0]
+            right_x = face_right[0]
+            
+            # 가로선 그리기 (3개: 1/3, 2/3, 3/3) - 최상단 0/3 테두리선 제외
+            for i in range(1, 4):  # 0은 제외하고 1, 2, 3만
+                if i == 1:  # 1/3 선은 랜드마크 8을 지나는 수평선
+                    y = landmark_8[1]
+                elif i == 2:  # 2/3 선은 랜드마크 2를 지나는 수평선
+                    y = landmark_2[1]
+                else:  # 외곽선들 (3/3만)
+                    ratio = i / 3.0
+                    y = face_top[1] + (face_height * ratio)
+                
+                start_screen = self.image_to_screen_coords(left_x, y)
+                end_screen = self.image_to_screen_coords(right_x, y)
+                
+                if start_screen and end_screen:
+                    # 색상 및 굵기 설정 (모두 흰색, 굵기 절반)
+                    color = "white"
+                    if i in [1, 2]:  # 랜드마크 기준선들
+                        width = 1.5  # 기존 3에서 절반으로 감소
+                    else:  # 외곽선
+                        width = 0.5  # 기존 1에서 절반으로 감소
+                    
+                    self.canvas.create_line(
+                        start_screen[0], start_screen[1],
+                        end_screen[0], end_screen[1],
+                        fill=color, width=width, dash=(4, 3), tags="proportion_lines"
+                    )
+                    
+                    # 비례 라벨 제거 (뷰티 스코어에서 텍스트 숨김)
+    
+    def draw_beauty_score_indicators(self, current_ratios):
+        """각 부위별 뷰티 스코어 원형 지시기 표시"""
+        # 각 부위별 점수 계산 (황금비율 대비 퍼센티지)
+        scores = self.calculate_beauty_scores(current_ratios)
+        
+        # 주요 얼굴 특징점들의 위치에 원형 지시기 표시 (이마, 눈간격, 눈크기, 입 원 제거)
+        indicators = [
+            # (랜드마크, 점수키, 라벨, 색상, 오프셋)
+            (2, "코길이", "코", "#96CEB4", (30, 0)),          # 코 끝
+            (172, "턱라인", "턱", "#DDA0DD", (0, 30))         # 턱 끝
+        ]
+        
+        for landmark_id, score_key, label, color, offset in indicators:
+            landmark = self.get_landmark_coordinates(landmark_id)
+            if landmark and score_key in scores:
+                screen_pos = self.image_to_screen_coords(landmark[0], landmark[1])
+                if screen_pos:
+                    x = screen_pos[0] + offset[0]
+                    y = screen_pos[1] + offset[1]
+                    
+                    self.draw_circular_ratio_indicator(
+                        x, y, 25, scores[score_key], label, color
+                    )
+    
+    def calculate_beauty_scores(self, current_ratios):
+        """황금비율 대비 뷰티 스코어 계산 (100% 만점)"""
+        scores = {}
+        
+        # 전체 얼굴 비율 점수
+        if "전체_얼굴_비율" in current_ratios:
+            ideal = self.FACE_GOLDEN_RATIOS["전체_얼굴_비율"]
+            current = current_ratios["전체_얼굴_비율"]
+            score = max(0, 100 - abs(current - ideal) / ideal * 100)
+            scores["이마"] = score
+        
+        # 눈 간격 점수
+        if "눈_간격" in current_ratios:
+            ideal = 1.0
+            current = current_ratios["눈_간격"]
+            score = max(0, 100 - abs(current - ideal) / ideal * 100)
+            scores["눈간격"] = score
+            scores["눈크기"] = score * 0.9  # 눈크기는 약간 다른 점수
+        
+        # 입 너비 점수
+        if "입_너비" in current_ratios:
+            ideal = self.FACE_GOLDEN_RATIOS["입_너비"]
+            current = current_ratios["입_너비"]
+            score = max(0, 100 - abs(current - ideal) / ideal * 100)
+            scores["입크기"] = score
+        
+        # 얼굴 삼등분 점수
+        if "얼굴_삼등분" in current_ratios:
+            ideal = 1.0
+            current = current_ratios["얼굴_삼등분"]
+            score = max(0, 100 - abs(current - ideal) / ideal * 100)
+            scores["코길이"] = score
+            scores["턱라인"] = score * 0.8
+        
+        return scores
+    
+    def draw_circle_from_intersections(self, point1_coords, point2_coords, color, label, tag, label_offset=(10, -20)):
+        """두 교차점을 지름으로 하는 원을 그리는 통일된 함수"""
+        if not point1_coords or not point2_coords:
+            return
+            
+        # 화면 좌표로 변환
+        point1_screen = self.image_to_screen_coords(point1_coords[0], point1_coords[1])
+        point2_screen = self.image_to_screen_coords(point2_coords[0], point2_coords[1])
+        
+        if point1_screen and point2_screen:
+            # 원의 중심점과 반지름 계산
+            center_x = (point1_screen[0] + point2_screen[0]) / 2
+            center_y = (point1_screen[1] + point2_screen[1]) / 2
+            
+            import math
+            distance = math.sqrt(
+                (point2_screen[0] - point1_screen[0])**2 + 
+                (point2_screen[1] - point1_screen[1])**2
+            )
+            radius = distance / 2
+            
+            # 네온사인 효과를 위한 색상 설정
+            neon_red = "#FF0040"  # 밝은 네온 빨간색
+            
+            # 원 그리기 (red는 실선 + 네온 효과, 나머지는 점선)
+            if color == "red":
+                # 빨간색 원은 얇은 실선으로 그리기 (굵기 반으로 감소)
+                self.canvas.create_oval(
+                    center_x - radius, center_y - radius,
+                    center_x + radius, center_y + radius,
+                    outline=neon_red, width=1.5, tags=tag  # 3 -> 1.5로 굵기 반감
+                )
+            else:
+                # 다른 색상은 점선으로 그리기 (파란색은 굵기 50% 감소)
+                dash_patterns = {
+                    "#FF1493": (5, 5),  # 딥핑크
+                    "#00CED1": (7, 3),  # 다크터쿼이즈
+                    "#32CD32": (4, 4),  # 라임그린
+                    "#FF8C00": (6, 2),  # 다크오렌지
+                    "#9370DB": (8, 2),  # 미디엄퍼플
+                    "#8A2BE2": (3, 5),  # 블루바이올렛
+                    "#FF69B4": (4, 3),  # 핫핑크
+                    "#FFA500": (5, 4),  # 오렌지
+                    "blue": (4, 4),     # 파란색
+                }
+                dash = dash_patterns.get(color, (5, 5))
+                
+                # 파란색 원은 굵기를 50% 줄임
+                width = 1.5 if color == "blue" else 3
+                
+                self.canvas.create_oval(
+                    center_x - radius, center_y - radius,
+                    center_x + radius, center_y + radius,
+                    outline=color, width=width, dash=dash, tags=tag
+                )
+            
+            # 교차점 마커 (빨간색은 네온 효과 적용)
+            point_radius = 4
+            marker_color = neon_red if color == "red" else color
+            for point_screen in [point1_screen, point2_screen]:
+                self.canvas.create_oval(
+                    point_screen[0] - point_radius, point_screen[1] - point_radius,
+                    point_screen[0] + point_radius, point_screen[1] + point_radius,
+                    fill=marker_color, outline=marker_color, width=2, tags=tag
+                )
+            
+            # 지름선 (빨간색과 파란색 원은 지름선 제거, 다른 색상만 점선으로 그리기)
+            if color != "red" and color != "blue":
+                # 빨간색과 파란색이 아닌 색상만 점선으로 그리기
+                line_dash = {
+                    "#FF1493": (3, 3),
+                    "#00CED1": (4, 2), 
+                    "#32CD32": (3, 3),
+                    "#FF8C00": (2, 4),
+                    "#9370DB": (3, 2),
+                    "#8A2BE2": (2, 3),  # 블루바이올렛
+                    "#FF69B4": (3, 4),  # 핫핑크
+                    "#FFA500": (4, 3),  # 오렌지
+                }
+                self.canvas.create_line(
+                    point1_screen[0], point1_screen[1],
+                    point2_screen[0], point2_screen[1],
+                    fill=color, width=2, dash=line_dash.get(color, (3, 3)), tags=tag
+                )
+            
+            # 뷰티 스코어에서는 정보 라벨 표시하지 않음 (네모박스와 텍스트 제거)
+    
+    def draw_intersection_circle(self):
+        """첫 번째 교차점 원: 1/3 이마선과 2/3 코선이 5/5선과 만나는 점들"""
+        landmark_8 = self.get_landmark_coordinates(8)  # 1/3 이마선
+        landmark_2 = self.get_landmark_coordinates(2)      # 2/3 코선  
+        landmark_447 = self.get_landmark_coordinates(447)  # 5/5선
+        
+        if all([landmark_8, landmark_2, landmark_447]):
+            right_vertical_x = landmark_447[0]
+            
+            # 교차점 계산
+            point1 = (right_vertical_x, landmark_8[1])  # 1/3선 × 5/5선
+            point2 = (right_vertical_x, landmark_2[1])    # 2/3선 × 5/5선
+            
+            self.draw_circle_from_intersections(
+                point1, point2, 
+                color="red", 
+                label="🔴 우상 교차원", 
+                tag="intersection_circle",
+                label_offset=(10, -20)
+            )
+            
+            # 수직 거리 대비 지름 비율 계산 및 표시
+            self.draw_circle_diameter_ratio(point1, point2, "upper_right")
+    
+    def draw_second_intersection_circle(self):
+        """두 번째 교차점 원: 2/3 코선과 3/3 턱선이 5/5선과 만나는 점들"""
+        landmark_2 = self.get_landmark_coordinates(2)      # 2/3 코선
+        face_bottom = self.get_landmark_coordinates(152)   # 3/3 턱선
+        landmark_447 = self.get_landmark_coordinates(447)  # 5/5선
+        
+        if all([landmark_2, face_bottom, landmark_447]):
+            right_vertical_x = landmark_447[0]
+            
+            # 교차점 계산  
+            point1 = (right_vertical_x, landmark_2[1])    # 2/3선 × 5/5선
+            point2 = (right_vertical_x, face_bottom[1])   # 3/3선 × 5/5선
+            
+            self.draw_circle_from_intersections(
+                point1, point2,
+                color="red",
+                label="🔴 우하 교차원",
+                tag="second_circle", 
+                label_offset=(10, 30)
+            )
+            
+            # 수직 거리 대비 지름 비율 계산 및 표시
+            self.draw_circle_diameter_ratio(point1, point2, "lower_right")
+    
+    def draw_landmark_37_line(self):
+        """랜드마크 37을 지나는 수평선 그리기"""
+        face_left = self.get_landmark_coordinates(234)
+        face_right = self.get_landmark_coordinates(454)
+        landmark_37 = self.get_landmark_coordinates(37)  # 하안검 라인
+        
+        if all([face_left, face_right, landmark_37]):
+            left_x = face_left[0]
+            right_x = face_right[0]
+            line_y = landmark_37[1]  # 랜드마크 37의 y 좌표
+            
+            # 화면 좌표로 변환
+            start_screen = self.image_to_screen_coords(left_x, line_y)
+            end_screen = self.image_to_screen_coords(right_x, line_y)
+            
+            if start_screen and end_screen:
+                # 수평선만 그리기 (랜드마크 점과 텍스트 제거)
+                self.canvas.create_line(
+                    start_screen[0], start_screen[1],
+                    end_screen[0], end_screen[1],
+                    fill="#9370DB", width=2, dash=(6, 4), tags="landmark_37_line"
+                )
+    
+    def draw_left_intersection_circle_1(self):
+        """좌상 교차원: 왼쪽 테두리와 2/3 코선(37선 바로 위), 37선 교차점을 지름으로 하는 원"""
+        face_left = self.get_landmark_coordinates(234)     # 왼쪽 테두리
+        landmark_2 = self.get_landmark_coordinates(2)      # 2/3 코선 (37선 바로 위)
+        landmark_37 = self.get_landmark_coordinates(37)    # 37선
+        
+        if all([face_left, landmark_2, landmark_37]):
+            left_vertical_x = face_left[0]
+            
+            # 교차점 계산
+            point1 = (left_vertical_x, landmark_2[1])   # 왼쪽테두리 × 2/3코선
+            point2 = (left_vertical_x, landmark_37[1])  # 왼쪽테두리 × 37선
+            
+            self.draw_circle_from_intersections(
+                point1, point2,
+                color="blue",
+                label="🔵 좌상 교차원", 
+                tag="left_circle_1",
+                label_offset=(-160, -20)
+            )
+            
+            # 좌상 원의 지름 비율 계산 및 표시
+            self.draw_left_circle_diameter_ratio(point1, point2, "upper_left")
+    
+    def draw_left_intersection_circle_2(self):
+        """좌하 교차원: 왼쪽 테두리와 하단 테두리, 37선 교차점을 지름으로 하는 원"""
+        face_left = self.get_landmark_coordinates(234)     # 왼쪽 테두리
+        face_bottom = self.get_landmark_coordinates(152)   # 하단 테두리  
+        landmark_37 = self.get_landmark_coordinates(37)    # 37선
+        
+        if all([face_left, face_bottom, landmark_37]):
+            left_vertical_x = face_left[0]
+            
+            # 교차점 계산
+            point1 = (left_vertical_x, face_bottom[1])  # 왼쪽테두리 × 하단테두리
+            point2 = (left_vertical_x, landmark_37[1])  # 왼쪽테두리 × 37선
+            
+            self.draw_circle_from_intersections(
+                point1, point2,
+                color="blue", 
+                label="🔵 좌하 교차원",
+                tag="left_circle_2",
+                label_offset=(-160, 30)
+            )
+            
+            # 좌하 원의 지름 비율 계산 및 표시
+            self.draw_left_circle_diameter_ratio(point1, point2, "lower_left")
+    
+    def draw_top_border_circles(self):
+        """상단 테두리에 5개의 원 그리기 (각 수직선 구간별)"""
+        # 필요한 랜드마크들
+        face_top = self.get_landmark_coordinates(10)       # 상단 테두리
+        face_left = self.get_landmark_coordinates(234)     # 0/5 왼쪽 테두리
+        landmark_33 = self.get_landmark_coordinates(33)    # 1/5
+        landmark_133 = self.get_landmark_coordinates(133)  # 2/5
+        landmark_362 = self.get_landmark_coordinates(362)  # 3/5
+        landmark_359 = self.get_landmark_coordinates(359)  # 4/5
+        landmark_447 = self.get_landmark_coordinates(447)  # 5/5
+        
+        # 모든 랜드마크가 있는지 확인
+        if all([face_top, face_left, landmark_33, landmark_133, landmark_362, landmark_359, landmark_447]):
+            top_y = face_top[1]  # 상단 테두리의 y 좌표
+            
+            # 5개의 수직선 x 좌표들
+            vertical_lines = [
+                face_left[0],        # 0/5
+                landmark_33[0],      # 1/5
+                landmark_133[0],     # 2/5
+                landmark_362[0],     # 3/5
+                landmark_359[0],     # 4/5
+                landmark_447[0]      # 5/5
+            ]
+            
+            # 전체 얼굴 가로 길이 계산
+            total_face_width = landmark_447[0] - face_left[0]
+            
+            # 원들의 색상과 라벨 정의 (모두 red로 변경)
+            circle_configs = [
+                {"color": "red", "label": "🔴 상1구간", "emoji": "1⃣"},  # 빨간색
+                {"color": "red", "label": "🔴 상2구간", "emoji": "2⃣"},  # 빨간색
+                {"color": "red", "label": "🔴 상3구간", "emoji": "3⃣"},  # 빨간색
+                {"color": "red", "label": "🔴 상4구간", "emoji": "4⃣"},  # 빨간색
+                {"color": "red", "label": "🔴 상5구간", "emoji": "5⃣"}   # 빨간색
+            ]
+            
+            # 5개 원 그리기
+            for i in range(5):
+                x1 = vertical_lines[i]     # 왼쪽 수직선
+                x2 = vertical_lines[i + 1] # 오른쪽 수직선
+                
+                # 두 교차점 계산
+                point1 = (x1, top_y)  # 왼쪽 교차점
+                point2 = (x2, top_y)  # 오른쪽 교차점
+                
+                config = circle_configs[i]
+                
+                # 라벨 위치 조정 (원이 겹치지 않도록)
+                label_offset_y = -80 - (i * 15)  # 각 원마다 다른 높이
+                
+                # 이 구간의 가로 길이 및 퍼센티지 계산
+                section_width = abs(x2 - x1)
+                percentage = (section_width / total_face_width) * 100 if total_face_width > 0 else 0
+                
+                self.draw_circle_from_intersections(
+                    point1, point2,
+                    color=config["color"],
+                    label=config["label"],
+                    tag="top_circles",
+                    label_offset=(0, label_offset_y)
+                )
+                
+                # 원의 중앙에 퍼센티지 표시
+                self.draw_circle_center_percentage(point1, point2, percentage, config["color"])
+    
+    def draw_circle_center_percentage(self, point1, point2, percentage, color):
+        """원의 중앙에 퍼센티지 텍스트 표시"""
+        # 원의 중심점 계산 (두 교차점의 중점)
+        center_x = (point1[0] + point2[0]) / 2
+        center_y = (point1[1] + point2[1]) / 2
+        
+        # 화면 좌표로 변환
+        center_screen = self.image_to_screen_coords(center_x, center_y)
+        
+        if center_screen:
+            # 퍼센티지 텍스트 (배경 없이 빨간색으로 1.5배 크기)
+            self.canvas.create_text(
+                center_screen[0], center_screen[1],
+                text=f"{percentage:.1f}%", anchor="center",
+                fill="red", font=("Arial", 14, "bold"), tags="top_circles"
+            )
+    
+    def draw_circle_diameter_ratio(self, point1, point2, circle_type):
+        """원의 중앙에 수직 거리 대비 지름 비율 표시"""
+        # 1/3선과 3/3선의 y 좌표 구하기
+        landmark_8 = self.get_landmark_coordinates(8)  # 1/3선
+        face_bottom = self.get_landmark_coordinates(152)   # 3/3선
+        
+        if not all([landmark_8, face_bottom]):
+            return
+        
+        # 전체 수직 거리 (1/3선에서 3/3선까지)
+        total_vertical_distance = abs(face_bottom[1] - landmark_8[1])
+        
+        # 현재 원의 지름 (두 교차점 간 거리)
+        circle_diameter = abs(point2[1] - point1[1])
+        
+        # 비율 계산
+        if total_vertical_distance > 0:
+            ratio = (circle_diameter / total_vertical_distance) * 100
+            
+            # 원의 중심점 계산
+            center_x = (point1[0] + point2[0]) / 2
+            center_y = (point1[1] + point2[1]) / 2
+            
+            # 화면 좌표로 변환
+            center_screen = self.image_to_screen_coords(center_x, center_y)
+            
+            if center_screen:
+                # 비율 텍스트 (배경 없이 빨간색으로 1.5배 크기)
+                tag = "intersection_circle" if circle_type == "upper_right" else "second_circle"
+                self.canvas.create_text(
+                    center_screen[0], center_screen[1],
+                    text=f"{ratio:.1f}%", anchor="center",
+                    fill="red", font=("Arial", 14, "bold"), tags=tag
+                )
+    
+    def draw_left_circle_diameter_ratio(self, point1, point2, circle_type):
+        """왼쪽 원의 중앙에 총 지름 대비 각 원의 지름 비율 표시"""
+        # 좌상 원과 좌하 원의 교차점들을 구해서 총 지름을 계산
+        face_left = self.get_landmark_coordinates(234)     # 왼쪽 테두리
+        landmark_2 = self.get_landmark_coordinates(2)      # 2/3 코선
+        face_bottom = self.get_landmark_coordinates(152)   # 하단 테두리
+        landmark_37 = self.get_landmark_coordinates(37)    # 37선
+        
+        if not all([face_left, landmark_2, face_bottom, landmark_37]):
+            return
+        
+        # 좌상 원의 지름 (2/3코선에서 37선까지)
+        upper_diameter = abs(landmark_37[1] - landmark_2[1])
+        
+        # 좌하 원의 지름 (하단테두리에서 37선까지) 
+        lower_diameter = abs(landmark_37[1] - face_bottom[1])
+        
+        # 총 지름 (2/3코선에서 하단테두리까지)
+        total_diameter = upper_diameter + lower_diameter
+        
+        # 현재 원의 지름
+        current_diameter = abs(point2[1] - point1[1])
+        
+        # 비율 계산
+        if total_diameter > 0:
+            ratio = (current_diameter / total_diameter) * 100
+            
+            # 원의 중심점 계산
+            center_x = (point1[0] + point2[0]) / 2
+            center_y = (point1[1] + point2[1]) / 2
+            
+            # 화면 좌표로 변환
+            center_screen = self.image_to_screen_coords(center_x, center_y)
+            
+            if center_screen:
+                # 비율 텍스트 (파란색으로 표시)
+                tag = "left_circle_1" if circle_type == "upper_left" else "left_circle_2"
+                self.canvas.create_text(
+                    center_screen[0], center_screen[1],
+                    text=f"{ratio:.1f}%", anchor="center",
+                    fill="blue", font=("Arial", 7, "bold"), tags=tag
+                )
+
+    def draw_jaw_curvature(self):
+        """하악각과 턱목각을 계산하여 리프팅 효과 점수화"""
+        import math
+        
+        # 하악각(Gonial Angle) 계산
+        gonial_angle = self.calculate_gonial_angle()
+        
+        # 턱목각(Cervicomental Angle) 계산  
+        cervicomental_angle = self.calculate_cervicomental_angle()
+        
+        if gonial_angle is None or cervicomental_angle is None:
+            print("턱 각도를 계산할 수 없습니다.")
+            return
+        
+        # 리프팅 효과 점수 계산 (날카로울수록 높은 점수)
+        lifting_score = self.calculate_lifting_score(gonial_angle, cervicomental_angle)
+        
+        # 점수 시각화
+        self.display_jaw_angles_score(gonial_angle, cervicomental_angle, lifting_score)
+        
+        print(f"하악각: {gonial_angle:.1f}°, 턱목각: {cervicomental_angle:.1f}°, 리프팅점수: {lifting_score:.0f}/100")
+    
+    def calculate_gonial_angle(self):
+        """하악각(Gonial Angle) 계산: 하악지와 하악체 사이의 각도"""
+        import math
+        
+        # 올바른 하악각 측정을 위한 랜드마크
+        # 왼쪽: 귀 앞쪽(234) - 턱 모서리(172) - 턱 중앙 방향
+        # 오른쪽: 귀 앞쪽(454) - 턱 모서리(397) - 턱 중앙 방향
+        
+        # 왼쪽 하악각 계산
+        left_ear = self.get_landmark_coordinates(234)       # 왼쪽 귀 앞쪽 (얼굴 가장자리)
+        left_jaw_corner = self.get_landmark_coordinates(172)  # 왼쪽 턱 모서리
+        left_jaw_mid = self.get_landmark_coordinates(150)   # 왼쪽 턱선 중간
+        
+        # 오른쪽 하악각 계산  
+        right_ear = self.get_landmark_coordinates(454)      # 오른쪽 귀 앞쪽 (얼굴 가장자리)
+        right_jaw_corner = self.get_landmark_coordinates(397) # 오른쪽 턱 모서리
+        right_jaw_mid = self.get_landmark_coordinates(379)  # 오른쪽 턱선 중간
+        
+        if not all([left_ear, left_jaw_corner, left_jaw_mid, right_ear, right_jaw_corner, right_jaw_mid]):
+            return None
+        
+        # 좌우 하악각 계산 (수직선을 기준으로 각도 측정)
+        left_gonial = self.calculate_jaw_angle_improved(left_ear, left_jaw_corner, left_jaw_mid)
+        right_gonial = self.calculate_jaw_angle_improved(right_ear, right_jaw_corner, right_jaw_mid)
+        
+        if left_gonial is None or right_gonial is None:
+            return None
+        
+        # 평균 하악각 (양쪽 평균)
+        avg_gonial = (left_gonial + right_gonial) / 2
+        return avg_gonial
+    
+    def calculate_cervicomental_angle(self):
+        """턱목각(Cervicomental Angle) 계산: 턱끝과 목 사이의 각도"""
+        import math
+        
+        # 턱목각을 구성하는 포인트들
+        # 1. 턱끝: 152
+        # 2. 목 앞쪽 최전방점: 18 (아래입술 하단을 목 대용으로 사용)
+        # 3. 목 아래쪽 가상점: 턱끝에서 수직 아래로 일정 거리
+        
+        chin = self.get_landmark_coordinates(152)           # 턱끝
+        neck_front = self.get_landmark_coordinates(18)      # 목 앞쪽 (아래입술 하단)
+        
+        if not all([chin, neck_front]):
+            return None
+        
+        # 목 아래쪽 가상점 생성 (턱끝에서 수직 아래로)
+        neck_bottom = (chin[0], chin[1] + abs(chin[1] - neck_front[1]) * 1.5)
+        
+        # 턱목각 계산 (3점으로 이루는 각도)
+        angle = self.calculate_angle_3points(neck_bottom, chin, neck_front)
+        return angle
+    
+    def calculate_angle_3points(self, p1, p2, p3):
+        """3개 점으로 이루는 각도 계산 (p2가 꼭짓점)"""
+        import math
+        
+        x1, y1 = p1
+        x2, y2 = p2  # 꼭짓점
+        x3, y3 = p3
+        
+        # 벡터 계산
+        v1 = (x1 - x2, y1 - y2)  # p2에서 p1로의 벡터
+        v2 = (x3 - x2, y3 - y2)  # p2에서 p3로의 벡터
+        
+        # 벡터 크기 계산
+        len1 = math.sqrt(v1[0]**2 + v1[1]**2)
+        len2 = math.sqrt(v2[0]**2 + v2[1]**2)
+        
+        if len1 == 0 or len2 == 0:
+            return None
+        
+        # 내적 계산
+        dot_product = v1[0] * v2[0] + v1[1] * v2[1]
+        
+        # 코사인 값 계산 (-1 ~ 1 범위로 클리핑)
+        cos_angle = max(-1, min(1, dot_product / (len1 * len2)))
+        
+        # 라디안을 도(degree)로 변환
+        angle_rad = math.acos(cos_angle)
+        angle_deg = math.degrees(angle_rad)
+        
+        return angle_deg
+    
+    def calculate_jaw_angle_improved(self, ear_point, jaw_corner, jaw_mid):
+        """개선된 하악각 계산 - 수직선 기준으로 턱선 각도 측정"""
+        import math
+        
+        # 수직선 방향 벡터 (위에서 아래로)
+        vertical_vector = (0, 1)
+        
+        # 턱선 방향 벡터 (턱 모서리에서 턱 중간으로)
+        jaw_vector = (jaw_mid[0] - jaw_corner[0], jaw_mid[1] - jaw_corner[1])
+        
+        # 벡터 크기 계산
+        jaw_length = math.sqrt(jaw_vector[0]**2 + jaw_vector[1]**2)
+        
+        if jaw_length == 0:
+            return None
+        
+        # 턱선 벡터 정규화
+        jaw_unit = (jaw_vector[0] / jaw_length, jaw_vector[1] / jaw_length)
+        
+        # 수직선과 턱선 사이의 내적 계산
+        dot_product = vertical_vector[0] * jaw_unit[0] + vertical_vector[1] * jaw_unit[1]
+        
+        # 코사인 값 클리핑 (-1 ~ 1)
+        cos_angle = max(-1, min(1, dot_product))
+        
+        # 각도 계산 (라디안 → 도)
+        angle_rad = math.acos(abs(cos_angle))
+        angle_deg = math.degrees(angle_rad)
+        
+        # 하악각은 보통 90도에서 시작하여 180도에 가까워질수록 둔각
+        # 실제 하악각으로 변환 (90도 + 계산된 각도)
+        gonial_angle = 90 + angle_deg
+        
+        return gonial_angle
+    
+    
+    def calculate_lifting_score(self, gonial_angle, cervicomental_angle):
+        """리프팅 효과를 반영한 턱 점수 계산 (날카로울수록 높은 점수)"""
+        
+        # 1. 하악각 점수 계산 (90-120도가 이상적, 작을수록 V라인)
+        # 점수 범위: 90도=100점, 120도=80점, 140도=20점, 150도 이상=0점
+        if gonial_angle <= 90:
+            gonial_score = 100
+        elif gonial_angle <= 120:
+            gonial_score = 100 - ((gonial_angle - 90) * 20 / 30)  # 90-120도: 100-80점
+        elif gonial_angle <= 140:
+            gonial_score = 80 - ((gonial_angle - 120) * 60 / 20)   # 120-140도: 80-20점
+        else:
+            gonial_score = max(0, 20 - ((gonial_angle - 140) * 20 / 10))  # 140도 이상: 20-0점
+        
+        # 2. 턱목각 점수 계산 (100-120도가 이상적, 선명할수록 높은 점수)
+        # 점수 범위: 110도=100점, 105도=90점, 90도=60점, 80도 이하=40점
+        if 105 <= cervicomental_angle <= 115:
+            cervico_score = 100
+        elif 100 <= cervicomental_angle <= 120:
+            cervico_score = 90 - abs(cervicomental_angle - 110) * 2
+        elif 90 <= cervicomental_angle <= 130:
+            cervico_score = 70 - abs(cervicomental_angle - 110) * 1.5
+        else:
+            cervico_score = max(40, 70 - abs(cervicomental_angle - 110) * 2)
+        
+        # 3. 최종 리프팅 점수 (가중평균: 하악각 70%, 턱목각 30%)
+        lifting_score = gonial_score * 0.7 + cervico_score * 0.3
+        
+        return max(0, min(100, lifting_score))
+    
+    def display_jaw_angles_score(self, gonial_angle, cervicomental_angle, lifting_score):
+        """하악각과 턱목각 점수를 화면에 표시 (턱과 입술 중간 위치)"""
+        # 턱 최하단 (152번 랜드마크)과 입술 하단 (18번 랜드마크) 중간 지점 계산
+        jaw_bottom = self.get_landmark_coordinates(152)  # 턱 최하단
+        lip_bottom = self.get_landmark_coordinates(18)   # 아래입술 하단
+        
+        if not all([jaw_bottom, lip_bottom]):
+            return
+        
+        # 턱과 입술의 중간 지점 계산
+        center_x = (jaw_bottom[0] + lip_bottom[0]) / 2
+        center_y = (jaw_bottom[1] + lip_bottom[1]) / 2
+        
+        # 화면 좌표로 변환
+        display_point = self.image_to_screen_coords(center_x, center_y)
+        
+        if display_point:
+            # 메인 턱 곡률 점수 표시 (흰색 텍스트)
+            self.canvas.create_text(
+                display_point[0], display_point[1] - 10,
+                text=f"턱곡률 {lifting_score:.0f}점", anchor="center",
+                fill="white", font=("Arial", 12, "bold"), tags="jaw_curvature"
+            )
+            
+            # 세부 각도 정보 표시 (작은 글씨, 흰색)
+            self.canvas.create_text(
+                display_point[0], display_point[1] + 8,
+                text=f"하악각{gonial_angle:.0f}° 턱목각{cervicomental_angle:.0f}°", 
+                anchor="center", fill="white", font=("Arial", 8), tags="jaw_curvature"
+            )
+
+    def show_score_calculation_details(self, current_ratios):
+        """각 점수 계산 과정을 상세히 시각화"""
+        if self.face_landmarks is None:
+            print("얼굴이 검출되지 않았습니다.")
+            return
+            
+        # 기존 표시 제거
+        self.canvas.delete("calculation_details")
+        self.canvas.delete("calculation_lines")
+        
+        print("점수 계산 과정을 상세히 표시합니다...")
+        
+        try:
+            # 각 부위별 상세 계산 표시
+            self.show_forehead_score_detail(current_ratios)
+            self.show_mouth_score_detail(current_ratios)
+            self.show_eye_spacing_score_detail(current_ratios)
+            
+            # 20초 후 자동 제거
+            self.root.after(20000, lambda: [
+                self.canvas.delete("calculation_details"),
+                self.canvas.delete("calculation_lines")
+            ])
+            print("점수 계산 상세 정보가 20초간 표시됩니다.")
+            
+        except Exception as e:
+            print(f"점수 계산 상세 표시 중 오류: {str(e)}")
+    
+    def show_forehead_score_detail(self, current_ratios):
+        """이마(전체 얼굴 비율) 점수 계산 상세"""
+        if "전체_얼굴_비율" not in current_ratios:
+            return
+            
+        face_top = self.get_landmark_coordinates(10)
+        face_bottom = self.get_landmark_coordinates(152)
+        face_left = self.get_landmark_coordinates(234)
+        face_right = self.get_landmark_coordinates(454)
+        
+        if all([face_top, face_bottom, face_left, face_right]):
+            # 실제 측정값
+            face_height = self.calculate_distance(face_top, face_bottom)
+            face_width = self.calculate_distance(face_left, face_right)
+            current_ratio = current_ratios["전체_얼굴_비율"]
+            ideal_ratio = self.FACE_GOLDEN_RATIOS["전체_얼굴_비율"]
+            
+            # 점수 계산
+            deviation = abs(current_ratio - ideal_ratio)
+            score = max(0, 100 - (deviation / ideal_ratio * 100))
+            
+            # 화면 좌표
+            top_screen = self.image_to_screen_coords(face_top[0], face_top[1])
+            left_screen = self.image_to_screen_coords(face_left[0], face_left[1])
+            
+            if top_screen and left_screen:
+                # 측정 영역 강조
+                self.draw_bidirectional_arrow(
+                    top_screen[0], top_screen[1],
+                    self.image_to_screen_coords(face_bottom[0], face_bottom[1])[0], 
+                    self.image_to_screen_coords(face_bottom[0], face_bottom[1])[1],
+                    color="#FF6B6B", width=4, arrow_size=12
+                )
+                
+                mid_y = (top_screen[1] + self.image_to_screen_coords(face_bottom[0], face_bottom[1])[1]) / 2
+                self.draw_bidirectional_arrow(
+                    left_screen[0], mid_y,
+                    self.image_to_screen_coords(face_right[0], face_right[1])[0], mid_y,
+                    color="#FF6B6B", width=4, arrow_size=12
+                )
+                
+                # 상세 정보 박스
+                info_x = left_screen[0] - 200
+                info_y = top_screen[1] + 50
+                
+                self.canvas.create_rectangle(
+                    info_x, info_y, info_x + 180, info_y + 120,
+                    fill="white", outline="#FF6B6B", width=3, tags="calculation_details"
+                )
+                
+                lines = [
+                    "🔴 이마 점수 계산",
+                    f"얼굴 세로: {face_height:.1f}px",
+                    f"얼굴 가로: {face_width:.1f}px", 
+                    f"현재 비율: {current_ratio:.3f}",
+                    f"이상 비율: {ideal_ratio:.3f}",
+                    f"편차: {deviation:.3f}",
+                    f"최종 점수: {score:.1f}%"
+                ]
+                
+                for i, line in enumerate(lines):
+                    color = "#FF6B6B" if i == 0 else "#000000"
+                    font = ("Arial", 8, "bold") if i == 0 else ("Arial", 7)
+                    self.canvas.create_text(
+                        info_x + 5, info_y + 10 + i*15,
+                        text=line, anchor="w", fill=color, font=font,
+                        tags="calculation_details"
+                    )
+    
+    def show_mouth_score_detail(self, current_ratios):
+        """입 점수 계산 상세"""
+        if "입_너비" not in current_ratios:
+            return
+            
+        mouth_left = self.get_landmark_coordinates(61)
+        mouth_right = self.get_landmark_coordinates(291)
+        nose_left = self.get_landmark_coordinates(129)
+        nose_right = self.get_landmark_coordinates(358)
+        
+        if all([mouth_left, mouth_right, nose_left, nose_right]):
+            # 실제 측정값
+            mouth_width = self.calculate_distance(mouth_left, mouth_right)
+            nose_width = self.calculate_distance(nose_left, nose_right)
+            current_ratio = current_ratios["입_너비"]
+            ideal_ratio = self.FACE_GOLDEN_RATIOS["입_너비"]
+            
+            # 점수 계산
+            deviation = abs(current_ratio - ideal_ratio)
+            score = max(0, 100 - (deviation / ideal_ratio * 100))
+            
+            # 화면 좌표
+            ml_screen = self.image_to_screen_coords(mouth_left[0], mouth_left[1])
+            mr_screen = self.image_to_screen_coords(mouth_right[0], mouth_right[1])
+            nl_screen = self.image_to_screen_coords(nose_left[0], nose_left[1])
+            nr_screen = self.image_to_screen_coords(nose_right[0], nose_right[1])
+            
+            if all([ml_screen, mr_screen, nl_screen, nr_screen]):
+                # 측정 영역 강조
+                self.draw_bidirectional_arrow(
+                    ml_screen[0], ml_screen[1],
+                    mr_screen[0], mr_screen[1],
+                    color="#FFEAA7", width=4, arrow_size=10
+                )
+                
+                self.draw_bidirectional_arrow(
+                    nl_screen[0], nl_screen[1],
+                    nr_screen[0], nr_screen[1],
+                    color="#E17055", width=4, arrow_size=10
+                )
+                
+                # 상세 정보 박스
+                info_x = mr_screen[0] + 20
+                info_y = mr_screen[1] + 20
+                
+                self.canvas.create_rectangle(
+                    info_x, info_y, info_x + 180, info_y + 120,
+                    fill="white", outline="#FFEAA7", width=3, tags="calculation_details"
+                )
+                
+                lines = [
+                    "💛 입 점수 계산",
+                    f"입 너비: {mouth_width:.1f}px",
+                    f"코 너비: {nose_width:.1f}px",
+                    f"현재 비율: {current_ratio:.3f}",
+                    f"이상 비율: {ideal_ratio:.3f}",
+                    f"편차: {deviation:.3f}",
+                    f"최종 점수: {score:.1f}%"
+                ]
+                
+                for i, line in enumerate(lines):
+                    color = "#FFEAA7" if i == 0 else "#000000"
+                    font = ("Arial", 8, "bold") if i == 0 else ("Arial", 7)
+                    self.canvas.create_text(
+                        info_x + 5, info_y + 10 + i*15,
+                        text=line, anchor="w", fill=color, font=font,
+                        tags="calculation_details"
+                    )
+    
+    def show_eye_spacing_score_detail(self, current_ratios):
+        """눈간격 점수 계산 상세"""
+        if "눈_간격" not in current_ratios:
+            return
+            
+        left_eye_inner = self.get_landmark_coordinates(133)
+        left_eye_outer = self.get_landmark_coordinates(33)
+        right_eye_inner = self.get_landmark_coordinates(362)
+        right_eye_outer = self.get_landmark_coordinates(263)
+        
+        if all([left_eye_inner, left_eye_outer, right_eye_inner, right_eye_outer]):
+            # 실제 측정값
+            left_eye_width = self.calculate_distance(left_eye_inner, left_eye_outer)
+            right_eye_width = self.calculate_distance(right_eye_inner, right_eye_outer)
+            eye_gap = self.calculate_distance(left_eye_inner, right_eye_inner)
+            avg_eye_width = (left_eye_width + right_eye_width) / 2
+            current_ratio = current_ratios["눈_간격"]
+            ideal_ratio = 1.0
+            
+            # 점수 계산
+            deviation = abs(current_ratio - ideal_ratio)
+            score = max(0, 100 - (deviation / ideal_ratio * 100))
+            
+            # 화면 좌표
+            coords = {}
+            coords['li'] = self.image_to_screen_coords(left_eye_inner[0], left_eye_inner[1])
+            coords['lo'] = self.image_to_screen_coords(left_eye_outer[0], left_eye_outer[1])
+            coords['ri'] = self.image_to_screen_coords(right_eye_inner[0], right_eye_inner[1])
+            coords['ro'] = self.image_to_screen_coords(right_eye_outer[0], right_eye_outer[1])
+            
+            if all(coords.values()):
+                # 측정 영역 강조
+                self.draw_bidirectional_arrow(
+                    coords['li'][0], coords['li'][1],
+                    coords['lo'][0], coords['lo'][1],
+                    color="#74b9ff", width=4, arrow_size=8
+                )
+                
+                self.draw_bidirectional_arrow(
+                    coords['ri'][0], coords['ri'][1],
+                    coords['ro'][0], coords['ro'][1],
+                    color="#74b9ff", width=4, arrow_size=8
+                )
+                
+                self.draw_bidirectional_arrow(
+                    coords['li'][0], coords['li'][1],
+                    coords['ri'][0], coords['ri'][1],
+                    color="#4ECDC4", width=5, arrow_size=10
+                )
+                
+                # 상세 정보 박스
+                info_x = coords['ri'][0] + 30
+                info_y = coords['ri'][1] - 100
+                
+                self.canvas.create_rectangle(
+                    info_x, info_y, info_x + 190, info_y + 130,
+                    fill="white", outline="#4ECDC4", width=3, tags="calculation_details"
+                )
+                
+                lines = [
+                    "🔵 눈간격 점수 계산",
+                    f"왼쪽 눈: {left_eye_width:.1f}px",
+                    f"오른쪽 눈: {right_eye_width:.1f}px",
+                    f"평균 눈너비: {avg_eye_width:.1f}px",
+                    f"눈사이 간격: {eye_gap:.1f}px",
+                    f"현재 비율: {current_ratio:.3f}",
+                    f"이상 비율: {ideal_ratio:.3f}",
+                    f"편차: {deviation:.3f}",
+                    f"최종 점수: {score:.1f}%"
+                ]
+                
+                for i, line in enumerate(lines):
+                    color = "#4ECDC4" if i == 0 else "#000000"
+                    font = ("Arial", 8, "bold") if i == 0 else ("Arial", 7)
+                    self.canvas.create_text(
+                        info_x + 5, info_y + 10 + i*13,
+                        text=line, anchor="w", fill=color, font=font,
+                        tags="calculation_details"
+                    )
+
+    def draw_face_outline_ratio(self, current_ratios):
+        """전체 얼굴 비율 라인 그리기"""
+        face_top = self.get_landmark_coordinates(10)
+        face_bottom = self.get_landmark_coordinates(152)
+        face_left = self.get_landmark_coordinates(234)
+        face_right = self.get_landmark_coordinates(454)
+        
+        if all([face_top, face_bottom, face_left, face_right]):
+            # 화면 좌표 변환
+            top_screen = self.image_to_screen_coords(face_top[0], face_top[1])
+            bottom_screen = self.image_to_screen_coords(face_bottom[0], face_bottom[1])
+            left_screen = self.image_to_screen_coords(face_left[0], face_left[1])
+            right_screen = self.image_to_screen_coords(face_right[0], face_right[1])
+            
+            if all([top_screen, bottom_screen, left_screen, right_screen]):
+                # 세로 라인 (얼굴 길이) - 양방향 화살표
+                self.draw_bidirectional_arrow(
+                    top_screen[0], top_screen[1], 
+                    bottom_screen[0], bottom_screen[1],
+                    color="#ff0000", width=3, arrow_size=10
+                )
+                
+                # 가로 라인 (얼굴 너비) - 양방향 화살표
+                mid_y = (top_screen[1] + bottom_screen[1]) // 2
+                self.draw_bidirectional_arrow(
+                    left_screen[0], mid_y, 
+                    right_screen[0], mid_y,
+                    color="#ff0000", width=3, arrow_size=10
+                )
+                
+                # 측정값 표시
+                face_height = self.calculate_distance(face_top, face_bottom)
+                face_width = self.calculate_distance(face_left, face_right)
+                current_ratio = face_height / face_width if face_width > 0 else 0
+                golden_ratio = self.FACE_GOLDEN_RATIOS["전체_얼굴_비율"]
+                
+                # 라벨 배경
+                label_x = right_screen[0] + 10
+                label_y = mid_y - 30
+                
+                self.canvas.create_rectangle(
+                    label_x, label_y, label_x + 200, label_y + 60,
+                    fill="white", outline="#ff0000", width=2, tags="ratio_lines"
+                )
+                
+                # 텍스트 라벨
+                self.canvas.create_text(
+                    label_x + 5, label_y + 10, 
+                    text=f"📏 전체 얼굴 비율", 
+                    anchor="w", fill="#000000", font=("Arial", 9, "bold"),
+                    tags="ratio_lines"
+                )
+                self.canvas.create_text(
+                    label_x + 5, label_y + 25, 
+                    text=f"현재: {current_ratio:.3f}", 
+                    anchor="w", fill="#ff0000", font=("Arial", 8),
+                    tags="ratio_lines"
+                )
+                self.canvas.create_text(
+                    label_x + 5, label_y + 40, 
+                    text=f"황금: {golden_ratio:.3f}", 
+                    anchor="w", fill="#ffd700", font=("Arial", 8),
+                    tags="ratio_lines"
+                )
+    
+    def draw_face_thirds_ratio(self, current_ratios):
+        """얼굴 삼등분 라인 그리기"""
+        forehead_top = self.get_landmark_coordinates(10)
+        forehead_bottom = self.get_landmark_coordinates(9)
+        mid_face_bottom = self.get_landmark_coordinates(164)
+        lower_face_bottom = self.get_landmark_coordinates(152)
+        face_left = self.get_landmark_coordinates(234)
+        face_right = self.get_landmark_coordinates(454)
+        
+        if all([forehead_top, forehead_bottom, mid_face_bottom, lower_face_bottom, face_left, face_right]):
+            # 화면 좌표 변환
+            coords = {}
+            coords['top'] = self.image_to_screen_coords(forehead_top[0], forehead_top[1])
+            coords['f_bottom'] = self.image_to_screen_coords(forehead_bottom[0], forehead_bottom[1])
+            coords['m_bottom'] = self.image_to_screen_coords(mid_face_bottom[0], mid_face_bottom[1])
+            coords['l_bottom'] = self.image_to_screen_coords(lower_face_bottom[0], lower_face_bottom[1])
+            coords['left'] = self.image_to_screen_coords(face_left[0], face_left[1])
+            coords['right'] = self.image_to_screen_coords(face_right[0], face_right[1])
+            
+            if all(coords.values()):
+                # 삼등분 가로 라인들
+                lines = [
+                    (coords['f_bottom'], "이마-중간얼굴 경계"),
+                    (coords['m_bottom'], "중간-아래얼굴 경계")
+                ]
+                
+                for (y_coord, label), color in zip(lines, ["#00ff00", "#00aa00"]):
+                    # 양방향 화살표 점선으로 그리기
+                    self.draw_bidirectional_arrow(
+                        coords['left'][0], y_coord[1], 
+                        coords['right'][0], y_coord[1],
+                        color=color, width=2, arrow_size=7, dash=(5, 3)
+                    )
+                    
+                    # 라벨
+                    self.canvas.create_text(
+                        coords['left'][0] - 10, y_coord[1], 
+                        text=label, anchor="e", fill=color, 
+                        font=("Arial", 7), tags="ratio_lines"
+                    )
+                
+                # 비율 계산 및 표시
+                if "이마_비율" in current_ratios:
+                    label_x = coords['right'][0] + 10
+                    label_y = coords['top'][1] + 50
+                    
+                    self.canvas.create_rectangle(
+                        label_x, label_y, label_x + 160, label_y + 80,
+                        fill="white", outline="#00ff00", width=2, tags="ratio_lines"
+                    )
+                    
+                    self.canvas.create_text(
+                        label_x + 5, label_y + 10, 
+                        text="📐 얼굴 삼등분", 
+                        anchor="w", fill="#000000", font=("Arial", 9, "bold"),
+                        tags="ratio_lines"
+                    )
+                    
+                    ratios = ["이마_비율", "중간_얼굴_비율", "아래_얼굴_비율"]
+                    colors = ["#ff6b6b", "#4ecdc4", "#45b7d1"]
+                    names = ["이마", "중간", "아래"]
+                    
+                    for i, (ratio_key, color, name) in enumerate(zip(ratios, colors, names)):
+                        if ratio_key in current_ratios:
+                            self.canvas.create_text(
+                                label_x + 5, label_y + 25 + i*15, 
+                                text=f"{name}: {current_ratios[ratio_key]:.2f} (이상:1.0)", 
+                                anchor="w", fill=color, font=("Arial", 7),
+                                tags="ratio_lines"
+                            )
+    
+    def draw_eye_spacing_ratio(self, current_ratios):
+        """눈 간격 비율 라인 그리기"""
+        left_eye_inner = self.get_landmark_coordinates(133)
+        left_eye_outer = self.get_landmark_coordinates(33)
+        right_eye_inner = self.get_landmark_coordinates(362)
+        right_eye_outer = self.get_landmark_coordinates(263)
+        
+        if all([left_eye_inner, left_eye_outer, right_eye_inner, right_eye_outer]):
+            # 화면 좌표 변환
+            coords = {}
+            coords['li'] = self.image_to_screen_coords(left_eye_inner[0], left_eye_inner[1])
+            coords['lo'] = self.image_to_screen_coords(left_eye_outer[0], left_eye_outer[1])
+            coords['ri'] = self.image_to_screen_coords(right_eye_inner[0], right_eye_inner[1])
+            coords['ro'] = self.image_to_screen_coords(right_eye_outer[0], right_eye_outer[1])
+            
+            if all(coords.values()):
+                # 왼쪽 눈 너비 양방향 화살표
+                self.draw_bidirectional_arrow(
+                    coords['li'][0], coords['li'][1], 
+                    coords['lo'][0], coords['lo'][1],
+                    color="#0066ff", width=2, arrow_size=6
+                )
+                
+                # 오른쪽 눈 너비 양방향 화살표
+                self.draw_bidirectional_arrow(
+                    coords['ri'][0], coords['ri'][1], 
+                    coords['ro'][0], coords['ro'][1],
+                    color="#0066ff", width=2, arrow_size=6
+                )
+                
+                # 눈 사이 간격 양방향 화살표
+                self.draw_bidirectional_arrow(
+                    coords['li'][0], coords['li'][1], 
+                    coords['ri'][0], coords['ri'][1],
+                    color="#ffaa00", width=3, arrow_size=8
+                )
+                
+                # 측정값 표시
+                if "눈_간격" in current_ratios:
+                    left_eye_width = self.calculate_distance(left_eye_inner, left_eye_outer)
+                    right_eye_width = self.calculate_distance(right_eye_inner, right_eye_outer)
+                    eye_gap = self.calculate_distance(left_eye_inner, right_eye_inner)
+                    avg_eye_width = (left_eye_width + right_eye_width) / 2
+                    
+                    label_x = coords['ri'][0] + 10
+                    label_y = coords['ri'][1] - 60
+                    
+                    self.canvas.create_rectangle(
+                        label_x, label_y, label_x + 180, label_y + 70,
+                        fill="white", outline="#0066ff", width=2, tags="ratio_lines"
+                    )
+                    
+                    self.canvas.create_text(
+                        label_x + 5, label_y + 10, 
+                        text="👁️ 눈 간격 비율", 
+                        anchor="w", fill="#000000", font=("Arial", 9, "bold"),
+                        tags="ratio_lines"
+                    )
+                    self.canvas.create_text(
+                        label_x + 5, label_y + 25, 
+                        text=f"눈사이: {eye_gap:.1f}px", 
+                        anchor="w", fill="#ffaa00", font=("Arial", 7),
+                        tags="ratio_lines"
+                    )
+                    self.canvas.create_text(
+                        label_x + 5, label_y + 40, 
+                        text=f"평균눈너비: {avg_eye_width:.1f}px", 
+                        anchor="w", fill="#0066ff", font=("Arial", 7),
+                        tags="ratio_lines"
+                    )
+                    self.canvas.create_text(
+                        label_x + 5, label_y + 55, 
+                        text=f"비율: {current_ratios['눈_간격']:.3f} (이상:1.0)", 
+                        anchor="w", fill="#ff0000", font=("Arial", 7),
+                        tags="ratio_lines"
+                    )
+    
+    def draw_eye_spacing_percentage(self, current_ratios):
+        """눈간격 비율 수치화 % 표시"""
+        if "눈_간격" in current_ratios:
+            # 이상적인 비율 대비 퍼센티지 계산
+            ideal_ratio = 1.0
+            current_ratio = current_ratios['눈_간격']
+            percentage = (current_ratio / ideal_ratio) * 100
+            
+            # 얼굴 중앙에 퍼센티지 표시
+            face_center = self.get_landmark_coordinates(2)  # 코 끝
+            if face_center:
+                screen_pos = self.image_to_screen_coords(face_center[0], face_center[1])
+                if screen_pos:
+                    # 눈간격 퍼센티지 표시 (눈 높이 기준)
+                    left_eye = self.get_landmark_coordinates(133)
+                    if left_eye:
+                        eye_screen = self.image_to_screen_coords(left_eye[0], left_eye[1])
+                        if eye_screen:
+                            self.canvas.create_text(
+                                screen_pos[0] - 50, eye_screen[1] - 40,
+                                text=f"👁️ {percentage:.1f}%", anchor="center",
+                                fill="blue", font=("Arial", 16, "bold"), tags="ratio_lines"
+                            )
+    
+    def draw_eye_spacing_arrows_only(self, current_ratios):
+        """눈간격 화살표만 그리기 (네모박스 없음)"""
+        left_eye_inner = self.get_landmark_coordinates(133)
+        left_eye_outer = self.get_landmark_coordinates(33)
+        right_eye_inner = self.get_landmark_coordinates(362)
+        right_eye_outer = self.get_landmark_coordinates(263)
+        
+        if all([left_eye_inner, left_eye_outer, right_eye_inner, right_eye_outer]):
+            # 화면 좌표 변환
+            coords = {}
+            coords['li'] = self.image_to_screen_coords(left_eye_inner[0], left_eye_inner[1])
+            coords['lo'] = self.image_to_screen_coords(left_eye_outer[0], left_eye_outer[1])
+            coords['ri'] = self.image_to_screen_coords(right_eye_inner[0], right_eye_inner[1])
+            coords['ro'] = self.image_to_screen_coords(right_eye_outer[0], right_eye_outer[1])
+            
+            if all(coords.values()):
+                # 왼쪽 눈 너비 양방향 화살표
+                self.draw_bidirectional_arrow(
+                    coords['li'][0], coords['li'][1], 
+                    coords['lo'][0], coords['lo'][1],
+                    color="#0066ff", width=2, arrow_size=6
+                )
+                
+                # 오른쪽 눈 너비 양방향 화살표
+                self.draw_bidirectional_arrow(
+                    coords['ri'][0], coords['ri'][1], 
+                    coords['ro'][0], coords['ro'][1],
+                    color="#0066ff", width=2, arrow_size=6
+                )
+                
+                # 눈 사이 간격 양방향 화살표
+                self.draw_bidirectional_arrow(
+                    coords['li'][0], coords['li'][1], 
+                    coords['ri'][0], coords['ri'][1],
+                    color="#ffaa00", width=3, arrow_size=8
+                )
+    
+    def draw_mouth_nose_ratio(self, current_ratios):
+        """입/코 너비 비율 라인 그리기"""
+        nose_left = self.get_landmark_coordinates(129)
+        nose_right = self.get_landmark_coordinates(358)
+        mouth_left = self.get_landmark_coordinates(61)
+        mouth_right = self.get_landmark_coordinates(291)
+        
+        if all([nose_left, nose_right, mouth_left, mouth_right]):
+            # 화면 좌표 변환
+            coords = {}
+            coords['nl'] = self.image_to_screen_coords(nose_left[0], nose_left[1])
+            coords['nr'] = self.image_to_screen_coords(nose_right[0], nose_right[1])
+            coords['ml'] = self.image_to_screen_coords(mouth_left[0], mouth_left[1])
+            coords['mr'] = self.image_to_screen_coords(mouth_right[0], mouth_right[1])
+            
+            if all(coords.values()):
+                # 코 너비 양방향 화살표
+                self.draw_bidirectional_arrow(
+                    coords['nl'][0], coords['nl'][1], 
+                    coords['nr'][0], coords['nr'][1],
+                    color="#ff6600", width=2, arrow_size=6
+                )
+                
+                # 입 너비 양방향 화살표
+                self.draw_bidirectional_arrow(
+                    coords['ml'][0], coords['ml'][1], 
+                    coords['mr'][0], coords['mr'][1],
+                    color="#ff0066", width=2, arrow_size=6
+                )
+                
+                # 측정값 표시
+                if "입_너비" in current_ratios:
+                    nose_width = self.calculate_distance(nose_left, nose_right)
+                    mouth_width = self.calculate_distance(mouth_left, mouth_right)
+                    
+                    label_x = coords['mr'][0] + 10
+                    label_y = coords['mr'][1] - 30
+                    
+                    self.canvas.create_rectangle(
+                        label_x, label_y, label_x + 180, label_y + 70,
+                        fill="white", outline="#ff0066", width=2, tags="ratio_lines"
+                    )
+                    
+                    self.canvas.create_text(
+                        label_x + 5, label_y + 10, 
+                        text="👄 입/코 비율", 
+                        anchor="w", fill="#000000", font=("Arial", 9, "bold"),
+                        tags="ratio_lines"
+                    )
+                    self.canvas.create_text(
+                        label_x + 5, label_y + 25, 
+                        text=f"입너비: {mouth_width:.1f}px", 
+                        anchor="w", fill="#ff0066", font=("Arial", 7),
+                        tags="ratio_lines"
+                    )
+                    self.canvas.create_text(
+                        label_x + 5, label_y + 40, 
+                        text=f"코너비: {nose_width:.1f}px", 
+                        anchor="w", fill="#ff6600", font=("Arial", 7),
+                        tags="ratio_lines"
+                    )
+                    self.canvas.create_text(
+                        label_x + 5, label_y + 55, 
+                        text=f"비율: {current_ratios['입_너비']:.3f} (이상:1.618)", 
+                        anchor="w", fill="#ff0000", font=("Arial", 7),
+                        tags="ratio_lines"
+                    )
+    
+    def draw_mouth_nose_percentage(self, current_ratios):
+        """입코비율 수치화 % 표시"""
+        if "입_너비" in current_ratios:
+            # 이상적인 비율 대비 퍼센티지 계산 (황금비율 기준)
+            ideal_ratio = 1.618  # 황금비율
+            current_ratio = current_ratios['입_너비']
+            percentage = (current_ratio / ideal_ratio) * 100
+            
+            # 입 아래쪽에 퍼센티지 표시
+            mouth_center = self.get_landmark_coordinates(13)  # 입 아래
+            if mouth_center:
+                screen_pos = self.image_to_screen_coords(mouth_center[0], mouth_center[1])
+                if screen_pos:
+                    self.canvas.create_text(
+                        screen_pos[0], screen_pos[1] + 30,
+                        text=f"👄 {percentage:.1f}%", anchor="center",
+                        fill="red", font=("Arial", 16, "bold"), tags="ratio_lines"
+                    )
+    
+    def draw_mouth_nose_arrows_only(self, current_ratios):
+        """입코비율 화살표만 그리기 (네모박스 없음)"""
+        nose_left = self.get_landmark_coordinates(129)
+        nose_right = self.get_landmark_coordinates(358)
+        mouth_left = self.get_landmark_coordinates(61)
+        mouth_right = self.get_landmark_coordinates(291)
+        
+        if all([nose_left, nose_right, mouth_left, mouth_right]):
+            # 화면 좌표 변환
+            coords = {}
+            coords['nl'] = self.image_to_screen_coords(nose_left[0], nose_left[1])
+            coords['nr'] = self.image_to_screen_coords(nose_right[0], nose_right[1])
+            coords['ml'] = self.image_to_screen_coords(mouth_left[0], mouth_left[1])
+            coords['mr'] = self.image_to_screen_coords(mouth_right[0], mouth_right[1])
+            
+            if all(coords.values()):
+                # 코 너비 양방향 화살표
+                self.draw_bidirectional_arrow(
+                    coords['nl'][0], coords['nl'][1], 
+                    coords['nr'][0], coords['nr'][1],
+                    color="#ff6600", width=2, arrow_size=6
+                )
+                
+                # 입 너비 양방향 화살표
+                self.draw_bidirectional_arrow(
+                    coords['ml'][0], coords['ml'][1], 
+                    coords['mr'][0], coords['mr'][1],
+                    color="#ff0066", width=2, arrow_size=6
+                )
+    
+    def draw_golden_ratio_guide(self):
+        """황금비율 가이드라인 표시"""
+        face_top = self.get_landmark_coordinates(10)
+        face_bottom = self.get_landmark_coordinates(152)
+        face_left = self.get_landmark_coordinates(234)
+        face_right = self.get_landmark_coordinates(454)
+        
+        if all([face_top, face_bottom, face_left, face_right]):
+            # 현재 얼굴 크기
+            face_height = self.calculate_distance(face_top, face_bottom)
+            face_width = self.calculate_distance(face_left, face_right)
+            
+            # 황금비율로 계산한 이상적인 크기
+            ideal_height = face_width * self.GOLDEN_RATIO
+            ideal_width = face_height / self.GOLDEN_RATIO
+            
+            # 화면 좌표
+            top_screen = self.image_to_screen_coords(face_top[0], face_top[1])
+            left_screen = self.image_to_screen_coords(face_left[0], face_left[1])
+            
+            if top_screen and left_screen:
+                # 황금비율 가이드 박스 (점선)
+                center_x = (face_left[0] + face_right[0]) / 2
+                center_y = (face_top[1] + face_bottom[1]) / 2
+                
+                ideal_top = center_y - ideal_height / 2
+                ideal_bottom = center_y + ideal_height / 2
+                ideal_left = center_x - ideal_width / 2
+                ideal_right = center_x + ideal_width / 2
+                
+                # 화면 좌표로 변환
+                ideal_coords = {}
+                ideal_coords['top'] = self.image_to_screen_coords(center_x, ideal_top)
+                ideal_coords['bottom'] = self.image_to_screen_coords(center_x, ideal_bottom)
+                ideal_coords['left'] = self.image_to_screen_coords(ideal_left, center_y)
+                ideal_coords['right'] = self.image_to_screen_coords(ideal_right, center_y)
+                
+                if all(ideal_coords.values()):
+                    # 황금비율 가이드 라인 (점선 양방향 화살표)
+                    self.draw_bidirectional_arrow(
+                        ideal_coords['top'][0], ideal_coords['top'][1],
+                        ideal_coords['bottom'][0], ideal_coords['bottom'][1],
+                        color="#ffd700", width=2, arrow_size=8, dash=(3, 7)
+                    )
+                    
+                    self.draw_bidirectional_arrow(
+                        ideal_coords['left'][0], ideal_coords['left'][1],
+                        ideal_coords['right'][0], ideal_coords['right'][1],
+                        color="#ffd700", width=2, arrow_size=8, dash=(3, 7)
+                    )
+                    
+                    # 가이드 라벨
+                    self.canvas.create_text(
+                        ideal_coords['right'][0] + 10, ideal_coords['right'][1] - 20, 
+                        text="✨ 황금비율 가이드", 
+                        anchor="w", fill="#ffd700", font=("Arial", 8, "bold"),
+                        tags="ratio_lines"
+                    )
 
 def main():
     root = tk.Tk()
