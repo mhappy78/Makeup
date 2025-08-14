@@ -28,6 +28,21 @@ class FaceSimulator:
     CHEEK_FACE_SIZE_LANDMARKS = (234, 447)  # 얼굴 크기 기준 랜드마크
     CHEEK_TARGET_LANDMARKS = (215, 435, 4)  # 변형 대상 랜드마크 (215, 435 → 4)
     
+    # 앞튀임+ 프리셋 상수
+    FRONT_PROTUSION_PRESET_STRENGTH = 0.05       # 변형 강도
+    FRONT_PROTUSION_PRESET_INFLUENCE_RATIO = 0.1 # 얼굴 크기 대비 영향반경 (10%)
+    FRONT_PROTUSION_PRESET_PULL_RATIO = 0.1       # 랜드마크 간 거리 대비 당기는 거리 (10%)
+    FRONT_PROTUSION_FACE_SIZE_LANDMARKS = (234, 447)  # 얼굴 크기 기준 랜드마크
+    FRONT_PROTUSION_TARGET_LANDMARKS = (243, 463, (56, 190), (414, 286), 168, 6)  # 변형 대상 랜드마크 (243, 463, 56과190중간, 414와286중간 → 168과 6의 중간점)
+    FRONT_PROTUSION_ELLIPSE_RATIO = 1.3           # 타원 세로 비율 (가로 대비 세로가 30% 더 김)
+    
+    # 뒷트임+ 프리셋 상수
+    BACK_SLIT_PRESET_STRENGTH = 0.1               # 변형 강도 (10%)
+    BACK_SLIT_PRESET_INFLUENCE_RATIO = 0.1        # 얼굴 크기 대비 영향반경 (10%)
+    BACK_SLIT_PRESET_PULL_RATIO = 0.1             # 랜드마크 간 거리 대비 당기는 거리 (10%)
+    BACK_SLIT_FACE_SIZE_LANDMARKS = (234, 447)    # 얼굴 크기 기준 랜드마크
+    BACK_SLIT_TARGET_LANDMARKS = (33, 359, (34, 162), (368, 264))  # 변형 대상 랜드마크 (33→34/162중간, 359→368/264중간)
+    
     def __init__(self, root):
         self.root = root
         self.root.title("🔧 얼굴 성형 시뮬레이터")
@@ -89,6 +104,8 @@ class FaceSimulator:
         self.lower_jaw_shot_count = 0
         self.middle_jaw_shot_count = 0
         self.cheek_shot_count = 0
+        self.front_protusion_shot_count = 0
+        self.back_slit_shot_count = 0
         
         # 마우스 상태
         self.is_dragging = False
@@ -479,6 +496,24 @@ class FaceSimulator:
                                            font=("Arial", 8), foreground="blue")
         self.cheek_counter_label.pack(side=tk.RIGHT, padx=(5, 0))
         
+        # 앞튀임+ 프리셋
+        front_protusion_frame = ttk.Frame(preset_frame)
+        front_protusion_frame.pack(fill=tk.X, pady=2)
+        ttk.Button(front_protusion_frame, text="💉 앞튀임+", 
+                  command=self.apply_front_protusion_100shot_preset).pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.front_protusion_counter_label = ttk.Label(front_protusion_frame, text="", 
+                                                     font=("Arial", 8), foreground="blue")
+        self.front_protusion_counter_label.pack(side=tk.RIGHT, padx=(5, 0))
+        
+        # 뒷트임+ 프리셋
+        back_slit_frame = ttk.Frame(preset_frame)
+        back_slit_frame.pack(fill=tk.X, pady=2)
+        ttk.Button(back_slit_frame, text="💉 뒷트임+", 
+                  command=self.apply_back_slit_100shot_preset).pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.back_slit_counter_label = ttk.Label(back_slit_frame, text="", 
+                                               font=("Arial", 8), foreground="blue")
+        self.back_slit_counter_label.pack(side=tk.RIGHT, padx=(5, 0))
+        
         # 시각화 옵션
         self.show_preset_visualization = tk.BooleanVar(value=True)
         ttk.Checkbutton(preset_frame, text="프리셋 시각화 표시", 
@@ -641,9 +676,13 @@ class FaceSimulator:
                 self.lower_jaw_shot_count = 0
                 self.middle_jaw_shot_count = 0
                 self.cheek_shot_count = 0
+                self.front_protusion_shot_count = 0
+                self.back_slit_shot_count = 0
                 self.lower_jaw_counter_label.config(text="")
                 self.middle_jaw_counter_label.config(text="")
                 self.cheek_counter_label.config(text="")
+                self.front_protusion_counter_label.config(text="")
+                self.back_slit_counter_label.config(text="")
                 
                 # 캔버스에 맞게 조정 및 표시
                 self.fit_and_display_image()
@@ -1252,8 +1291,8 @@ class FaceSimulator:
         
         return cv2.remap(image, map_x, map_y, cv2.INTER_CUBIC, borderMode=cv2.BORDER_REFLECT)
     
-    def apply_pull_warp_with_params(self, start_x, start_y, end_x, end_y, strength, influence_radius_px=None):
-        """파라미터를 지정한 당기기 변형"""
+    def apply_pull_warp_with_params(self, start_x, start_y, end_x, end_y, strength, influence_radius_px=None, ellipse_ratio=None):
+        """파라미터를 지정한 당기기 변형 (타원형 영향반경 지원)"""
         if self.current_image is None:
             return
             
@@ -1279,7 +1318,6 @@ class FaceSimulator:
         
         pixel_dx = map_x - start_x
         pixel_dy = map_y - start_y
-        pixel_dist = np.sqrt(pixel_dx*pixel_dx + pixel_dy*pixel_dy)
         
         # 커스텀 영향반경 사용 또는 기본값
         if influence_radius_px is not None:
@@ -1288,8 +1326,24 @@ class FaceSimulator:
         else:
             influence_radius = self.get_influence_radius_pixels()
             print(f"기본 영향반경 사용: {influence_radius}px")
+        
+        # 타원형 영향반경 계산
+        if ellipse_ratio is not None:
+            # 타원형: 가로 반경 = influence_radius, 세로 반경 = influence_radius * ellipse_ratio
+            ellipse_x_radius = influence_radius
+            ellipse_y_radius = influence_radius * ellipse_ratio
             
-        mask = pixel_dist < influence_radius
+            # 타원 방정식: (x/a)² + (y/b)² < 1
+            ellipse_dist = (pixel_dx / ellipse_x_radius) ** 2 + (pixel_dy / ellipse_y_radius) ** 2
+            mask = ellipse_dist < 1.0
+            
+            # 타원형 거리 계산 (정규화된 타원 거리)
+            pixel_dist = np.sqrt(ellipse_dist) * influence_radius
+            print(f"타원형 영향반경 사용: 가로 {ellipse_x_radius}px, 세로 {ellipse_y_radius}px")
+        else:
+            # 원형 영향반경 (기존 방식)
+            pixel_dist = np.sqrt(pixel_dx*pixel_dx + pixel_dy*pixel_dy)
+            mask = pixel_dist < influence_radius
         
         strength_map = np.zeros_like(pixel_dist)
         valid_dist = pixel_dist[mask]
@@ -1667,9 +1721,13 @@ class FaceSimulator:
             self.lower_jaw_shot_count = 0
             self.middle_jaw_shot_count = 0
             self.cheek_shot_count = 0
+            self.front_protusion_shot_count = 0
+            self.back_slit_shot_count = 0
             self.lower_jaw_counter_label.config(text="")
             self.middle_jaw_counter_label.config(text="")
             self.cheek_counter_label.config(text="")
+            self.front_protusion_counter_label.config(text="")
+            self.back_slit_counter_label.config(text="")
             print("프리셋 카운터가 리셋되었습니다.")
             
             self.update_display()
@@ -3724,7 +3782,7 @@ class FaceSimulator:
         except Exception as e:
             print(f"프리셋 시각화 맨 앞으로 가져오기 오류: {str(e)}")
     
-    def draw_preset_visualization(self, start_point, end_point, influence_radius_px, strength, label=""):
+    def draw_preset_visualization(self, start_point, end_point, influence_radius_px, strength, label="", ellipse_ratio=None):
         """프리셋 시각화 요소 그리기"""
         if not self.show_preset_visualization.get():
             print(f"시각화 비활성화됨")
@@ -3773,15 +3831,29 @@ class FaceSimulator:
             )
             print(f"화살표 생성: ID={arrow_line}")
             
-            # 4. 영향반경 원 - 50% 더 얇게
+            # 4. 영향반경 표시 (원형 또는 타원형)
             if screen_radius > 10:  # 너무 작으면 그리지 않음
-                radius_circle = self.canvas.create_oval(
-                    start_x - screen_radius, start_y - screen_radius,
-                    start_x + screen_radius, start_y + screen_radius,
-                    outline="#ffaa00", width=2, dash=(10, 10),
-                    tags="preset_visualization"
-                )
-                print(f"영향반경 원 생성: ID={radius_circle}, 반경={screen_radius:.1f}")
+                if ellipse_ratio is not None:
+                    # 타원형 영향반경
+                    ellipse_x_radius = screen_radius
+                    ellipse_y_radius = screen_radius * ellipse_ratio
+                    
+                    radius_circle = self.canvas.create_oval(
+                        start_x - ellipse_x_radius, start_y - ellipse_y_radius,
+                        start_x + ellipse_x_radius, start_y + ellipse_y_radius,
+                        outline="#ffaa00", width=2, dash=(10, 10),
+                        tags="preset_visualization"
+                    )
+                    print(f"타원형 영향반경 생성: ID={radius_circle}, 가로={ellipse_x_radius:.1f}px, 세로={ellipse_y_radius:.1f}px")
+                else:
+                    # 원형 영향반경 (기존 방식)
+                    radius_circle = self.canvas.create_oval(
+                        start_x - screen_radius, start_y - screen_radius,
+                        start_x + screen_radius, start_y + screen_radius,
+                        outline="#ffaa00", width=2, dash=(10, 10),
+                        tags="preset_visualization"
+                    )
+                    print(f"원형 영향반경 생성: ID={radius_circle}, 반경={screen_radius:.1f}px")
             else:
                 print(f"영향반경이 너무 작아서 건너뜀: {screen_radius:.1f}")
             
@@ -3870,6 +3942,14 @@ class FaceSimulator:
             self.cheek_shot_count += 100
             self.cheek_counter_label.config(text=f"(총: {self.cheek_shot_count}샷)")
             print(f"볼 카운터 업데이트: 총 {self.cheek_shot_count}샷")
+        elif preset_type == "front_protusion":
+            self.front_protusion_shot_count += 1
+            self.front_protusion_counter_label.config(text=f"(총: {self.front_protusion_shot_count}번)")
+            print(f"앞튀임 카운터 업데이트: 총 {self.front_protusion_shot_count}번")
+        elif preset_type == "back_slit":
+            self.back_slit_shot_count += 1
+            self.back_slit_counter_label.config(text=f"(총: {self.back_slit_shot_count}번)")
+            print(f"뒷트임 카운터 업데이트: 총 {self.back_slit_shot_count}번")
     
     def apply_lower_jaw_100shot_preset(self):
         """아래턱 100샷+ 프리셋 적용"""
@@ -4025,7 +4105,7 @@ class FaceSimulator:
             traceback.print_exc()
     
     def apply_jaw_preset(self, preset_name, target_landmarks, face_size_landmarks, 
-                         strength, influence_ratio, pull_ratio, labels):
+                         strength, influence_ratio, pull_ratio, labels, ellipse_ratio=None):
         """공통 턱선 프리셋 적용 함수"""
         if self.current_image is None:
             print("이미지가 로드되지 않았습니다. 먼저 이미지를 로드해주세요.")
@@ -4043,12 +4123,102 @@ class FaceSimulator:
             # 히스토리 저장
             self.save_to_history()
             
-            # 필요한 랜드마크 좌표 가져오기
-            left_landmark = self.get_landmark_coordinates(target_landmarks[0])   # 왼쪽 턱선
-            right_landmark = self.get_landmark_coordinates(target_landmarks[1])  # 오른쪽 턱선  
-            target_landmark = self.get_landmark_coordinates(target_landmarks[2]) # 타겟 (코 기둥)
+            # 랜드마크 좌표 가져오기 (2개 또는 4개 랜드마크 지원)
+            if len(target_landmarks) == 3:
+                # 기존 방식: 2개 랜드마크 + 1개 타겟
+                left_landmark = self.get_landmark_coordinates(target_landmarks[0])   # 왼쪽 랜드마크
+                right_landmark = self.get_landmark_coordinates(target_landmarks[1])  # 오른쪽 랜드마크  
+                target_landmark = self.get_landmark_coordinates(target_landmarks[2]) # 타겟 랜드마크
+                landmarks_to_transform = [left_landmark, right_landmark]
+                
+            elif len(target_landmarks) == 4:
+                # 뒷트임+ 방식: 2개 랜드마크 + 각각 다른 중간점 타겟
+                landmarks_to_transform = []
+                
+                # 첫 번째 랜드마크 (단일)
+                landmark_1 = self.get_landmark_coordinates(target_landmarks[0])
+                landmarks_to_transform.append(landmark_1)
+                
+                # 두 번째 랜드마크 (단일)
+                landmark_2 = self.get_landmark_coordinates(target_landmarks[1])
+                landmarks_to_transform.append(landmark_2)
+                
+                # 각 랜드마크별로 다른 타겟 중간점 계산
+                target_midpoints = []
+                
+                # 첫 번째 랜드마크의 타겟 중간점
+                if isinstance(target_landmarks[2], tuple) and len(target_landmarks[2]) == 2:
+                    t1_1 = self.get_landmark_coordinates(target_landmarks[2][0])
+                    t1_2 = self.get_landmark_coordinates(target_landmarks[2][1])
+                    if t1_1 and t1_2:
+                        target_1 = ((t1_1[0] + t1_2[0]) / 2, (t1_1[1] + t1_2[1]) / 2)
+                        target_midpoints.append(target_1)
+                        print(f"첫 번째 타겟 중간점: {target_landmarks[2][0]}({t1_1}) + {target_landmarks[2][1]}({t1_2}) = {target_1}")
+                    else:
+                        target_midpoints.append(None)
+                else:
+                    target_midpoints.append(None)
+                
+                # 두 번째 랜드마크의 타겟 중간점
+                if isinstance(target_landmarks[3], tuple) and len(target_landmarks[3]) == 2:
+                    t2_1 = self.get_landmark_coordinates(target_landmarks[3][0])
+                    t2_2 = self.get_landmark_coordinates(target_landmarks[3][1])
+                    if t2_1 and t2_2:
+                        target_2 = ((t2_1[0] + t2_2[0]) / 2, (t2_1[1] + t2_2[1]) / 2)
+                        target_midpoints.append(target_2)
+                        print(f"두 번째 타겟 중간점: {target_landmarks[3][0]}({t2_1}) + {target_landmarks[3][1]}({t2_2}) = {target_2}")
+                    else:
+                        target_midpoints.append(None)
+                else:
+                    target_midpoints.append(None)
+                
+                left_landmark = landmark_1  # 호환성을 위해
+                right_landmark = landmark_2  # 호환성을 위해
+                target_landmark = target_midpoints[0] if target_midpoints else None  # 첫 번째 타겟
+                
+            elif len(target_landmarks) == 6:
+                # 새로운 방식: 다양한 타입의 랜드마크 지원
+                landmarks_to_transform = []
+                
+                # 각 랜드마크 처리 (단일 또는 중간점)
+                for i in range(4):  # 처음 4개는 변형할 랜드마크
+                    landmark_def = target_landmarks[i]
+                    
+                    if isinstance(landmark_def, tuple) and len(landmark_def) == 2:
+                        # 중간점 랜드마크
+                        lm1 = self.get_landmark_coordinates(landmark_def[0])
+                        lm2 = self.get_landmark_coordinates(landmark_def[1])
+                        if lm1 and lm2:
+                            midpoint = ((lm1[0] + lm2[0]) / 2, (lm1[1] + lm2[1]) / 2)
+                            landmarks_to_transform.append(midpoint)
+                            print(f"중간점 랜드마크 {i}: {landmark_def[0]}({lm1}) + {landmark_def[1]}({lm2}) = {midpoint}")
+                        else:
+                            landmarks_to_transform.append(None)
+                    else:
+                        # 단일 랜드마크
+                        landmark = self.get_landmark_coordinates(landmark_def)
+                        landmarks_to_transform.append(landmark)
+                        print(f"단일 랜드마크 {i}: {landmark_def} = {landmark}")
+                
+                # 타겟 중간점 계산
+                target_1 = self.get_landmark_coordinates(target_landmarks[4])     # 타겟 랜드마크 1
+                target_2 = self.get_landmark_coordinates(target_landmarks[5])     # 타겟 랜드마크 2
+                
+                if target_1 and target_2:
+                    target_landmark = ((target_1[0] + target_2[0]) / 2, (target_1[1] + target_2[1]) / 2)
+                    print(f"타겟 중간점 계산: {target_landmarks[4]}({target_1}) + {target_landmarks[5]}({target_2}) = {target_landmark}")
+                else:
+                    target_landmark = None
+                    
+                left_landmark = landmarks_to_transform[0] if landmarks_to_transform else None  # 호환성을 위해
+                right_landmark = landmarks_to_transform[1] if len(landmarks_to_transform) > 1 else None  # 호환성을 위해
+                
+            else:
+                print(f"지원하지 않는 랜드마크 개수: {len(target_landmarks)}")
+                return
             
-            if not all([left_landmark, right_landmark, target_landmark]):
+            # 유효성 검사
+            if not target_landmark or not all(landmarks_to_transform):
                 print("필요한 랜드마크를 찾을 수 없습니다.")
                 return
             
@@ -4097,61 +4267,59 @@ class FaceSimulator:
             # 기존 시각화 제거
             self.clear_preset_visualization()
             
-            # 왼쪽 랜드마크 변형
-            dx_left = target_landmark[0] - left_landmark[0]
-            dy_left = target_landmark[1] - left_landmark[1]
-            length_left = math.sqrt(dx_left * dx_left + dy_left * dy_left)
+            # 모든 랜드마크에 대해 변형 적용
+            for i, landmark in enumerate(landmarks_to_transform):
+                if not landmark:
+                    continue
+                
+                # 타겟 좌표 결정 (개별 타겟이 있는 경우 vs 공통 타겟)
+                if len(target_landmarks) == 4 and 'target_midpoints' in locals() and i < len(target_midpoints):
+                    # 뒷트임+ 방식: 각 랜드마크별로 다른 타겟
+                    current_target = target_midpoints[i]
+                    if not current_target:
+                        continue
+                else:
+                    # 기존 방식: 공통 타겟
+                    current_target = target_landmark
+                    if not current_target:
+                        continue
+                
+                # 해당 랜드마크에서 타겟으로의 방향 및 거리 계산
+                dx = current_target[0] - landmark[0]
+                dy = current_target[1] - landmark[1]
+                length = math.sqrt(dx * dx + dy * dy)
+                
+                if length > 0:
+                    # 단위 벡터 계산
+                    unit_dx = dx / length
+                    unit_dy = dy / length
+                    
+                    # 당기는 거리 계산
+                    distance_to_target = self.calculate_distance(landmark, current_target)
+                    pull_distance = distance_to_target * pull_ratio
+                    
+                    # 목표 위치 계산
+                    target_x = landmark[0] + unit_dx * pull_distance
+                    target_y = landmark[1] + unit_dy * pull_distance
+                    
+                    # Pull 변형 적용
+                    self.apply_pull_warp_with_params(
+                        landmark[0], landmark[1],        # 시작점
+                        target_x, target_y,              # 끝점
+                        strength,                        # 강도
+                        influence_radius_px,             # 영향반경
+                        ellipse_ratio                    # 타원 비율
+                    )
+                    
+                    # 시각화 추가 (모든 랜드마크)
+                    label = labels[i] if i < len(labels) else f"LM-{target_landmarks[i]}"
+                    self.draw_preset_visualization(
+                        landmark, (target_x, target_y),
+                        influence_radius_px, strength, label, ellipse_ratio
+                    )
+                    
+                    print(f"랜드마크 {target_landmarks[i]} 변형 완료: ({landmark[0]:.1f}, {landmark[1]:.1f}) → ({target_x:.1f}, {target_y:.1f})")
             
-            if length_left > 0:
-                # 정규화된 방향 벡터
-                unit_dx_left = dx_left / length_left
-                unit_dy_left = dy_left / length_left
-                
-                # 당기는 목표 좌표 계산
-                target_x_left = left_landmark[0] + unit_dx_left * pull_distance_left
-                target_y_left = left_landmark[1] + unit_dy_left * pull_distance_left
-                
-                # Pull 변형 적용
-                self.apply_pull_warp_with_params(
-                    left_landmark[0], left_landmark[1],  # 시작점
-                    target_x_left, target_y_left,       # 끝점
-                    strength,                            # 강도
-                    influence_radius_px                  # 영향반경
-                )
-                
-                # 시각화 추가
-                self.draw_preset_visualization(
-                    left_landmark, (target_x_left, target_y_left),
-                    influence_radius_px, strength, labels[0]
-                )
-            
-            # 오른쪽 랜드마크 변형
-            dx_right = target_landmark[0] - right_landmark[0]
-            dy_right = target_landmark[1] - right_landmark[1]
-            length_right = math.sqrt(dx_right * dx_right + dy_right * dy_right)
-            
-            if length_right > 0:
-                # 정규화된 방향 벡터
-                unit_dx_right = dx_right / length_right
-                unit_dy_right = dy_right / length_right
-                
-                # 당기는 목표 좌표 계산
-                target_x_right = right_landmark[0] + unit_dx_right * pull_distance_right
-                target_y_right = right_landmark[1] + unit_dy_right * pull_distance_right
-                
-                # Pull 변형 적용
-                self.apply_pull_warp_with_params(
-                    right_landmark[0], right_landmark[1],  # 시작점
-                    target_x_right, target_y_right,       # 끝점
-                    strength,                              # 강도
-                    influence_radius_px                    # 영향반경
-                )
-                
-                # 시각화 추가
-                self.draw_preset_visualization(
-                    right_landmark, (target_x_right, target_y_right),
-                    influence_radius_px, strength, labels[1]
-                )
             
             # 원래 설정 복원
             self.radius_var.set(original_radius)
@@ -4341,6 +4509,37 @@ class FaceSimulator:
         # 성공 시에만 카운터 업데이트
         if self.current_image is not None and self.face_landmarks is not None:
             self.update_preset_counter("cheek")
+    
+    def apply_front_protusion_100shot_preset(self):
+        """앞튀임+ 프리셋 적용"""
+        self.apply_jaw_preset(
+            preset_name="앞튀임+",
+            target_landmarks=self.FRONT_PROTUSION_TARGET_LANDMARKS,
+            face_size_landmarks=self.FRONT_PROTUSION_FACE_SIZE_LANDMARKS,
+            strength=self.FRONT_PROTUSION_PRESET_STRENGTH,
+            influence_ratio=self.FRONT_PROTUSION_PRESET_INFLUENCE_RATIO,
+            pull_ratio=self.FRONT_PROTUSION_PRESET_PULL_RATIO,
+            labels=["L-243", "R-463", "M-56/190", "M-414/286"],
+            ellipse_ratio=self.FRONT_PROTUSION_ELLIPSE_RATIO
+        )
+        # 성공 시에만 카운터 업데이트
+        if self.current_image is not None and self.face_landmarks is not None:
+            self.update_preset_counter("front_protusion")
+    
+    def apply_back_slit_100shot_preset(self):
+        """뒷트임+ 프리셋 적용"""
+        self.apply_jaw_preset(
+            preset_name="뒷트임+",
+            target_landmarks=self.BACK_SLIT_TARGET_LANDMARKS,
+            face_size_landmarks=self.BACK_SLIT_FACE_SIZE_LANDMARKS,
+            strength=self.BACK_SLIT_PRESET_STRENGTH,
+            influence_ratio=self.BACK_SLIT_PRESET_INFLUENCE_RATIO,
+            pull_ratio=self.BACK_SLIT_PRESET_PULL_RATIO,
+            labels=["L-33", "R-359"]
+        )
+        # 성공 시에만 카운터 업데이트
+        if self.current_image is not None and self.face_landmarks is not None:
+            self.update_preset_counter("back_slit")
     
     def show_before_after_comparison(self):
         """Before/After 비교 창 표시"""
