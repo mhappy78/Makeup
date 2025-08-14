@@ -7,6 +7,27 @@ import math
 import mediapipe as mp
 
 class FaceSimulator:
+    # 아래턱 100샷+ 프리셋 상수
+    LOWER_JAW_PRESET_STRENGTH = 0.05       # 변형 강도
+    LOWER_JAW_PRESET_INFLUENCE_RATIO = 0.4  # 얼굴 크기 대비 영향반경 (40%)
+    LOWER_JAW_PRESET_PULL_RATIO = 0.1       # 랜드마크 간 거리 대비 당기는 거리 (10%)
+    LOWER_JAW_FACE_SIZE_LANDMARKS = (234, 447)  # 얼굴 크기 기준 랜드마크
+    LOWER_JAW_TARGET_LANDMARKS = (150, 379, 4)  # 변형 대상 랜드마크 (150, 379 → 4)
+    
+    # 중간턱 100샷+ 프리셋 상수
+    MIDDLE_JAW_PRESET_STRENGTH = 0.05       # 변형 강도
+    MIDDLE_JAW_PRESET_INFLUENCE_RATIO = 0.65 # 얼굴 크기 대비 영향반경 (65%)
+    MIDDLE_JAW_PRESET_PULL_RATIO = 0.1       # 랜드마크 간 거리 대비 당기는 거리 (10%)
+    MIDDLE_JAW_FACE_SIZE_LANDMARKS = (234, 447)  # 얼굴 크기 기준 랜드마크
+    MIDDLE_JAW_TARGET_LANDMARKS = (172, 397, 4)  # 변형 대상 랜드마크 (172, 397 → 4)
+    
+    # 볼 100샷+ 프리셋 상수
+    CHEEK_PRESET_STRENGTH = 0.05       # 변형 강도
+    CHEEK_PRESET_INFLUENCE_RATIO = 0.65 # 얼굴 크기 대비 영향반경 (65%)
+    CHEEK_PRESET_PULL_RATIO = 0.1       # 랜드마크 간 거리 대비 당기는 거리 (10%)
+    CHEEK_FACE_SIZE_LANDMARKS = (234, 447)  # 얼굴 크기 기준 랜드마크
+    CHEEK_TARGET_LANDMARKS = (215, 435, 4)  # 변형 대상 랜드마크 (215, 435 → 4)
+    
     def __init__(self, root):
         self.root = root
         self.root.title("🔧 얼굴 성형 시뮬레이터")
@@ -63,6 +84,11 @@ class FaceSimulator:
         self.max_zoom = 5.0
         self.pan_x = 0
         self.pan_y = 0
+        
+        # 프리셋별 카운터
+        self.lower_jaw_shot_count = 0
+        self.middle_jaw_shot_count = 0
+        self.cheek_shot_count = 0
         
         # 마우스 상태
         self.is_dragging = False
@@ -419,6 +445,52 @@ class FaceSimulator:
         # 구분선
         ttk.Separator(self.warp_frame, orient='horizontal').pack(fill=tk.X, pady=15)
         
+        # 프리셋 섹션
+        ttk.Label(self.warp_frame, text="⚡ 빠른 프리셋:", 
+                 font=("Arial", 10, "bold")).pack(pady=(0, 5))
+        
+        preset_frame = ttk.Frame(self.warp_frame)
+        preset_frame.pack(fill=tk.X, pady=5)
+        
+        # 아래턱 100샷+ 프리셋
+        lower_jaw_frame = ttk.Frame(preset_frame)
+        lower_jaw_frame.pack(fill=tk.X, pady=2)
+        ttk.Button(lower_jaw_frame, text="💉 아래턱 100샷+", 
+                  command=self.apply_lower_jaw_100shot_preset).pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.lower_jaw_counter_label = ttk.Label(lower_jaw_frame, text="", 
+                                               font=("Arial", 8), foreground="blue")
+        self.lower_jaw_counter_label.pack(side=tk.RIGHT, padx=(5, 0))
+        
+        # 중간턱 100샷+ 프리셋
+        middle_jaw_frame = ttk.Frame(preset_frame)
+        middle_jaw_frame.pack(fill=tk.X, pady=2)
+        ttk.Button(middle_jaw_frame, text="💉 중간턱 100샷+", 
+                  command=self.apply_middle_jaw_100shot_preset).pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.middle_jaw_counter_label = ttk.Label(middle_jaw_frame, text="", 
+                                                font=("Arial", 8), foreground="blue")
+        self.middle_jaw_counter_label.pack(side=tk.RIGHT, padx=(5, 0))
+        
+        # 볼 100샷+ 프리셋
+        cheek_frame = ttk.Frame(preset_frame)
+        cheek_frame.pack(fill=tk.X, pady=2)
+        ttk.Button(cheek_frame, text="💉 볼 100샷+", 
+                  command=self.apply_cheek_100shot_preset).pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.cheek_counter_label = ttk.Label(cheek_frame, text="", 
+                                           font=("Arial", 8), foreground="blue")
+        self.cheek_counter_label.pack(side=tk.RIGHT, padx=(5, 0))
+        
+        # 시각화 옵션
+        self.show_preset_visualization = tk.BooleanVar(value=True)
+        ttk.Checkbutton(preset_frame, text="프리셋 시각화 표시", 
+                       variable=self.show_preset_visualization).pack(fill=tk.X, pady=2)
+        
+        # Before/After 비교 버튼
+        ttk.Button(preset_frame, text="📷 Before / After 비교", 
+                  command=self.show_before_after_comparison).pack(fill=tk.X, pady=5)
+        
+        # 구분선
+        ttk.Separator(self.warp_frame, orient='horizontal').pack(fill=tk.X, pady=15)
+        
         # 랜드마크 표시 토글
         ttk.Label(self.warp_frame, text="🎯 랜드마크 표시:", 
                  font=("Arial", 10, "bold")).pack(pady=(0, 5))
@@ -564,6 +636,14 @@ class FaceSimulator:
                 
                 # 현재 이미지를 원본으로 초기화
                 self.current_image = self.original_image.copy()
+                
+                # 프리셋 카운터 리셋
+                self.lower_jaw_shot_count = 0
+                self.middle_jaw_shot_count = 0
+                self.cheek_shot_count = 0
+                self.lower_jaw_counter_label.config(text="")
+                self.middle_jaw_counter_label.config(text="")
+                self.cheek_counter_label.config(text="")
                 
                 # 캔버스에 맞게 조정 및 표시
                 self.fit_and_display_image()
@@ -1172,7 +1252,7 @@ class FaceSimulator:
         
         return cv2.remap(image, map_x, map_y, cv2.INTER_CUBIC, borderMode=cv2.BORDER_REFLECT)
     
-    def apply_pull_warp_with_params(self, start_x, start_y, end_x, end_y, strength):
+    def apply_pull_warp_with_params(self, start_x, start_y, end_x, end_y, strength, influence_radius_px=None):
         """파라미터를 지정한 당기기 변형"""
         if self.current_image is None:
             return
@@ -1201,7 +1281,14 @@ class FaceSimulator:
         pixel_dy = map_y - start_y
         pixel_dist = np.sqrt(pixel_dx*pixel_dx + pixel_dy*pixel_dy)
         
-        influence_radius = self.get_influence_radius_pixels()
+        # 커스텀 영향반경 사용 또는 기본값
+        if influence_radius_px is not None:
+            influence_radius = influence_radius_px
+            print(f"커스텀 영향반경 사용: {influence_radius}px")
+        else:
+            influence_radius = self.get_influence_radius_pixels()
+            print(f"기본 영향반경 사용: {influence_radius}px")
+            
         mask = pixel_dist < influence_radius
         
         strength_map = np.zeros_like(pixel_dist)
@@ -1209,7 +1296,9 @@ class FaceSimulator:
         
         if len(valid_dist) > 0:
             strength_map[mask] = (1 - valid_dist / influence_radius) ** 2
+            # 커스텀 강도 사용
             strength_map[mask] *= strength
+            print(f"실제 적용 강도: {strength}")
             
             map_x[mask] += dx * strength_map[mask]
             map_y[mask] += dy * strength_map[mask]
@@ -1240,6 +1329,8 @@ class FaceSimulator:
         # 자유 변형 탭이 활성화된 경우에만 영향 범위 표시
         if self.notebook.index(self.notebook.select()) == 1:
             self.update_influence_circle(event.x, event.y)
+            # 마우스 이동 시 프리셋 시각화 제거
+            self.clear_preset_visualization()
     
     def update_influence_circle(self, x, y):
         """영향 범위 원 업데이트"""
@@ -1571,6 +1662,16 @@ class FaceSimulator:
             self.save_to_history()
             self.current_image = self.original_image.copy()
             self.reset_all_effects()
+            
+            # 프리셋 카운터 리셋
+            self.lower_jaw_shot_count = 0
+            self.middle_jaw_shot_count = 0
+            self.cheek_shot_count = 0
+            self.lower_jaw_counter_label.config(text="")
+            self.middle_jaw_counter_label.config(text="")
+            self.cheek_counter_label.config(text="")
+            print("프리셋 카운터가 리셋되었습니다.")
+            
             self.update_display()
             self.canvas.delete("preview_circle")
             self.detect_face()
@@ -3602,6 +3703,752 @@ class FaceSimulator:
         }
         
         return mapping.get(group_name, group_name)
+    
+    def clear_preset_visualization(self):
+        """프리셋 시각화 요소들 제거"""
+        self.canvas.delete("preset_visualization")
+    
+    def bring_preset_visualization_to_front(self):
+        """프리셋 시각화 요소들을 맨 앞으로 가져오기"""
+        try:
+            preset_items = self.canvas.find_withtag("preset_visualization")
+            
+            print(f"맨 앞으로 가져올 프리셋 요소: {len(preset_items)}개")
+            
+            # 모든 프리셋 시각화 요소를 맨 앞으로
+            for item in preset_items:
+                self.canvas.tag_raise(item)
+                
+            print("프리셋 시각화 요소들을 맨 앞으로 이동 완료")
+            
+        except Exception as e:
+            print(f"프리셋 시각화 맨 앞으로 가져오기 오류: {str(e)}")
+    
+    def draw_preset_visualization(self, start_point, end_point, influence_radius_px, strength, label=""):
+        """프리셋 시각화 요소 그리기"""
+        if not self.show_preset_visualization.get():
+            print(f"시각화 비활성화됨")
+            return
+            
+        print(f"시각화 그리기 시작: {label}, 출발점: {start_point}, 끝점: {end_point}")
+        try:
+            # 화면 좌표로 변환
+            start_screen = self.image_to_screen_coords(start_point[0], start_point[1])
+            end_screen = self.image_to_screen_coords(end_point[0], end_point[1])
+            
+            if not start_screen or not end_screen:
+                print(f"좌표 변환 실패: start_screen={start_screen}, end_screen={end_screen}")
+                return
+                
+            start_x, start_y = start_screen
+            end_x, end_y = end_screen
+            print(f"화면 좌표: 시작({start_x:.1f}, {start_y:.1f}), 끝({end_x:.1f}, {end_y:.1f})")
+            
+            # 화면상 영향반경 크기
+            screen_radius = influence_radius_px * self.scale_factor * self.zoom_factor
+            
+            print(f"Canvas 요소 그리기 시작, 화면반경: {screen_radius:.1f}")
+            
+            # 1. 출발점 표시 (빨간 원) - 80% 작게
+            start_oval = self.canvas.create_oval(
+                start_x - 1.4, start_y - 1.4, start_x + 1.4, start_y + 1.4,
+                fill="#ff0000", outline="",
+                tags="preset_visualization"
+            )
+            print(f"출발점 원 생성: ID={start_oval}")
+            
+            # 2. 끝점 표시 (파란 원) - 80% 작게
+            end_oval = self.canvas.create_oval(
+                end_x - 1.4, end_y - 1.4, end_x + 1.4, end_y + 1.4,
+                fill="#0000ff", outline="",
+                tags="preset_visualization"
+            )
+            print(f"끝점 원 생성: ID={end_oval}")
+            
+            # 3. 방향 화살표 - 80% 작게
+            arrow_line = self.canvas.create_line(
+                start_x, start_y, end_x, end_y,
+                fill="#ff6600", width=1, arrow=tk.LAST, arrowshape=(4, 5, 2),
+                tags="preset_visualization"
+            )
+            print(f"화살표 생성: ID={arrow_line}")
+            
+            # 4. 영향반경 원 - 50% 더 얇게
+            if screen_radius > 10:  # 너무 작으면 그리지 않음
+                radius_circle = self.canvas.create_oval(
+                    start_x - screen_radius, start_y - screen_radius,
+                    start_x + screen_radius, start_y + screen_radius,
+                    outline="#ffaa00", width=2, dash=(10, 10),
+                    tags="preset_visualization"
+                )
+                print(f"영향반경 원 생성: ID={radius_circle}, 반경={screen_radius:.1f}")
+            else:
+                print(f"영향반경이 너무 작아서 건너뜀: {screen_radius:.1f}")
+            
+            # 모든 시각화 요소를 맨 앞으로 가져오기
+            for item in self.canvas.find_withtag("preset_visualization"):
+                self.canvas.tag_raise(item)
+            print(f"시각화 요소 개수: {len(self.canvas.find_withtag('preset_visualization'))}")
+            
+            # 5. 정보 라벨 - 각 줄마다 다른 색깔로 표시
+            distance = math.sqrt((end_x - start_x)**2 + (end_y - start_y)**2)
+            
+            # 라벨 위치 (출발점 오른쪽)
+            label_x = start_x + 50
+            label_y = start_y - 30
+            
+            # 첫 번째 줄: 라벨 (파란색)
+            text_label1 = self.canvas.create_text(
+                label_x, label_y - 12, text=label, font=("Arial", 8, "normal"), 
+                fill="#0066cc", justify=tk.CENTER, tags="preset_visualization"
+            )
+            
+            # 두 번째 줄: 거리 (초록색)
+            text_label2 = self.canvas.create_text(
+                label_x, label_y, text=f"거리: {distance/self.scale_factor/self.zoom_factor:.1f}px", 
+                font=("Arial", 8, "normal"), fill="#00aa00", justify=tk.CENTER, tags="preset_visualization"
+            )
+            
+            # 세 번째 줄: 강도 (빨간색)
+            text_label3 = self.canvas.create_text(
+                label_x, label_y + 12, text=f"강도: {strength:.1f}x", 
+                font=("Arial", 8, "normal"), fill="#cc0000", justify=tk.CENTER, tags="preset_visualization"
+            )
+            print(f"라벨 텍스트 생성: ID1={text_label1}, ID2={text_label2}, ID3={text_label3}")
+            
+            # 최종 레이어링 확인
+            print(f"최종 시각화 요소들 맨 앞으로 이동")
+            for item in self.canvas.find_withtag("preset_visualization"):
+                self.canvas.tag_raise(item)
+                
+        except Exception as e:
+            print(f"시각화 그리기 오류: {str(e)}")
+    
+    def image_to_screen_coords(self, img_x, img_y):
+        """이미지 좌표를 화면 좌표로 변환"""
+        try:
+            screen_x = img_x * self.scale_factor * self.zoom_factor + self.offset_x + self.pan_x
+            screen_y = img_y * self.scale_factor * self.zoom_factor + self.offset_y + self.pan_y
+            return (screen_x, screen_y)
+        except:
+            return None
+    
+    def get_landmark_coordinates(self, landmark_index):
+        """특정 랜드마크의 이미지 좌표 반환"""
+        if (self.face_landmarks is None or 
+            landmark_index >= len(self.face_landmarks.landmark)):
+            return None
+            
+        landmark = self.face_landmarks.landmark[landmark_index]
+        img_height, img_width = self.current_image.shape[:2]
+        
+        x = int(landmark.x * img_width)
+        y = int(landmark.y * img_height)
+        
+        return (x, y)
+    
+    def calculate_distance(self, point1, point2):
+        """두 점 사이의 유클리드 거리 계산"""
+        if point1 is None or point2 is None:
+            return 0
+        
+        dx = point2[0] - point1[0]
+        dy = point2[1] - point1[1]
+        return math.sqrt(dx * dx + dy * dy)
+    
+    def update_preset_counter(self, preset_type):
+        """프리셋별 카운터 업데이트"""
+        if preset_type == "lower_jaw":
+            self.lower_jaw_shot_count += 100
+            self.lower_jaw_counter_label.config(text=f"(총: {self.lower_jaw_shot_count}샷)")
+            print(f"아래턱 카운터 업데이트: 총 {self.lower_jaw_shot_count}샷")
+        elif preset_type == "middle_jaw":
+            self.middle_jaw_shot_count += 100
+            self.middle_jaw_counter_label.config(text=f"(총: {self.middle_jaw_shot_count}샷)")
+            print(f"중간턱 카운터 업데이트: 총 {self.middle_jaw_shot_count}샷")
+        elif preset_type == "cheek":
+            self.cheek_shot_count += 100
+            self.cheek_counter_label.config(text=f"(총: {self.cheek_shot_count}샷)")
+            print(f"볼 카운터 업데이트: 총 {self.cheek_shot_count}샷")
+    
+    def apply_lower_jaw_100shot_preset(self):
+        """아래턱 100샷+ 프리셋 적용"""
+        if self.current_image is None:
+            print("이미지가 로드되지 않았습니다. 먼저 이미지를 로드해주세요.")
+            return
+        
+        try:
+            # 랜드마크 새로고침 (최신 상태로 재검출)
+            print("랜드마크 재검출 중...")
+            self.refresh_landmarks()
+            
+            if self.face_landmarks is None:
+                print("얼굴이 검출되지 않았습니다. 얼굴이 명확히 보이는 이미지를 사용해주세요.")
+                return
+            
+            # 히스토리 저장
+            self.save_to_history()
+            
+            # 필요한 랜드마크 좌표 가져오기
+            landmark_150 = self.get_landmark_coordinates(self.LOWER_JAW_TARGET_LANDMARKS[0])  # 왼쪽 턱선
+            landmark_379 = self.get_landmark_coordinates(self.LOWER_JAW_TARGET_LANDMARKS[1])  # 오른쪽 턱선  
+            landmark_4 = self.get_landmark_coordinates(self.LOWER_JAW_TARGET_LANDMARKS[2])    # 코 기둥 상단
+            
+            if not all([landmark_150, landmark_379, landmark_4]):
+                print("필요한 랜드마크를 찾을 수 없습니다.")
+                return
+            
+            # 거리 계산
+            distance_150_to_4 = self.calculate_distance(landmark_150, landmark_4)
+            distance_379_to_4 = self.calculate_distance(landmark_379, landmark_4)
+            
+            # 당기는 거리 계산
+            pull_distance_150 = distance_150_to_4 * self.LOWER_JAW_PRESET_PULL_RATIO
+            pull_distance_379 = distance_379_to_4 * self.LOWER_JAW_PRESET_PULL_RATIO
+            
+            # 프리셋 파라미터 설정
+            original_radius = self.radius_var.get()
+            original_strength = self.strength_var.get()
+            
+            # 프리셋 설정 적용
+            self.radius_var.set(30.0)  # 영향 반경 30%
+            self.strength_var.set(self.LOWER_JAW_PRESET_STRENGTH)  # 변형 강도
+            
+            # 영향 반경 픽셀 계산 (얼굴 크기 기준)
+            # 랜드마크로 얼굴 크기 기준 설정
+            landmark_234 = self.get_landmark_coordinates(self.LOWER_JAW_FACE_SIZE_LANDMARKS[0])
+            landmark_447 = self.get_landmark_coordinates(self.LOWER_JAW_FACE_SIZE_LANDMARKS[1])
+            
+            if landmark_234 and landmark_447:
+                face_size = self.calculate_distance(landmark_234, landmark_447)
+                influence_radius_px = int(face_size * self.LOWER_JAW_PRESET_INFLUENCE_RATIO)
+            else:
+                # 234, 447을 찾을 수 없는 경우 기존 방식 사용
+                face_width = abs(landmark_150[0] - landmark_379[0])
+                influence_radius_px = int(face_width * 0.3)
+            
+            print(f"아래턱 100샷+ 프리셋 적용:")
+            print(f"  - 랜드마크 150 좌표: {landmark_150}")
+            print(f"  - 랜드마크 379 좌표: {landmark_379}")
+            print(f"  - 랜드마크 4 좌표: {landmark_4}")
+            if landmark_234 and landmark_447:
+                print(f"  - 얼굴 크기 기준 (234↔447): {face_size:.1f}px")
+                print(f"  - 영향 반경 (얼굴크기 {int(self.LOWER_JAW_PRESET_INFLUENCE_RATIO*100)}%): {influence_radius_px}px")
+            else:
+                print(f"  - 영향 반경 (대체 계산): {influence_radius_px}px")
+            print(f"  - 150→4 거리: {distance_150_to_4:.1f}px, 당기는 거리: {pull_distance_150:.1f}px")
+            print(f"  - 379→4 거리: {distance_379_to_4:.1f}px, 당기는 거리: {pull_distance_379:.1f}px")
+            print(f"  - 변형 강도: {self.LOWER_JAW_PRESET_STRENGTH}x")
+            
+            # 기존 시각화 제거
+            self.clear_preset_visualization()
+            
+            # 150번 랜드마크를 4번 방향으로 당기기
+            # 방향 벡터 계산
+            dx_150 = landmark_4[0] - landmark_150[0]
+            dy_150 = landmark_4[1] - landmark_150[1]
+            length_150 = math.sqrt(dx_150 * dx_150 + dy_150 * dy_150)
+            
+            if length_150 > 0:
+                # 정규화된 방향 벡터
+                unit_dx_150 = dx_150 / length_150
+                unit_dy_150 = dy_150 / length_150
+                
+                # 당기는 목표 좌표 계산
+                target_x_150 = landmark_150[0] + unit_dx_150 * pull_distance_150
+                target_y_150 = landmark_150[1] + unit_dy_150 * pull_distance_150
+                
+                # Pull 변형 적용
+                self.apply_pull_warp_with_params(
+                    landmark_150[0], landmark_150[1],  # 시작점
+                    target_x_150, target_y_150,       # 끝점
+                    self.LOWER_JAW_PRESET_STRENGTH,   # 강도
+                    influence_radius_px               # 영향반경
+                )
+                
+                # 시각화 추가 (150번 랜드마크)
+                self.draw_preset_visualization(
+                    landmark_150, (target_x_150, target_y_150),
+                    influence_radius_px, self.LOWER_JAW_PRESET_STRENGTH, "L-150"
+                )
+            
+            # 379번 랜드마크를 4번 방향으로 당기기
+            dx_379 = landmark_4[0] - landmark_379[0]
+            dy_379 = landmark_4[1] - landmark_379[1]
+            length_379 = math.sqrt(dx_379 * dx_379 + dy_379 * dy_379)
+            
+            if length_379 > 0:
+                # 정규화된 방향 벡터
+                unit_dx_379 = dx_379 / length_379
+                unit_dy_379 = dy_379 / length_379
+                
+                # 당기는 목표 좌표 계산
+                target_x_379 = landmark_379[0] + unit_dx_379 * pull_distance_379
+                target_y_379 = landmark_379[1] + unit_dy_379 * pull_distance_379
+                
+                # Pull 변형 적용
+                self.apply_pull_warp_with_params(
+                    landmark_379[0], landmark_379[1],  # 시작점
+                    target_x_379, target_y_379,       # 끝점
+                    self.LOWER_JAW_PRESET_STRENGTH,   # 강도
+                    influence_radius_px               # 영향반경
+                )
+                
+                # 시각화 추가 (379번 랜드마크)
+                self.draw_preset_visualization(
+                    landmark_379, (target_x_379, target_y_379),
+                    influence_radius_px, self.LOWER_JAW_PRESET_STRENGTH, "R-379"
+                )
+            
+            # 원래 설정 복원
+            self.radius_var.set(original_radius)
+            self.strength_var.set(original_strength)
+            
+            # 화면 업데이트
+            self.update_display()
+            
+            # update_display() 이후에 프리셋 시각화를 다시 맨 앞으로 가져오기
+            self.root.after(100, self.bring_preset_visualization_to_front)
+            
+            # 5초 후 시각화 자동 제거
+            self.root.after(5000, self.clear_preset_visualization)
+            
+            # 카운터 업데이트
+            self.update_preset_counter("lower_jaw")
+            
+            print("아래턱 100샷+ 프리셋 적용 완료!")
+            print("시각화는 5초 후 자동으로 사라집니다.")
+            
+        except Exception as e:
+            print(f"아래턱 100샷+ 프리셋 적용 실패: {str(e)}")
+            import traceback
+            traceback.print_exc()
+    
+    def apply_jaw_preset(self, preset_name, target_landmarks, face_size_landmarks, 
+                         strength, influence_ratio, pull_ratio, labels):
+        """공통 턱선 프리셋 적용 함수"""
+        if self.current_image is None:
+            print("이미지가 로드되지 않았습니다. 먼저 이미지를 로드해주세요.")
+            return
+        
+        try:
+            # 랜드마크 새로고침 (최신 상태로 재검출)
+            print("랜드마크 재검출 중...")
+            self.refresh_landmarks()
+            
+            if self.face_landmarks is None:
+                print("얼굴이 검출되지 않았습니다. 얼굴이 명확히 보이는 이미지를 사용해주세요.")
+                return
+            
+            # 히스토리 저장
+            self.save_to_history()
+            
+            # 필요한 랜드마크 좌표 가져오기
+            left_landmark = self.get_landmark_coordinates(target_landmarks[0])   # 왼쪽 턱선
+            right_landmark = self.get_landmark_coordinates(target_landmarks[1])  # 오른쪽 턱선  
+            target_landmark = self.get_landmark_coordinates(target_landmarks[2]) # 타겟 (코 기둥)
+            
+            if not all([left_landmark, right_landmark, target_landmark]):
+                print("필요한 랜드마크를 찾을 수 없습니다.")
+                return
+            
+            # 거리 계산
+            distance_left_to_target = self.calculate_distance(left_landmark, target_landmark)
+            distance_right_to_target = self.calculate_distance(right_landmark, target_landmark)
+            
+            # 당기는 거리 계산
+            pull_distance_left = distance_left_to_target * pull_ratio
+            pull_distance_right = distance_right_to_target * pull_ratio
+            
+            # 프리셋 파라미터 설정
+            original_radius = self.radius_var.get()
+            original_strength = self.strength_var.get()
+            
+            # 프리셋 설정 적용
+            self.radius_var.set(30.0)  # 영향 반경 30%
+            self.strength_var.set(strength)  # 변형 강도
+            
+            # 영향 반경 픽셀 계산 (얼굴 크기 기준)
+            face_size_left = self.get_landmark_coordinates(face_size_landmarks[0])
+            face_size_right = self.get_landmark_coordinates(face_size_landmarks[1])
+            
+            if face_size_left and face_size_right:
+                face_size = self.calculate_distance(face_size_left, face_size_right)
+                influence_radius_px = int(face_size * influence_ratio)
+            else:
+                # 얼굴 크기 기준점을 찾을 수 없는 경우 대체 계산
+                face_width = abs(left_landmark[0] - right_landmark[0])
+                influence_radius_px = int(face_width * 0.3)
+            
+            # 정보 출력
+            print(f"{preset_name} 프리셋 적용:")
+            print(f"  - 랜드마크 {target_landmarks[0]} 좌표: {left_landmark}")
+            print(f"  - 랜드마크 {target_landmarks[1]} 좌표: {right_landmark}")
+            print(f"  - 랜드마크 {target_landmarks[2]} 좌표: {target_landmark}")
+            if face_size_left and face_size_right:
+                print(f"  - 얼굴 크기 기준 ({face_size_landmarks[0]}↔{face_size_landmarks[1]}): {face_size:.1f}px")
+                print(f"  - 영향 반경 (얼굴크기 {int(influence_ratio*100)}%): {influence_radius_px}px")
+            else:
+                print(f"  - 영향 반경 (대체 계산): {influence_radius_px}px")
+            print(f"  - {target_landmarks[0]}→{target_landmarks[2]} 거리: {distance_left_to_target:.1f}px, 당기는 거리: {pull_distance_left:.1f}px")
+            print(f"  - {target_landmarks[1]}→{target_landmarks[2]} 거리: {distance_right_to_target:.1f}px, 당기는 거리: {pull_distance_right:.1f}px")
+            print(f"  - 변형 강도: {strength}x")
+            
+            # 기존 시각화 제거
+            self.clear_preset_visualization()
+            
+            # 왼쪽 랜드마크 변형
+            dx_left = target_landmark[0] - left_landmark[0]
+            dy_left = target_landmark[1] - left_landmark[1]
+            length_left = math.sqrt(dx_left * dx_left + dy_left * dy_left)
+            
+            if length_left > 0:
+                # 정규화된 방향 벡터
+                unit_dx_left = dx_left / length_left
+                unit_dy_left = dy_left / length_left
+                
+                # 당기는 목표 좌표 계산
+                target_x_left = left_landmark[0] + unit_dx_left * pull_distance_left
+                target_y_left = left_landmark[1] + unit_dy_left * pull_distance_left
+                
+                # Pull 변형 적용
+                self.apply_pull_warp_with_params(
+                    left_landmark[0], left_landmark[1],  # 시작점
+                    target_x_left, target_y_left,       # 끝점
+                    strength,                            # 강도
+                    influence_radius_px                  # 영향반경
+                )
+                
+                # 시각화 추가
+                self.draw_preset_visualization(
+                    left_landmark, (target_x_left, target_y_left),
+                    influence_radius_px, strength, labels[0]
+                )
+            
+            # 오른쪽 랜드마크 변형
+            dx_right = target_landmark[0] - right_landmark[0]
+            dy_right = target_landmark[1] - right_landmark[1]
+            length_right = math.sqrt(dx_right * dx_right + dy_right * dy_right)
+            
+            if length_right > 0:
+                # 정규화된 방향 벡터
+                unit_dx_right = dx_right / length_right
+                unit_dy_right = dy_right / length_right
+                
+                # 당기는 목표 좌표 계산
+                target_x_right = right_landmark[0] + unit_dx_right * pull_distance_right
+                target_y_right = right_landmark[1] + unit_dy_right * pull_distance_right
+                
+                # Pull 변형 적용
+                self.apply_pull_warp_with_params(
+                    right_landmark[0], right_landmark[1],  # 시작점
+                    target_x_right, target_y_right,       # 끝점
+                    strength,                              # 강도
+                    influence_radius_px                    # 영향반경
+                )
+                
+                # 시각화 추가
+                self.draw_preset_visualization(
+                    right_landmark, (target_x_right, target_y_right),
+                    influence_radius_px, strength, labels[1]
+                )
+            
+            # 원래 설정 복원
+            self.radius_var.set(original_radius)
+            self.strength_var.set(original_strength)
+            
+            # 최종 화면 업데이트
+            self.update_display()
+            
+            # 시각화 요소들을 맨 앞으로 가져오기 (100ms 후)
+            self.root.after(100, self.bring_preset_visualization_to_front)
+            
+            # 5초 후 시각화 자동 제거
+            self.root.after(5000, self.clear_preset_visualization)
+            
+            print(f"{preset_name} 프리셋 적용 완료!")
+            print("시각화는 5초 후 자동으로 사라집니다.")
+            
+        except Exception as e:
+            print(f"{preset_name} 프리셋 적용 실패: {str(e)}")
+            import traceback
+            traceback.print_exc()
+
+    def apply_middle_jaw_100shot_preset(self):
+        """중간턱 100샷+ 프리셋 적용"""
+        if self.current_image is None:
+            print("이미지가 로드되지 않았습니다. 먼저 이미지를 로드해주세요.")
+            return
+        
+        try:
+            # 랜드마크 새로고침 (최신 상태로 재검출)
+            print("랜드마크 재검출 중...")
+            self.refresh_landmarks()
+            
+            if self.face_landmarks is None:
+                print("얼굴이 검출되지 않았습니다. 얼굴이 명확히 보이는 이미지를 사용해주세요.")
+                return
+            
+            # 히스토리 저장
+            self.save_to_history()
+            
+            # 필요한 랜드마크 좌표 가져오기
+            landmark_172 = self.get_landmark_coordinates(self.MIDDLE_JAW_TARGET_LANDMARKS[0])  # 왼쪽 중간턱
+            landmark_397 = self.get_landmark_coordinates(self.MIDDLE_JAW_TARGET_LANDMARKS[1])  # 오른쪽 중간턱  
+            landmark_4 = self.get_landmark_coordinates(self.MIDDLE_JAW_TARGET_LANDMARKS[2])    # 코 기둥 상단
+            
+            if not all([landmark_172, landmark_397, landmark_4]):
+                print("필요한 랜드마크를 찾을 수 없습니다.")
+                return
+            
+            # 거리 계산
+            distance_172_to_4 = self.calculate_distance(landmark_172, landmark_4)
+            distance_397_to_4 = self.calculate_distance(landmark_397, landmark_4)
+            
+            # 당기는 거리 계산
+            pull_distance_172 = distance_172_to_4 * self.MIDDLE_JAW_PRESET_PULL_RATIO
+            pull_distance_397 = distance_397_to_4 * self.MIDDLE_JAW_PRESET_PULL_RATIO
+            
+            # 프리셋 파라미터 설정
+            original_radius = self.radius_var.get()
+            original_strength = self.strength_var.get()
+            
+            # 프리셋 설정 적용
+            self.radius_var.set(30.0)  # 영향 반경 30%
+            self.strength_var.set(self.MIDDLE_JAW_PRESET_STRENGTH)  # 변형 강도
+            
+            # 영향 반경 픽셀 계산 (얼굴 크기 기준)
+            # 랜드마크로 얼굴 크기 기준 설정
+            landmark_234 = self.get_landmark_coordinates(self.MIDDLE_JAW_FACE_SIZE_LANDMARKS[0])
+            landmark_447 = self.get_landmark_coordinates(self.MIDDLE_JAW_FACE_SIZE_LANDMARKS[1])
+            
+            if landmark_234 and landmark_447:
+                face_size = self.calculate_distance(landmark_234, landmark_447)
+                influence_radius_px = int(face_size * self.MIDDLE_JAW_PRESET_INFLUENCE_RATIO)
+            else:
+                # 234, 447을 찾을 수 없는 경우 기존 방식 사용
+                face_width = abs(landmark_172[0] - landmark_397[0])
+                influence_radius_px = int(face_width * 0.3)
+            
+            print(f"중간턱 100샷+ 프리셋 적용:")
+            print(f"  - 랜드마크 172 좌표: {landmark_172}")
+            print(f"  - 랜드마크 397 좌표: {landmark_397}")
+            print(f"  - 랜드마크 4 좌표: {landmark_4}")
+            if landmark_234 and landmark_447:
+                print(f"  - 얼굴 크기 기준 (234↔447): {face_size:.1f}px")
+                print(f"  - 영향 반경 (얼굴크기 {int(self.MIDDLE_JAW_PRESET_INFLUENCE_RATIO*100)}%): {influence_radius_px}px")
+            else:
+                print(f"  - 영향 반경 (대체 계산): {influence_radius_px}px")
+            print(f"  - 172→4 거리: {distance_172_to_4:.1f}px, 당기는 거리: {pull_distance_172:.1f}px")
+            print(f"  - 397→4 거리: {distance_397_to_4:.1f}px, 당기는 거리: {pull_distance_397:.1f}px")
+            print(f"  - 변형 강도: {self.MIDDLE_JAW_PRESET_STRENGTH}x")
+            
+            # 기존 시각화 제거
+            self.clear_preset_visualization()
+            
+            # 172번 랜드마크를 4번 방향으로 당기기
+            # 방향 벡터 계산
+            dx_172 = landmark_4[0] - landmark_172[0]
+            dy_172 = landmark_4[1] - landmark_172[1]
+            length_172 = math.sqrt(dx_172 * dx_172 + dy_172 * dy_172)
+            
+            if length_172 > 0:
+                # 정규화된 방향 벡터
+                unit_dx_172 = dx_172 / length_172
+                unit_dy_172 = dy_172 / length_172
+                
+                # 당기는 목표 좌표 계산
+                target_x_172 = landmark_172[0] + unit_dx_172 * pull_distance_172
+                target_y_172 = landmark_172[1] + unit_dy_172 * pull_distance_172
+                
+                # Pull 변형 적용
+                self.apply_pull_warp_with_params(
+                    landmark_172[0], landmark_172[1],  # 시작점
+                    target_x_172, target_y_172,       # 끝점
+                    self.MIDDLE_JAW_PRESET_STRENGTH,   # 강도
+                    influence_radius_px               # 영향반경
+                )
+                
+                # 시각화 추가 (172번 랜드마크)
+                self.draw_preset_visualization(
+                    landmark_172, (target_x_172, target_y_172),
+                    influence_radius_px, self.MIDDLE_JAW_PRESET_STRENGTH, "L-172"
+                )
+            
+            # 397번 랜드마크를 4번 방향으로 당기기
+            dx_397 = landmark_4[0] - landmark_397[0]
+            dy_397 = landmark_4[1] - landmark_397[1]
+            length_397 = math.sqrt(dx_397 * dx_397 + dy_397 * dy_397)
+            
+            if length_397 > 0:
+                # 정규화된 방향 벡터
+                unit_dx_397 = dx_397 / length_397
+                unit_dy_397 = dy_397 / length_397
+                
+                # 당기는 목표 좌표 계산
+                target_x_397 = landmark_397[0] + unit_dx_397 * pull_distance_397
+                target_y_397 = landmark_397[1] + unit_dy_397 * pull_distance_397
+                
+                # Pull 변형 적용
+                self.apply_pull_warp_with_params(
+                    landmark_397[0], landmark_397[1],  # 시작점
+                    target_x_397, target_y_397,       # 끝점
+                    self.MIDDLE_JAW_PRESET_STRENGTH,   # 강도
+                    influence_radius_px               # 영향반경
+                )
+                
+                # 시각화 추가 (397번 랜드마크)
+                self.draw_preset_visualization(
+                    landmark_397, (target_x_397, target_y_397),
+                    influence_radius_px, self.MIDDLE_JAW_PRESET_STRENGTH, "R-397"
+                )
+            
+            # 원래 설정 복원
+            self.radius_var.set(original_radius)
+            self.strength_var.set(original_strength)
+            
+            # 최종 화면 업데이트
+            self.update_display()
+            
+            # 시각화 요소들을 맨 앞으로 가져오기 (100ms 후)
+            self.root.after(100, self.bring_preset_visualization_to_front)
+            
+            # 5초 후 시각화 자동 제거
+            self.root.after(5000, self.clear_preset_visualization)
+            
+            # 카운터 업데이트
+            self.update_preset_counter("middle_jaw")
+            
+            print("중간턱 100샷+ 프리셋 적용 완료!")
+            print("시각화는 5초 후 자동으로 사라집니다.")
+            
+        except Exception as e:
+            print(f"중간턱 100샷+ 프리셋 적용 실패: {str(e)}")
+            import traceback
+            traceback.print_exc()
+    
+    def apply_cheek_100shot_preset(self):
+        """볼 100샷+ 프리셋 적용"""
+        self.apply_jaw_preset(
+            preset_name="볼 100샷+",
+            target_landmarks=self.CHEEK_TARGET_LANDMARKS,
+            face_size_landmarks=self.CHEEK_FACE_SIZE_LANDMARKS,
+            strength=self.CHEEK_PRESET_STRENGTH,
+            influence_ratio=self.CHEEK_PRESET_INFLUENCE_RATIO,
+            pull_ratio=self.CHEEK_PRESET_PULL_RATIO,
+            labels=["L-215", "R-435"]
+        )
+        # 성공 시에만 카운터 업데이트
+        if self.current_image is not None and self.face_landmarks is not None:
+            self.update_preset_counter("cheek")
+    
+    def show_before_after_comparison(self):
+        """Before/After 비교 창 표시"""
+        if self.original_image is None or self.current_image is None:
+            print("비교할 이미지가 없습니다. 먼저 이미지를 로드하고 변형을 적용해주세요.")
+            return
+        
+        # Before/After 창 생성
+        comparison_window = tk.Toplevel(self.root)
+        comparison_window.title("📷 Before / After 비교")
+        comparison_window.geometry("1200x800")
+        comparison_window.configure(bg='#f0f0f0')
+        
+        # 제목
+        title_label = ttk.Label(comparison_window, text="Before / After 비교", 
+                               font=("Arial", 16, "bold"))
+        title_label.pack(pady=10)
+        
+        # 이미지 프레임
+        images_frame = ttk.Frame(comparison_window)
+        images_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
+        
+        # Before 섹션
+        before_frame = ttk.LabelFrame(images_frame, text="Before (원본)", padding=10)
+        before_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
+        
+        before_canvas = tk.Canvas(before_frame, bg='white')
+        before_canvas.pack(fill=tk.BOTH, expand=True)
+        
+        # After 섹션
+        after_frame = ttk.LabelFrame(images_frame, text="After (변형 후)", padding=10)
+        after_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(10, 0))
+        
+        after_canvas = tk.Canvas(after_frame, bg='white')
+        after_canvas.pack(fill=tk.BOTH, expand=True)
+        
+        # 이미지 표시 함수
+        def display_comparison_images():
+            try:
+                # 캔버스 크기 가져오기
+                comparison_window.update()
+                canvas_width = before_canvas.winfo_width()
+                canvas_height = before_canvas.winfo_height()
+                
+                if canvas_width <= 1 or canvas_height <= 1:
+                    comparison_window.after(100, display_comparison_images)
+                    return
+                
+                # Before 이미지 처리
+                before_img = self.original_image.copy()
+                before_height, before_width = before_img.shape[:2]
+                
+                # After 이미지 처리
+                after_img = self.current_image.copy()
+                after_height, after_width = after_img.shape[:2]
+                
+                # 스케일 계산 (여백 포함)
+                margin = 20
+                scale_before = min((canvas_width - margin) / before_width, 
+                                 (canvas_height - margin) / before_height)
+                scale_after = min((canvas_width - margin) / after_width, 
+                                (canvas_height - margin) / after_height)
+                
+                # 동일한 스케일 사용 (더 작은 값)
+                scale = min(scale_before, scale_after, 1.0)
+                
+                # Before 이미지 리사이즈 및 표시
+                new_before_width = int(before_width * scale)
+                new_before_height = int(before_height * scale)
+                before_resized = cv2.resize(before_img, (new_before_width, new_before_height))
+                before_pil = Image.fromarray(before_resized)
+                before_photo = ImageTk.PhotoImage(before_pil)
+                
+                before_x = (canvas_width - new_before_width) // 2
+                before_y = (canvas_height - new_before_height) // 2
+                before_canvas.delete("all")
+                before_canvas.create_image(before_x, before_y, anchor=tk.NW, image=before_photo)
+                before_canvas.image = before_photo  # 참조 유지
+                
+                # After 이미지 리사이즈 및 표시
+                new_after_width = int(after_width * scale)
+                new_after_height = int(after_height * scale)
+                after_resized = cv2.resize(after_img, (new_after_width, new_after_height))
+                after_pil = Image.fromarray(after_resized)
+                after_photo = ImageTk.PhotoImage(after_pil)
+                
+                after_x = (canvas_width - new_after_width) // 2
+                after_y = (canvas_height - new_after_height) // 2
+                after_canvas.delete("all")
+                after_canvas.create_image(after_x, after_y, anchor=tk.NW, image=after_photo)
+                after_canvas.image = after_photo  # 참조 유지
+                
+                print("Before/After 비교 이미지 표시 완료")
+                
+            except Exception as e:
+                print(f"Before/After 이미지 표시 중 오류: {str(e)}")
+        
+        # 창이 완전히 로드된 후 이미지 표시
+        comparison_window.after(200, display_comparison_images)
+        
+        # 닫기 버튼
+        close_button = ttk.Button(comparison_window, text="닫기", 
+                                 command=comparison_window.destroy)
+        close_button.pack(pady=10)
+        
+        # 창을 맨 앞으로
+        comparison_window.lift()
+        comparison_window.focus_set()
 
 def main():
     root = tk.Tk()
