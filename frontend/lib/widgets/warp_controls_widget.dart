@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/app_state.dart';
 import '../services/api_service.dart';
+import 'before_after_comparison.dart';
 
 /// 워핑 컨트롤 위젯
 class WarpControlsWidget extends StatelessWidget {
@@ -16,12 +17,58 @@ class WarpControlsWidget extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 제목
-              Text(
-                '🎨 자유 변형 도구',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+              // 영향 반경 (한 줄에 텍스트와 슬라이더)
+              Row(
+                children: [
+                  SizedBox(
+                    width: 100,
+                    child: Text(
+                      '영향 반경: ${appState.influenceRadiusPercent.toStringAsFixed(1)}%',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Slider(
+                      value: appState.influenceRadiusPercent,
+                      min: 0.5,
+                      max: 50.0,
+                      divisions: 99,
+                      label: '${appState.influenceRadiusPercent.toStringAsFixed(1)}%',
+                      onChanged: appState.currentImage != null
+                          ? (value) => appState.setInfluenceRadiusPercent(value)
+                          : null,
+                    ),
+                  ),
+                ],
+              ),
+              
+              // 변형 강도 (한 줄에 텍스트와 슬라이더)
+              Row(
+                children: [
+                  SizedBox(
+                    width: 100,
+                    child: Text(
+                      '변형 강도: ${(appState.warpStrength * 100).toInt()}%',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Slider(
+                      value: appState.warpStrength,
+                      min: 0.05, // 5%
+                      max: 1.0, // 100%
+                      divisions: 19, // 5%씩 이동 (5%, 10%, 15%, ..., 100%)
+                      label: '${(appState.warpStrength * 100).toInt()}%',
+                      onChanged: appState.currentImage != null
+                          ? (value) => appState.setWarpStrength(value)
+                          : null,
+                    ),
+                  ),
+                ],
               ),
               
               const SizedBox(height: 20),
@@ -125,62 +172,6 @@ class WarpControlsWidget extends StatelessWidget {
               
               const SizedBox(height: 20),
               
-              // 영향 반경 슬라이더 (퍼센트 기반)
-              Text(
-                '영향 반경: ${appState.influenceRadiusPercent.toStringAsFixed(1)}% (${appState.getInfluenceRadiusPixels().toInt()}px)',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              
-              Slider(
-                value: appState.influenceRadiusPercent,
-                min: 0.5,
-                max: 25.0,
-                divisions: 49, // 0.5% 단위
-                label: '${appState.influenceRadiusPercent.toStringAsFixed(1)}%',
-                onChanged: appState.currentImage != null
-                    ? (value) => appState.setInfluenceRadiusPercent(value)
-                    : null,
-              ),
-              
-              Text(
-                '이미지 크기에 비례한 영향 범위 (픽셀 크기는 자동 조정)',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // 변형 강도 슬라이더
-              Text(
-                '변형 강도: ${(appState.warpStrength * 100).toInt()}%',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              
-              Slider(
-                value: appState.warpStrength,
-                min: 0.1,
-                max: 3.0,
-                divisions: 29,
-                label: '${(appState.warpStrength * 100).toInt()}%',
-                onChanged: appState.currentImage != null
-                    ? (value) => appState.setWarpStrength(value)
-                    : null,
-              ),
-              
-              Text(
-                '변형의 강도를 조절합니다',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              
-              const SizedBox(height: 20),
-              
               // 사용법 안내
               Container(
                 padding: const EdgeInsets.all(12),
@@ -211,8 +202,10 @@ class WarpControlsWidget extends StatelessWidget {
                     Text(
                       '1. 원하는 변형 모드를 선택하세요\n'
                       '2. 영향 반경(%)과 강도를 조절하세요\n'
-                      '3. 이미지에서 드래그하여 변형을 적용하세요\n'
-                      '4. 뒤로가기/원본복원으로 실수를 되돌리세요',
+                      '3. 좌측 하단 버튼으로 줌인하세요\n'
+                      '4. 길게 누르고 드래그: 이미지 이동 (팬)\n'
+                      '5. 짧게 클릭/터치 드래그: 워핑 적용\n'
+                      '6. 뒤로가기/원본복원으로 실수를 되돌리세요',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
@@ -222,6 +215,19 @@ class WarpControlsWidget extends StatelessWidget {
               ),
               
               const SizedBox(height: 20),
+              
+              // Before/After 비교 버튼
+              if (appState.originalImage != null && appState.currentImage != null) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () => _showBeforeAfterComparison(context),
+                    icon: const Icon(Icons.compare),
+                    label: const Text('Before / After 비교'),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               
               // 다운로드 버튼
               if (appState.currentImage != null) ...[
@@ -238,6 +244,23 @@ class WarpControlsWidget extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  void _showBeforeAfterComparison(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          appBar: AppBar(
+            title: const Text('Before / After 비교'),
+            leading: IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+          body: const BeforeAfterComparison(),
+        ),
+      ),
     );
   }
 

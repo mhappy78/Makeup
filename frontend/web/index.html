@@ -28,6 +28,11 @@
 </head>
 <body>
   <script>
+    // 우클릭 컨텍스트 메뉴 비활성화
+    document.addEventListener('contextmenu', function(e) {
+      e.preventDefault();
+    });
+    
     window.addEventListener('load', function(ev) {
       // Download main.dart.js
       _flutter.loader.loadEntrypoint({

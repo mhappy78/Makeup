@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/app_state.dart';
 import '../models/face_regions.dart';
@@ -21,6 +22,9 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
   Offset? _hoverPoint; // 마우스 호버 위치
   bool _isDragging = false;
   bool _isHovering = false; // 호버 상태
+  double _baseScaleValue = 1.0; // 스케일 제스처의 기준값
+  bool _isPanMode = false; // 팬 모드 여부
+  bool _isShiftPressed = false; // Shift 키 눌림 상태
   
   // 공통 이미지 표시 영역 계산 메서드
   Map<String, dynamic> _getImageDisplayInfo(BoxConstraints constraints, AppState appState) {
@@ -60,16 +64,7 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
             final imageDisplaySize = imageDisplayInfo['imageDisplaySize'] as Size;
             final imageOffset = imageDisplayInfo['imageOffset'] as Offset;
             
-            return Listener(
-              onPointerSignal: (PointerSignalEvent event) {
-                if (event is PointerScrollEvent) {
-                  // 마우스 휠로 줌인/줌아웃
-                  final delta = event.scrollDelta.dy;
-                  final newScale = (appState.zoomScale * (delta > 0 ? 0.9 : 1.1)).clamp(0.5, 3.0);
-                  appState.setZoomScale(newScale);
-                }
-              },
-              child: MouseRegion(
+            return MouseRegion(
                 onEnter: (_) => setState(() => _isHovering = true),
                 onExit: (_) => setState(() {
                   _isHovering = false;
@@ -92,9 +87,105 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
                 }
               },
               child: GestureDetector(
-                onPanStart: (details) => _onPanStart(details, constraints, appState),
-                onPanUpdate: (details) => _onPanUpdate(details, constraints, appState),
-                onPanEnd: (details) => _onPanEnd(details, constraints, appState),
+                  onDoubleTap: () {
+                    // 더블클릭으로 줌 리셋
+                    appState.resetZoom();
+                  },
+                  onLongPressStart: (details) {
+                    // 길게 누르기 시작: 팬 모드 활성화 (전문가 탭에서만)
+                    if (appState.currentTabIndex == 2) {
+                      setState(() {
+                        _isPanMode = true;
+                        _startPoint = details.localPosition; // 팬 시작점 저장
+                      });
+                    }
+                  },
+                  onLongPressMoveUpdate: (details) {
+                    // 길게 누르면서 드래그: 팬 동작
+                    if (appState.currentTabIndex == 2 && _isPanMode && _startPoint != null && appState.zoomScale > 1.0) {
+                      final delta = details.localPosition - _startPoint!;
+                      appState.addPanOffset(delta);
+                      setState(() {
+                        _startPoint = details.localPosition; // 연속적인 팬을 위해 시작점 업데이트
+                      });
+                    }
+                  },
+                  onLongPressEnd: (details) {
+                    // 길게 누르기 종료: 팬 모드 비활성화
+                    if (appState.currentTabIndex == 2) {
+                      setState(() {
+                        _isPanMode = false;
+                        _startPoint = null;
+                      });
+                    }
+                  },
+                onScaleStart: (details) {
+                  // 스케일 제스처 시작 - 현재 스케일을 기준으로 설정
+                  _baseScaleValue = appState.zoomScale;
+                  
+                  // 전문가 탭에서 단일 터치인 경우 워핑 시작점 설정 (팬 모드가 아닐 때만)
+                  if (appState.currentTabIndex == 2 && details.pointerCount == 1 && !_isPanMode) {
+                    final localPosition = details.localFocalPoint;
+                    if (_isPointInImageBounds(localPosition, constraints, appState)) {
+                      setState(() {
+                        _startPoint = localPosition;
+                        _currentPoint = localPosition;
+                        _isDragging = false;
+                      });
+                    }
+                  }
+                },
+                onScaleUpdate: (details) {
+                  // 멀티터치 줌 (두 손가락 이상)
+                  if (details.pointerCount > 1 && details.scale != 1.0) {
+                    final newScale = (_baseScaleValue * details.scale).clamp(0.5, 3.0);
+                    appState.setZoomScale(newScale);
+                  }
+                  
+                  // 단일 터치 처리
+                  if (details.pointerCount == 1) {
+                    if (appState.currentTabIndex == 2) {
+                      // 전문가 탭: 팬 모드인지 확인
+                      if (_isPanMode && appState.zoomScale > 1.0) {
+                        // 팬 모드: 이미지 이동
+                        appState.addPanOffset(details.focalPointDelta * 0.5);
+                      } else {
+                        // 워핑 모드: 워핑 도구
+                        if (_startPoint != null) {
+                          setState(() {
+                            _currentPoint = details.localFocalPoint;
+                            _isDragging = true;
+                          });
+                        }
+                      }
+                    } else {
+                      // 다른 탭: 팬 (줌된 상태에서만)
+                      if (appState.zoomScale > 1.0) {
+                        appState.addPanOffset(details.focalPointDelta * 0.5);
+                      }
+                    }
+                  }
+                  
+                  // 멀티터치 팬
+                  if (details.pointerCount > 1 && appState.zoomScale > 1.0 && appState.currentTabIndex != 2) {
+                    appState.addPanOffset(details.focalPointDelta * 0.3);
+                  }
+                },
+                onScaleEnd: (details) {
+                  // 스케일 제스처 완료
+                  _baseScaleValue = appState.zoomScale;
+                  
+                  // 전문가 탭에서 워핑 완료 처리 (팬 모드가 아닐 때만)
+                  if (appState.currentTabIndex == 2 && !_isPanMode && _startPoint != null && _currentPoint != null && _isDragging) {
+                    _performWarp(constraints, appState);
+                  }
+                  
+                  setState(() {
+                    _startPoint = null;
+                    _currentPoint = null;
+                    _isDragging = false;
+                  });
+                },
               child: Container(
                 width: double.infinity,
                 height: double.infinity,
@@ -102,13 +193,16 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
                 child: Stack(
                     alignment: Alignment.center, // Stack 중앙 정렬
                     children: [
-                      // 이미지 (중앙 정렬, 줌 적용)
-                      Transform.scale(
-                        scale: appState.zoomScale,
-                        child: Image.memory(
-                          appState.currentImage!,
-                          fit: BoxFit.contain,
-                          alignment: Alignment.center,
+                      // 이미지 (중앙 정렬, 줌과 팬 적용)
+                      Transform.translate(
+                        offset: appState.panOffset,
+                        child: Transform.scale(
+                          scale: appState.zoomScale,
+                          child: Image.memory(
+                            appState.displayImage!,
+                            fit: BoxFit.contain,
+                            alignment: Alignment.center,
+                          ),
                         ),
                       ),
                     
@@ -202,8 +296,96 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
                           ),
                         ),
                       ),
+                    
+                    // 플로팅 줌 컨트롤 (이미지 좌측 하단 세로)
+                    Positioned(
+                      left: 20,
+                      bottom: 20,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // 줌인 버튼
+                          FloatingActionButton.small(
+                            onPressed: () {
+                              final newScale = (appState.zoomScale * 1.2).clamp(0.5, 3.0);
+                              appState.setZoomScale(newScale);
+                            },
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black87,
+                            child: const Icon(Icons.add, size: 18),
+                          ),
+                          const SizedBox(height: 8),
+                          // 줌 비율 표시
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.black87,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '${(appState.zoomScale * 100).toInt()}%',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          // 줌아웃 버튼
+                          FloatingActionButton.small(
+                            onPressed: () {
+                              final newScale = (appState.zoomScale / 1.2).clamp(0.5, 3.0);
+                              appState.setZoomScale(newScale);
+                            },
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black87,
+                            child: const Icon(Icons.remove, size: 18),
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    // 팬 모드 표시 (전문가 탭에서만)
+                    if (appState.currentTabIndex == 2 && _isPanMode)
+                      Positioned(
+                        top: 20,
+                        right: 20,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.9),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.pan_tool,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                '팬 모드',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                   ],
-                ),
                 ),
               ),
             ),
@@ -214,35 +396,9 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
     );
   }
 
-  void _onPanStart(details, BoxConstraints constraints, AppState appState) {
-    final localPosition = details.localPosition;
-    
-    // 이미지 영역 내에서만 동작하도록 제한
-    if (_isPointInImageBounds(localPosition, constraints, appState)) {
-      setState(() {
-        _startPoint = localPosition;
-        _currentPoint = localPosition;
-        _isDragging = false;
-      });
-    }
-  }
-
-  void _onPanUpdate(details, BoxConstraints constraints, AppState appState) {
-    if (_startPoint == null) return;
-    
-    setState(() {
-      _currentPoint = details.localPosition;
-      _isDragging = true;
-    });
-  }
-
-  void _onPanEnd(details, BoxConstraints constraints, AppState appState) async {
+  // 워핑 수행 메서드 (기존 _onPanEnd 로직)
+  Future<void> _performWarp(BoxConstraints constraints, AppState appState) async {
     if (_startPoint == null || _currentPoint == null || !_isDragging) {
-      setState(() {
-        _startPoint = null;
-        _currentPoint = null;
-        _isDragging = false;
-      });
       return;
     }
 
@@ -254,45 +410,73 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
       appState,
     );
 
-    if (imageCoordinates == null) {
-      setState(() {
-        _startPoint = null;
-        _currentPoint = null;
-        _isDragging = false;
-      });
-      return;
+    if (imageCoordinates == null) return;
+
+    try {
+      appState.setLoading(true);
+      final apiService = context.read<ApiService>();
+
+      final warpRequest = WarpRequest(
+        imageId: appState.currentImageId!,
+        startX: imageCoordinates['startX']!,
+        startY: imageCoordinates['startY']!,
+        endX: imageCoordinates['endX']!,
+        endY: imageCoordinates['endY']!,
+        influenceRadius: appState.getInfluenceRadiusPixels(),
+        strength: appState.warpStrength,
+        mode: appState.warpMode.name,
+      );
+
+      final response = await apiService.warpImage(warpRequest);
+      
+      // 히스토리에 현재 상태 저장
+      appState.saveToHistory();
+      
+      // 새 이미지로 업데이트
+      appState.updateCurrentImageWithId(response.imageBytes, response.imageId);
+      
+    } catch (e) {
+      appState.setError('워핑 실패: $e');
+    } finally {
+      appState.setLoading(false);
     }
-
-    // 워핑 적용
-    await _applyWarp(appState, imageCoordinates);
-
-    setState(() {
-      _startPoint = null;
-      _currentPoint = null;
-      _isDragging = false;
-    });
   }
 
+
   bool _isPointInImageBounds(Offset point, BoxConstraints constraints, AppState appState) {
-    // 이미지의 실제 표시 영역 계산
+    // 줌과 팬을 고려한 이미지 영역 계산
     final imageAspectRatio = appState.imageWidth / appState.imageHeight;
     final containerAspectRatio = constraints.maxWidth / constraints.maxHeight;
     
-    late Size imageDisplaySize;
-    late Offset imageOffset;
+    late Size baseImageDisplaySize;
+    late Offset baseImageOffset;
     
     if (imageAspectRatio > containerAspectRatio) {
-      // 이미지가 더 넓음 - 너비에 맞춤
-      imageDisplaySize = Size(constraints.maxWidth, constraints.maxWidth / imageAspectRatio);
-      imageOffset = Offset(0, (constraints.maxHeight - imageDisplaySize.height) / 2);
+      baseImageDisplaySize = Size(constraints.maxWidth, constraints.maxWidth / imageAspectRatio);
+      baseImageOffset = Offset(0, (constraints.maxHeight - baseImageDisplaySize.height) / 2);
     } else {
-      // 이미지가 더 높음 - 높이에 맞춤
-      imageDisplaySize = Size(constraints.maxHeight * imageAspectRatio, constraints.maxHeight);
-      imageOffset = Offset((constraints.maxWidth - imageDisplaySize.width) / 2, 0);
+      baseImageDisplaySize = Size(constraints.maxHeight * imageAspectRatio, constraints.maxHeight);
+      baseImageOffset = Offset((constraints.maxWidth - baseImageDisplaySize.width) / 2, 0);
     }
     
-    final imageRect = imageOffset & imageDisplaySize;
-    return imageRect.contains(point);
+    // 줌과 팬을 적용한 실제 이미지 영역 계산
+    final containerCenter = Offset(constraints.maxWidth / 2, constraints.maxHeight / 2);
+    final scaledSize = Size(
+      baseImageDisplaySize.width * appState.zoomScale,
+      baseImageDisplaySize.height * appState.zoomScale,
+    );
+    
+    // 줌된 이미지의 중심점 (팬 오프셋 포함)
+    final scaledImageCenter = containerCenter + appState.panOffset;
+    
+    // 줌된 이미지의 실제 표시 영역
+    final scaledImageOffset = Offset(
+      scaledImageCenter.dx - scaledSize.width / 2,
+      scaledImageCenter.dy - scaledSize.height / 2,
+    );
+    
+    final scaledImageRect = scaledImageOffset & scaledSize;
+    return scaledImageRect.contains(point);
   }
 
   Map<String, double>? _convertToImageCoordinates(
@@ -301,30 +485,50 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
     BoxConstraints constraints,
     AppState appState,
   ) {
-    // 이미지의 실제 표시 영역 계산
+    // 이미지의 실제 표시 영역 계산 (줌 전 기본 크기)
     final imageAspectRatio = appState.imageWidth / appState.imageHeight;
     final containerAspectRatio = constraints.maxWidth / constraints.maxHeight;
     
-    late Size imageDisplaySize;
-    late Offset imageOffset;
+    late Size baseImageDisplaySize;
+    late Offset baseImageOffset;
     
     if (imageAspectRatio > containerAspectRatio) {
-      imageDisplaySize = Size(constraints.maxWidth, constraints.maxWidth / imageAspectRatio);
-      imageOffset = Offset(0, (constraints.maxHeight - imageDisplaySize.height) / 2);
+      baseImageDisplaySize = Size(constraints.maxWidth, constraints.maxWidth / imageAspectRatio);
+      baseImageOffset = Offset(0, (constraints.maxHeight - baseImageDisplaySize.height) / 2);
     } else {
-      imageDisplaySize = Size(constraints.maxHeight * imageAspectRatio, constraints.maxHeight);
-      imageOffset = Offset((constraints.maxWidth - imageDisplaySize.width) / 2, 0);
+      baseImageDisplaySize = Size(constraints.maxHeight * imageAspectRatio, constraints.maxHeight);
+      baseImageOffset = Offset((constraints.maxWidth - baseImageDisplaySize.width) / 2, 0);
     }
     
-    // 상대 좌표를 이미지 좌표로 변환
+    // 컨테이너 중심점 계산
+    final containerCenter = Offset(constraints.maxWidth / 2, constraints.maxHeight / 2);
+    
+    // 줌과 팬을 고려한 역변환
+    // 1. 컨테이너 중심 기준 좌표로 변환
+    final startFromCenter = startPoint - containerCenter;
+    final endFromCenter = endPoint - containerCenter;
+    
+    // 2. 팬 오프셋 제거
+    final startAfterPan = startFromCenter - appState.panOffset;
+    final endAfterPan = endFromCenter - appState.panOffset;
+    
+    // 3. 줌 스케일 제거
+    final startAfterZoom = startAfterPan / appState.zoomScale;
+    final endAfterZoom = endAfterPan / appState.zoomScale;
+    
+    // 4. 다시 컨테이너 좌표로 변환
+    final adjustedStart = startAfterZoom + containerCenter;
+    final adjustedEnd = endAfterZoom + containerCenter;
+    
+    // 5. 이미지 좌표로 변환
     final relativeStart = Offset(
-      (startPoint.dx - imageOffset.dx) / imageDisplaySize.width,
-      (startPoint.dy - imageOffset.dy) / imageDisplaySize.height,
+      (adjustedStart.dx - baseImageOffset.dx) / baseImageDisplaySize.width,
+      (adjustedStart.dy - baseImageOffset.dy) / baseImageDisplaySize.height,
     );
     
     final relativeEnd = Offset(
-      (endPoint.dx - imageOffset.dx) / imageDisplaySize.width,
-      (endPoint.dy - imageOffset.dy) / imageDisplaySize.height,
+      (adjustedEnd.dx - baseImageOffset.dx) / baseImageDisplaySize.width,
+      (adjustedEnd.dy - baseImageOffset.dy) / baseImageDisplaySize.height,
     );
     
     // 범위 검증

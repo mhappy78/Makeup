@@ -29,12 +29,13 @@ class AppState extends ChangeNotifier {
   
   // 워핑 도구 상태
   WarpMode _warpMode = WarpMode.pull;
-  double _influenceRadiusPercent = 5.0; // 이미지 크기 대비 퍼센트 (기본 5%)
-  double _warpStrength = 1.0;
+  double _influenceRadiusPercent = 20.0; // 이미지 크기 대비 퍼센트 (기본 20%)
+  double _warpStrength = 0.1; // 기본 10% (0.1)
   
   // 줌 및 팬 상태
   double _zoomScale = 1.0;
   Offset _panOffset = Offset.zero;
+  bool _showOriginalImage = false; // Before/After 비교를 위한 상태
   
   // 히스토리 관리
   final List<ImageHistoryItem> _imageHistory = [];
@@ -76,6 +77,10 @@ class AppState extends ChangeNotifier {
   int get currentTabIndex => _currentTabIndex;
   double get zoomScale => _zoomScale;
   Offset get panOffset => _panOffset;
+  bool get showOriginalImage => _showOriginalImage;
+  
+  // Before/After 비교를 위한 표시 이미지 getter
+  Uint8List? get displayImage => _showOriginalImage ? _originalImage : _currentImage;
   
   // 이미지 설정 (새 이미지 업로드 시)
   void setImage(Uint8List imageData, String imageId, int width, int height) {
@@ -286,10 +291,41 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
   
+  // 팬 오프셋 추가 (상대적 이동) - 경계 제한 포함
+  void addPanOffset(Offset delta) {
+    final newOffset = _panOffset + delta;
+    
+    // 줌된 상태에서만 팬 경계 제한
+    if (_zoomScale > 1.0) {
+      // 대략적인 경계 계산 (화면 크기의 절반)
+      final maxOffset = 200.0 * (_zoomScale - 1.0);
+      _panOffset = Offset(
+        newOffset.dx.clamp(-maxOffset, maxOffset),
+        newOffset.dy.clamp(-maxOffset, maxOffset),
+      );
+    } else {
+      _panOffset = newOffset;
+    }
+    
+    notifyListeners();
+  }
+  
   // 줌 리셋
   void resetZoom() {
     _zoomScale = 1.0;
     _panOffset = Offset.zero;
+    notifyListeners();
+  }
+  
+  // Before/After 토글
+  void toggleOriginalImage() {
+    _showOriginalImage = !_showOriginalImage;
+    notifyListeners();
+  }
+  
+  // Before/After 상태 설정
+  void setShowOriginalImage(bool show) {
+    _showOriginalImage = show;
     notifyListeners();
   }
   
