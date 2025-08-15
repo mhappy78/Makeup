@@ -178,8 +178,11 @@ async def warp_image(request: WarpRequest):
             mode=request.mode
         )
         
-        # 결과 이미지를 임시 파일로 저장 (덮어쓰기)
-        cv2.imwrite(temp_path, cv2.cvtColor(warped_image, cv2.COLOR_RGB2BGR))
+        # 새로운 UUID로 결과 이미지 저장 (원본 보존)
+        import uuid
+        new_image_id = str(uuid.uuid4())
+        new_temp_path = os.path.join(TEMP_DIR, f"{new_image_id}.jpg")
+        cv2.imwrite(new_temp_path, cv2.cvtColor(warped_image, cv2.COLOR_RGB2BGR))
         
         # Base64로 인코딩하여 반환
         pil_image = Image.fromarray(warped_image)
@@ -188,7 +191,7 @@ async def warp_image(request: WarpRequest):
         img_base64 = base64.b64encode(buffer.getvalue()).decode()
         
         return ImageResponse(
-            image_id=request.image_id,
+            image_id=new_image_id,
             image_data=img_base64
         )
         

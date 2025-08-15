@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
 import '../models/app_state.dart';
 import '../models/face_regions.dart';
@@ -17,7 +18,33 @@ class ImageDisplayWidget extends StatefulWidget {
 class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
   Offset? _startPoint;
   Offset? _currentPoint;
+  Offset? _hoverPoint; // 마우스 호버 위치
   bool _isDragging = false;
+  bool _isHovering = false; // 호버 상태
+  
+  // 공통 이미지 표시 영역 계산 메서드
+  Map<String, dynamic> _getImageDisplayInfo(BoxConstraints constraints, AppState appState) {
+    final imageAspectRatio = appState.imageWidth / appState.imageHeight;
+    final containerAspectRatio = constraints.maxWidth / constraints.maxHeight;
+    
+    late Size imageDisplaySize;
+    late Offset imageOffset;
+    
+    if (imageAspectRatio > containerAspectRatio) {
+      // 이미지가 더 넓음 - 너비에 맞춤
+      imageDisplaySize = Size(constraints.maxWidth, constraints.maxWidth / imageAspectRatio);
+      imageOffset = Offset(0, (constraints.maxHeight - imageDisplaySize.height) / 2);
+    } else {
+      // 이미지가 더 높음 - 높이에 맞춤
+      imageDisplaySize = Size(constraints.maxHeight * imageAspectRatio, constraints.maxHeight);
+      imageOffset = Offset((constraints.maxWidth - imageDisplaySize.width) / 2, 0);
+    }
+    
+    return {
+      'imageDisplaySize': imageDisplaySize,
+      'imageOffset': imageOffset,
+    };
+  }
   
   @override
   Widget build(BuildContext context) {
@@ -29,46 +56,85 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
 
         return LayoutBuilder(
           builder: (context, constraints) {
-            return GestureDetector(
-              onPanStart: (details) => _onPanStart(details, constraints, appState),
-              onPanUpdate: (details) => _onPanUpdate(details, constraints, appState),
-              onPanEnd: (details) => _onPanEnd(details, constraints, appState),
+            final imageDisplayInfo = _getImageDisplayInfo(constraints, appState);
+            final imageDisplaySize = imageDisplayInfo['imageDisplaySize'] as Size;
+            final imageOffset = imageDisplayInfo['imageOffset'] as Offset;
+            
+            return MouseRegion(
+              onEnter: (_) => setState(() => _isHovering = true),
+              onExit: (_) => setState(() {
+                _isHovering = false;
+                _hoverPoint = null;
+              }),
+              onHover: (event) {
+                // 전문가 탭에서만 호버 시각화 (이미지 영역 내에서만)
+                if (appState.currentTabIndex == 2) {
+                  final localPos = event.localPosition;
+                  // 이미지 영역 내부인지 확인
+                  if (_isPointInImageBounds(localPos, constraints, appState)) {
+                    setState(() {
+                      _hoverPoint = localPos;
+                    });
+                  } else {
+                    setState(() {
+                      _hoverPoint = null;
+                    });
+                  }
+                }
+              },
+              child: GestureDetector(
+                onPanStart: (details) => _onPanStart(details, constraints, appState),
+                onPanUpdate: (details) => _onPanUpdate(details, constraints, appState),
+                onPanEnd: (details) => _onPanEnd(details, constraints, appState),
               child: Container(
                 width: double.infinity,
                 height: double.infinity,
                 color: Colors.grey[100],
                 child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    // 이미지
-                    Image.memory(
-                      appState.currentImage!,
-                      fit: BoxFit.contain,
-                    ),
+                    alignment: Alignment.center, // Stack 중앙 정렬
+                    children: [
+                      // 이미지 (중앙 정렬)
+                      Image.memory(
+                        appState.currentImage!,
+                        fit: BoxFit.contain,
+                        alignment: Alignment.center,
+                      ),
                     
-                    // 랜드마크 오버레이
+                    // 랜드마크 오버레이 (정확한 이미지 위치 기준)
                     if (appState.showLandmarks)
-                      CustomPaint(
-                        painter: AnimatedFaceRegionsPainter(
-                          landmarks: appState.landmarks,
-                          imageWidth: appState.imageWidth,
-                          imageHeight: appState.imageHeight,
-                          containerSize: constraints.biggest,
-                          regionVisibility: appState.regionVisibility,
-                          animationProgress: appState.animationProgress,
-                          currentAnimatingRegion: appState.currentAnimatingRegion,
-                          showSpecialLandmarks: appState.showBeautyScore, // 애니메이션 완료 후에만 표시
-                          beautyScoreAnimationProgress: appState.beautyScoreAnimationProgress,
+                      Positioned(
+                        left: imageOffset.dx,
+                        top: imageOffset.dy,
+                        width: imageDisplaySize.width,
+                        height: imageDisplaySize.height,
+                        child: CustomPaint(
+                          painter: AnimatedFaceRegionsPainter(
+                            landmarks: appState.landmarks,
+                            imageWidth: appState.imageWidth,
+                            imageHeight: appState.imageHeight,
+                            containerSize: imageDisplaySize, // 이미지 표시 크기 사용
+                            regionVisibility: appState.regionVisibility,
+                            animationProgress: appState.animationProgress,
+                            currentAnimatingRegion: appState.currentAnimatingRegion,
+                            showSpecialLandmarks: appState.showBeautyScore, // 애니메이션 완료 후에만 표시
+                            beautyScoreAnimationProgress: appState.beautyScoreAnimationProgress,
+                          ),
                         ),
                       ),
                     
-                    // 얼굴 스캔 애니메이션 오버레이
+                    // 얼굴 스캔 애니메이션 오버레이 (정확한 이미지 위치 기준)
                     if (appState.isAutoAnimationMode)
-                      CustomPaint(
-                        painter: FaceScanAnimationPainter(
-                          containerSize: constraints.biggest,
-                          imageWidth: appState.imageWidth,
-                          imageHeight: appState.imageHeight,
+                      Positioned(
+                        left: imageOffset.dx,
+                        top: imageOffset.dy,
+                        width: imageDisplaySize.width,
+                        height: imageDisplaySize.height,
+                        child: CustomPaint(
+                          painter: FaceScanAnimationPainter(
+                            containerSize: imageDisplaySize, // 이미지 표시 크기 사용
+                            imageWidth: appState.imageWidth,
+                            imageHeight: appState.imageHeight,
+                          ),
                         ),
                       ),
                     
@@ -81,20 +147,53 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
                         child: const AnalysisTextOverlay(),
                       ),
                     
-                    // 워핑 도구 오버레이
+                    // 워핑 도구 오버레이 (이미지 영역 내)
                     if (_startPoint != null)
-                      CustomPaint(
-                        painter: WarpToolPainter(
-                          startPoint: _startPoint!,
-                          currentPoint: _currentPoint ?? _startPoint!,
-                          influenceRadius: appState.influenceRadius,
-                          warpMode: appState.warpMode,
-                          isDragging: _isDragging,
+                      Positioned(
+                        left: imageOffset.dx,
+                        top: imageOffset.dy,
+                        width: imageDisplaySize.width,
+                        height: imageDisplaySize.height,
+                        child: CustomPaint(
+                          painter: WarpToolPainter(
+                            startPoint: Offset(
+                              (_startPoint!.dx - imageOffset.dx),
+                              (_startPoint!.dy - imageOffset.dy)
+                            ),
+                            currentPoint: Offset(
+                              ((_currentPoint ?? _startPoint!).dx - imageOffset.dx),
+                              ((_currentPoint ?? _startPoint!).dy - imageOffset.dy)
+                            ),
+                            influenceRadius: appState.getInfluenceRadiusForDisplay(imageDisplaySize),
+                            warpMode: appState.warpMode,
+                            isDragging: _isDragging,
+                          ),
+                        ),
+                      ),
+                    
+                    // 호버 시각화 (전문가 탭에서만, 이미지 영역 내)
+                    if (appState.currentTabIndex == 2 && _hoverPoint != null && !_isDragging)
+                      Positioned(
+                        left: imageOffset.dx,
+                        top: imageOffset.dy,
+                        width: imageDisplaySize.width,
+                        height: imageDisplaySize.height,
+                        child: CustomPaint(
+                          painter: HoverPreviewPainter(
+                            hoverPoint: Offset(
+                              (_hoverPoint!.dx - imageOffset.dx),
+                              (_hoverPoint!.dy - imageOffset.dy)
+                            ),
+                            influenceRadius: appState.getInfluenceRadiusForDisplay(imageDisplaySize),
+                            strength: appState.warpStrength,
+                            warpMode: appState.warpMode,
+                          ),
                         ),
                       ),
                   ],
                 ),
               ),
+            ),
             );
           },
         );
@@ -234,6 +333,9 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
   Future<void> _applyWarp(AppState appState, Map<String, double> coordinates) async {
     if (appState.currentImageId == null) return;
     
+    // 워핑 작업 전에 히스토리 저장
+    appState.saveToHistory();
+    
     appState.setLoading(true);
     
     try {
@@ -244,7 +346,7 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
         startY: coordinates['startY']!,
         endX: coordinates['endX']!,
         endY: coordinates['endY']!,
-        influenceRadius: appState.influenceRadius,
+        influenceRadius: appState.getInfluenceRadiusPixels(),
         strength: appState.warpStrength,
         mode: appState.warpMode.value,
       );
@@ -252,16 +354,11 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
       final warpResponse = await apiService.warpImage(warpRequest);
       final imageBytes = warpResponse.imageBytes;
       
-      // 변형된 이미지로 업데이트
-      appState.setImage(
-        imageBytes,
-        appState.currentImageId!,
-        appState.imageWidth,
-        appState.imageHeight,
-      );
+      // 변형된 이미지로 현재 이미지와 ID 업데이트 (새로운 이미지 ID 사용)
+      appState.updateCurrentImageWithId(imageBytes, warpResponse.imageId);
       
-      // 랜드마크 다시 검출
-      final landmarkResponse = await apiService.getFaceLandmarks(appState.currentImageId!);
+      // 새로운 이미지 ID로 랜드마크 다시 검출
+      final landmarkResponse = await apiService.getFaceLandmarks(warpResponse.imageId);
       appState.setLandmarks(landmarkResponse.landmarks);
       
       appState.setLoading(false);
@@ -644,7 +741,7 @@ class WarpToolPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0;
     
-    canvas.drawCircle(startPoint, influenceRadius * 0.5, radiusPaint);
+    canvas.drawCircle(startPoint, influenceRadius, radiusPaint);
     
     // 시작점
     final startPaint = Paint()
@@ -654,10 +751,10 @@ class WarpToolPainter extends CustomPainter {
     canvas.drawCircle(startPoint, 6.0, startPaint);
     
     if (isDragging) {
-      // 드래그 벡터
+      // 드래그 벡터 (2배 가늘게)
       final vectorPaint = Paint()
         ..color = Colors.green
-        ..strokeWidth = 3.0
+        ..strokeWidth = 1.5
         ..style = PaintingStyle.stroke;
       
       canvas.drawLine(startPoint, currentPoint, vectorPaint);
@@ -675,7 +772,7 @@ class WarpToolPainter extends CustomPainter {
   }
   
   void _drawArrow(Canvas canvas, Offset start, Offset end, Paint paint) {
-    const arrowLength = 15.0;
+    const arrowLength = 7.5; // 2배 작게 (15.0 → 7.5)
     const arrowAngle = 0.5;
     
     final direction = (end - start).direction;
@@ -1027,5 +1124,169 @@ class _AnalysisTextOverlayState extends State<AnalysisTextOverlay>
         ),
       ),
     );
+  }
+}
+
+/// 호버 미리보기 페인터
+class HoverPreviewPainter extends CustomPainter {
+  final Offset hoverPoint;
+  final double influenceRadius;
+  final double strength;
+  final WarpMode warpMode;
+
+  HoverPreviewPainter({
+    required this.hoverPoint,
+    required this.influenceRadius,
+    required this.strength,
+    required this.warpMode,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // 영향 반경 원 (점선 테두리, 내부 투명)
+    final radiusStrokePaint = Paint()
+      ..color = Colors.blue.withOpacity(0.8)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+    
+    // 강도에 따른 내부 원 (강도 시각화)
+    final strengthRadius = influenceRadius * (strength.clamp(0.1, 1.0));
+    final strengthStrokePaint = Paint()
+      ..color = _getModeColor().withOpacity(0.8)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    
+    // 영향 반경 원을 점선으로 그리기
+    _drawDashedCircle(canvas, hoverPoint, influenceRadius, radiusStrokePaint);
+    
+    // 강도 원 그리기 (점선)
+    if (strength > 0.1) {
+      _drawDashedCircle(canvas, hoverPoint, strengthRadius, strengthStrokePaint);
+    }
+    
+    // 중심점 표시
+    final centerPaint = Paint()
+      ..color = _getModeColor()
+      ..style = PaintingStyle.fill;
+    
+    canvas.drawCircle(hoverPoint, 3.0, centerPaint);
+    
+    // 모드별 아이콘 또는 표시
+    _drawModeIndicator(canvas, hoverPoint);
+  }
+  
+  Color _getModeColor() {
+    switch (warpMode) {
+      case WarpMode.pull:
+        return Colors.green;
+      case WarpMode.push:
+        return Colors.red;
+      case WarpMode.expand:
+        return Colors.orange;
+      case WarpMode.shrink:
+        return Colors.purple;
+    }
+  }
+  
+  void _drawModeIndicator(Canvas canvas, Offset center) {
+    final paint = Paint()
+      ..color = _getModeColor()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+    
+    switch (warpMode) {
+      case WarpMode.pull:
+        // 화살표 4방향 안쪽
+        _drawArrowIcon(canvas, center, paint, true);
+        break;
+      case WarpMode.push:
+        // 화살표 4방향 바깥쪽
+        _drawArrowIcon(canvas, center, paint, false);
+        break;
+      case WarpMode.expand:
+        // + 모양
+        canvas.drawLine(
+          Offset(center.dx - 8, center.dy),
+          Offset(center.dx + 8, center.dy),
+          paint,
+        );
+        canvas.drawLine(
+          Offset(center.dx, center.dy - 8),
+          Offset(center.dx, center.dy + 8),
+          paint,
+        );
+        break;
+      case WarpMode.shrink:
+        // - 모양
+        canvas.drawLine(
+          Offset(center.dx - 6, center.dy),
+          Offset(center.dx + 6, center.dy),
+          paint,
+        );
+        break;
+    }
+  }
+  
+  void _drawArrowIcon(Canvas canvas, Offset center, Paint paint, bool inward) {
+    final size = 6.0;
+    final directions = [0.0, 1.5708, 3.14159, 4.71239]; // 0°, 90°, 180°, 270°
+    
+    for (final direction in directions) {
+      final startOffset = inward ? size : -size;
+      final endOffset = inward ? -size : size;
+      
+      final start = center + Offset.fromDirection(direction, startOffset);
+      final end = center + Offset.fromDirection(direction, endOffset);
+      
+      canvas.drawLine(start, end, paint);
+      
+      // 화살표 머리
+      final arrowLength = 3.0;
+      final arrowAngle = 0.5;
+      final arrowDirection = inward ? direction + 3.14159 : direction;
+      
+      final arrowPoint1 = end + Offset.fromDirection(arrowDirection + arrowAngle, arrowLength);
+      final arrowPoint2 = end + Offset.fromDirection(arrowDirection - arrowAngle, arrowLength);
+      
+      canvas.drawLine(end, arrowPoint1, paint);
+      canvas.drawLine(end, arrowPoint2, paint);
+    }
+  }
+
+  // 점선 원 그리기 헬퍼 메서드
+  void _drawDashedCircle(Canvas canvas, Offset center, double radius, Paint paint) {
+    const double dashLength = 8.0;
+    const double gapLength = 4.0;
+    const double totalDashUnit = dashLength + gapLength;
+    
+    final circumference = 2 * math.pi * radius;
+    final dashCount = (circumference / totalDashUnit).floor();
+    
+    for (int i = 0; i < dashCount; i++) {
+      final startAngle = (i * totalDashUnit / radius);
+      final endAngle = startAngle + (dashLength / radius);
+      
+      final startX = center.dx + radius * math.cos(startAngle);
+      final startY = center.dy + radius * math.sin(startAngle);
+      final endX = center.dx + radius * math.cos(endAngle);
+      final endY = center.dy + radius * math.sin(endAngle);
+      
+      // 짧은 호 그리기
+      final path = Path();
+      path.addArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        endAngle - startAngle,
+      );
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(HoverPreviewPainter oldDelegate) {
+    return hoverPoint != oldDelegate.hoverPoint ||
+           influenceRadius != oldDelegate.influenceRadius ||
+           strength != oldDelegate.strength ||
+           warpMode != oldDelegate.warpMode;
   }
 }

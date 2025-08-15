@@ -11,193 +11,230 @@ class WarpControlsWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<AppState>(
       builder: (context, appState, child) {
-        return Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 제목
-                Text(
-                  '자유 변형 도구',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 제목
+              Text(
+                '🎨 자유 변형 도구',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
                 ),
-                
-                const SizedBox(height: 16),
-                
-                // 워핑 모드 선택
-                Text(
-                  '변형 모드',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                
-                const SizedBox(height: 8),
-                
-                // 모드 버튼들
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: WarpMode.values.map((mode) {
-                    final isSelected = appState.warpMode == mode;
-                    return FilterChip(
-                      label: Text(mode.displayName),
-                      selected: isSelected,
-                      onSelected: appState.currentImage != null 
-                          ? (selected) {
-                              if (selected) {
-                                appState.setWarpMode(mode);
-                              }
-                            }
+              ),
+              
+              const SizedBox(height: 20),
+              
+              // 히스토리 관리 버튼들
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.tonal(
+                      onPressed: appState.canUndo 
+                          ? () => appState.undo()
                           : null,
-                      tooltip: mode.description,
-                    );
-                  }).toList(),
-                ),
-                
-                const SizedBox(height: 16),
-                
-                // 현재 모드 설명
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        _getModeIcon(appState.warpMode),
-                        size: 20,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          appState.warpMode.description,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                const SizedBox(height: 20),
-                
-                // 영향 반경 슬라이더
-                Text(
-                  '영향 반경: ${appState.influenceRadius.toInt()}px',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                
-                Slider(
-                  value: appState.influenceRadius,
-                  min: 20,
-                  max: 200,
-                  divisions: 18,
-                  label: '${appState.influenceRadius.toInt()}px',
-                  onChanged: appState.currentImage != null
-                      ? (value) => appState.setInfluenceRadius(value)
-                      : null,
-                ),
-                
-                Text(
-                  '변형이 적용될 범위를 설정합니다',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                
-                const SizedBox(height: 16),
-                
-                // 변형 강도 슬라이더
-                Text(
-                  '변형 강도: ${(appState.warpStrength * 100).toInt()}%',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                
-                Slider(
-                  value: appState.warpStrength,
-                  min: 0.1,
-                  max: 2.0,
-                  divisions: 19,
-                  label: '${(appState.warpStrength * 100).toInt()}%',
-                  onChanged: appState.currentImage != null
-                      ? (value) => appState.setWarpStrength(value)
-                      : null,
-                ),
-                
-                Text(
-                  '변형의 강도를 조절합니다',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                
-                const SizedBox(height: 20),
-                
-                // 사용법 안내
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
-                            Icons.info_outline,
-                            size: 16,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            '사용법',
-                            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
+                          Icon(Icons.undo, size: 18),
+                          SizedBox(width: 4),
+                          Text('뒤로가기'),
                         ],
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        '1. 원하는 변형 모드를 선택하세요\n'
-                        '2. 영향 반경과 강도를 조절하세요\n'
-                        '3. 이미지에서 드래그하여 변형을 적용하세요',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-                
-                const Spacer(),
-                
-                // 다운로드 버튼
-                if (appState.currentImage != null) ...[
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: () => _downloadImage(context),
-                      icon: const Icon(Icons.download),
-                      label: const Text('결과 저장'),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: FilledButton.tonal(
+                      onPressed: appState.originalImage != null 
+                          ? () => appState.restoreToOriginal()
+                          : null,
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.restore, size: 18),
+                          SizedBox(width: 4),
+                          Text('원본복원'),
+                        ],
+                      ),
                     ),
                   ),
                 ],
+              ),
+              
+              const SizedBox(height: 20),
+              
+              // 워핑 모드 선택
+              Text(
+                '변형 모드',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              
+              const SizedBox(height: 8),
+              
+              // 모드 버튼들
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: WarpMode.values.map((mode) {
+                  final isSelected = appState.warpMode == mode;
+                  return FilterChip(
+                    label: Text(mode.displayName),
+                    selected: isSelected,
+                    onSelected: appState.currentImage != null 
+                        ? (selected) {
+                            if (selected) {
+                              appState.setWarpMode(mode);
+                            }
+                          }
+                        : null,
+                    tooltip: mode.description,
+                  );
+                }).toList(),
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // 현재 모드 설명
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _getModeIcon(appState.warpMode),
+                      size: 20,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        appState.warpMode.description,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 20),
+              
+              // 영향 반경 슬라이더 (퍼센트 기반)
+              Text(
+                '영향 반경: ${appState.influenceRadiusPercent.toStringAsFixed(1)}% (${appState.getInfluenceRadiusPixels().toInt()}px)',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              
+              Slider(
+                value: appState.influenceRadiusPercent,
+                min: 0.5,
+                max: 25.0,
+                divisions: 49, // 0.5% 단위
+                label: '${appState.influenceRadiusPercent.toStringAsFixed(1)}%',
+                onChanged: appState.currentImage != null
+                    ? (value) => appState.setInfluenceRadiusPercent(value)
+                    : null,
+              ),
+              
+              Text(
+                '이미지 크기에 비례한 영향 범위 (픽셀 크기는 자동 조정)',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // 변형 강도 슬라이더
+              Text(
+                '변형 강도: ${(appState.warpStrength * 100).toInt()}%',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              
+              Slider(
+                value: appState.warpStrength,
+                min: 0.1,
+                max: 3.0,
+                divisions: 29,
+                label: '${(appState.warpStrength * 100).toInt()}%',
+                onChanged: appState.currentImage != null
+                    ? (value) => appState.setWarpStrength(value)
+                    : null,
+              ),
+              
+              Text(
+                '변형의 강도를 조절합니다',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              
+              const SizedBox(height: 20),
+              
+              // 사용법 안내
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          size: 16,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '사용법',
+                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '1. 원하는 변형 모드를 선택하세요\n'
+                      '2. 영향 반경(%)과 강도를 조절하세요\n'
+                      '3. 이미지에서 드래그하여 변형을 적용하세요\n'
+                      '4. 뒤로가기/원본복원으로 실수를 되돌리세요',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 20),
+              
+              // 다운로드 버튼
+              if (appState.currentImage != null) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () => _downloadImage(context),
+                    icon: const Icon(Icons.download),
+                    label: const Text('결과 저장'),
+                  ),
+                ),
               ],
-            ),
+            ],
           ),
         );
       },

@@ -197,14 +197,10 @@ class BeautyScoreVisualizer {
       final screenX = imageOffset.dx + (centerX / imageWidth) * imageDisplaySize.width;
       final screenY = imageOffset.dy + (centerY / imageHeight) * imageDisplaySize.height;
       
-      // 턱곡률 점수 텍스트 (애니메이션 적용)
-      _drawText(canvas, Offset(screenX, screenY - 10), '턱곡률 ${liftingScore.round()}점', 
-          Colors.white.withOpacity(progress), 10);
-      
-      // 세부 각도 정보 텍스트 (애니메이션 적용)
-      _drawText(canvas, Offset(screenX, screenY + 8), 
+      // 각도 정보 텍스트만 표시 (애니메이션 적용)
+      _drawText(canvas, Offset(screenX, screenY), 
           '하악각${gonialAngle.round()}° 턱목각${cervicoMentalAngle.round()}°', 
-          Colors.white.withOpacity(progress), 8);
+          Colors.white.withOpacity(progress), 10);
     }
   }
   

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:math' as math;
 import '../models/app_state.dart';
 import '../widgets/image_upload_widget.dart';
 import '../widgets/image_display_widget.dart';
@@ -8,8 +9,43 @@ import '../widgets/landmark_controls_widget.dart';
 import '../widgets/face_regions_widget.dart';
 
 /// 메인 홈 스크린
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+    
+    // 탭 변경 감지
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) return; // 탭 변경 중이면 무시
+      
+      final appState = context.read<AppState>();
+      
+      // 현재 탭 인덱스 업데이트
+      appState.setCurrentTabIndex(_tabController.index);
+      
+      // 전문가 탭(index 2)으로 전환할 때 원본 이미지 복원
+      if (_tabController.index == 2) {
+        appState.restoreOriginalImage();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -96,54 +132,61 @@ class HomeScreen extends StatelessWidget {
         final isMobile = constraints.maxWidth < 768;
         
         if (isMobile) {
-          // 모바일 레이아웃: 세로 스크롤
-          return Column(
-            children: [
-              // 이미지 표시 영역
-              Container(
-                height: constraints.maxHeight * 0.5,
-                margin: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.outline,
+          // 모바일 레이아웃: 전체 스크롤 가능
+          return SingleChildScrollView(
+            child: Column(
+              children: [
+                // 이미지 표시 영역 (모바일 최적화)
+                Container(
+                  height: math.max(600, math.min(constraints.maxWidth * 1.2, constraints.maxHeight * 0.6)),
+                  margin: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  borderRadius: BorderRadius.circular(12),
+                  child: const ClipRRect(
+                    borderRadius: BorderRadius.all(Radius.circular(12)),
+                    child: ImageDisplayWidget(),
+                  ),
                 ),
-                child: const ClipRRect(
-                  borderRadius: BorderRadius.all(Radius.circular(12)),
-                  child: ImageDisplayWidget(),
-                ),
-              ),
-              
-              // 컨트롤 패널 (탭 형태)
-              Expanded(
-                child: DefaultTabController(
-                  length: 3,
+                
+                // 컨트롤 패널 (탭 형태)
+                SizedBox(
+                  height: constraints.maxHeight * 1.05, // 50% 더 늘려서 스크롤 공간 확보
                   child: Column(
                     children: [
-                      TabBar(
-                        tabs: const [
-                          Tab(icon: Icon(Icons.face), text: '부위'),
-                          Tab(icon: Icon(Icons.visibility), text: '랜드마크'),
-                          Tab(icon: Icon(Icons.transform), text: '변형'),
-                        ],
-                        indicatorColor: Theme.of(context).colorScheme.primary,
-                        labelColor: Theme.of(context).colorScheme.primary,
+                      Container(
+                        height: 42, // 탭 높이 정의
+                        child: TabBar(
+                          controller: _tabController,
+                          tabs: const [
+                            Tab(icon: Icon(Icons.analytics, size: 18), text: '분석'),
+                            Tab(icon: Icon(Icons.edit, size: 18), text: '수정'),
+                            Tab(icon: Icon(Icons.psychology, size: 18), text: '전문가'),
+                          ],
+                          indicatorColor: Theme.of(context).colorScheme.primary,
+                          labelColor: Theme.of(context).colorScheme.primary,
+                          labelStyle: const TextStyle(fontSize: 12),
+                          unselectedLabelStyle: const TextStyle(fontSize: 12),
+                        ),
                       ),
                       Expanded(
                         child: TabBarView(
-                          children: [
-                            const FaceRegionsWidget(),
-                            const LandmarkControlsWidget(),
-                            const WarpControlsWidget(),
+                          controller: _tabController,
+                          children: const [
+                            FaceRegionsWidget(),
+                            LandmarkControlsWidget(),
+                            WarpControlsWidget(),
                           ],
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           );
         } else {
           // 데스크톱 레이아웃: 가로 분할
@@ -172,30 +215,34 @@ class HomeScreen extends StatelessWidget {
                 width: 350,
                 child: Container(
                   margin: const EdgeInsets.only(top: 16, right: 16, bottom: 16),
-                  child: DefaultTabController(
-                    length: 3,
-                    child: Column(
-                      children: [
-                        TabBar(
+                  child: Column(
+                    children: [
+                      Container(
+                        height: 42, // 탭 높이 정의
+                        child: TabBar(
+                          controller: _tabController,
                           tabs: const [
-                            Tab(icon: Icon(Icons.face), text: '부위'),
-                            Tab(icon: Icon(Icons.visibility), text: '랜드마크'),
-                            Tab(icon: Icon(Icons.transform), text: '변형'),
+                            Tab(icon: Icon(Icons.analytics, size: 18), text: '분석'),
+                            Tab(icon: Icon(Icons.edit, size: 18), text: '수정'),
+                            Tab(icon: Icon(Icons.psychology, size: 18), text: '전문가'),
                           ],
                           indicatorColor: Theme.of(context).colorScheme.primary,
                           labelColor: Theme.of(context).colorScheme.primary,
+                          labelStyle: const TextStyle(fontSize: 12),
+                          unselectedLabelStyle: const TextStyle(fontSize: 12),
                         ),
-                        const Expanded(
-                          child: TabBarView(
-                            children: [
-                              FaceRegionsWidget(),
-                              LandmarkControlsWidget(),
-                              WarpControlsWidget(),
-                            ],
-                          ),
+                      ),
+                      Expanded(
+                        child: TabBarView(
+                          controller: _tabController,
+                          children: const [
+                            FaceRegionsWidget(),
+                            LandmarkControlsWidget(),
+                            WarpControlsWidget(),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
