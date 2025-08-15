@@ -7,6 +7,7 @@ import '../models/face_regions.dart';
 import '../services/api_service.dart';
 import 'dart:math' as math;
 import 'beauty_score_visualizer.dart';
+import '../models/app_state.dart' show Landmark, WarpMode;
 
 /// 이미지 표시 및 상호작용 위젯
 class ImageDisplayWidget extends StatefulWidget {
@@ -212,8 +213,8 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
                         ),
                       ),
                     
-                    // 프리셋 처리 중 오버레이
-                    if (appState.loadingPresetType != null)
+                    // 프리셋 또는 워핑 처리 중 오버레이
+                    if (appState.loadingPresetType != null || appState.isWarpLoading)
                       Container(
                         color: Colors.black.withOpacity(0.1),
                         child: Center(
@@ -236,7 +237,9 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
-                                  '프리셋 적용 중...',
+                                  appState.loadingPresetType != null 
+                                      ? '프리셋 적용 중...' 
+                                      : '워핑 적용 중...',
                                   style: Theme.of(context).textTheme.bodySmall,
                                 ),
                               ],
@@ -332,6 +335,26 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
                             influenceRadius: appState.getInfluenceRadiusForDisplay(imageDisplaySize),
                             strength: appState.warpStrength,
                             warpMode: appState.warpMode,
+                          ),
+                        ),
+                      ),
+                    
+                    // 레이저 시각화 효과 (프리셋 탭에서만)
+                    if (appState.currentTabIndex == 1 && appState.showLaserEffect && appState.currentLaserPreset != null)
+                      Positioned(
+                        left: imageOffset.dx,
+                        top: imageOffset.dy,
+                        width: imageDisplaySize.width,
+                        height: imageDisplaySize.height,
+                        child: CustomPaint(
+                          painter: LaserEffectPainter(
+                            presetType: appState.currentLaserPreset!,
+                            landmarks: appState.landmarks,
+                            imageWidth: appState.imageWidth,
+                            imageHeight: appState.imageHeight,
+                            containerSize: imageDisplaySize,
+                            iterations: appState.laserIterations,
+                            durationMs: appState.laserDurationMs,
                           ),
                         ),
                       ),
@@ -452,7 +475,8 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
     if (imageCoordinates == null) return;
 
     try {
-      appState.setLoading(true);
+      // 워핑 로딩 상태 시작 (전체 화면 로딩 대신)
+      appState.setWarpLoading(true);
       final apiService = context.read<ApiService>();
 
       final warpRequest = WarpRequest(
@@ -477,7 +501,8 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
     } catch (e) {
       appState.setError('워핑 실패: $e');
     } finally {
-      appState.setLoading(false);
+      // 워핑 로딩 상태 종료
+      appState.setWarpLoading(false);
     }
   }
 
@@ -592,7 +617,8 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
     // 워핑 작업 전에 히스토리 저장
     appState.saveToHistory();
     
-    appState.setLoading(true);
+    // 워핑 로딩 상태 시작 (전체 화면 로딩 대신)
+    appState.setWarpLoading(true);
     
     try {
       final apiService = context.read<ApiService>();
@@ -617,10 +643,11 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
       final landmarkResponse = await apiService.getFaceLandmarks(warpResponse.imageId);
       appState.setLandmarks(landmarkResponse.landmarks);
       
-      appState.setLoading(false);
-      
     } catch (e) {
       appState.setError('변형 적용 실패: $e');
+    } finally {
+      // 워핑 로딩 상태 종료
+      appState.setWarpLoading(false);
     }
   }
 }
@@ -1544,5 +1571,187 @@ class HoverPreviewPainter extends CustomPainter {
            influenceRadius != oldDelegate.influenceRadius ||
            strength != oldDelegate.strength ||
            warpMode != oldDelegate.warpMode;
+  }
+}
+
+/// 레이저 효과 페인터
+class LaserEffectPainter extends CustomPainter {
+  final String presetType;
+  final List<Landmark> landmarks;
+  final int imageWidth;
+  final int imageHeight;
+  final Size containerSize;
+  final int iterations;
+  final int durationMs;
+
+  LaserEffectPainter({
+    required this.presetType,
+    required this.landmarks,
+    required this.imageWidth,
+    required this.imageHeight,
+    required this.containerSize,
+    required this.iterations,
+    required this.durationMs,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (landmarks.isEmpty) return;
+
+    final currentTime = DateTime.now().millisecondsSinceEpoch;
+    // 전체 애니메이션 지속 시간에 맞춘 진행률 (0.0~1.0)
+    final totalProgress = ((currentTime / 50) % (durationMs / 50)) / (durationMs / 50);
+    // 각 이터레이션의 진행률
+    final iterationProgress = (totalProgress * iterations) % 1.0;
+    final animationProgress = iterationProgress;
+    
+    // 프리셋별 타겟 랜드마크 정의
+    List<int> targetLandmarks = [];
+    String treatmentArea = '';
+    
+    switch (presetType) {
+      case 'lower_jaw':
+        targetLandmarks = [150, 379, 172, 397, 169, 175, 176, 400, 379, 365, 397, 379];
+        treatmentArea = '아래턱선';
+        break;
+      case 'middle_jaw':
+        targetLandmarks = [172, 397, 216, 436, 135, 364, 150, 379];
+        treatmentArea = '중간턱';
+        break;
+      case 'cheek':
+        targetLandmarks = [215, 435, 192, 234, 447, 116, 117, 118, 119, 120, 121, 126, 142, 36, 205, 206, 207, 213, 192, 147, 187, 207, 213, 192, 147];
+        treatmentArea = '볼';
+        break;
+      case 'front_protusion':
+        targetLandmarks = [243, 463, 56, 190, 414, 286, 168, 6];
+        treatmentArea = '앞트임';
+        break;
+      case 'back_slit':
+        targetLandmarks = [33, 359, 34, 162, 368, 264];
+        treatmentArea = '뒷트임';
+        break;
+    }
+    
+    if (targetLandmarks.isEmpty) return;
+    
+    // 레이저 빔 그리기
+    for (int i = 0; i < targetLandmarks.length; i++) {
+      final landmarkIndex = targetLandmarks[i];
+      if (landmarkIndex >= landmarks.length) continue;
+      
+      final landmark = landmarks[landmarkIndex];
+      final landmarkX = (landmark.x / imageWidth) * containerSize.width;
+      final landmarkY = (landmark.y / imageHeight) * containerSize.height;
+      
+      // 개별 레이저 포인트의 애니메이션 오프셋
+      final pointAnimationOffset = (i * 0.1) % 1.0;
+      final pointProgress = (animationProgress + pointAnimationOffset) % 1.0;
+      
+      // 레이저 빔 중심점
+      final centerPoint = Offset(landmarkX, landmarkY);
+      
+      // 펄스 효과
+      final pulseRadius = 15.0 + (math.sin(pointProgress * math.pi * 4) * 8.0);
+      final pulseOpacity = (0.3 + (math.sin(pointProgress * math.pi * 2) * 0.4)).clamp(0.0, 1.0);
+      
+      // 외부 발광 링
+      final outerGlowPaint = Paint()
+        ..color = Colors.red.withOpacity(pulseOpacity * 0.2)
+        ..style = PaintingStyle.fill
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 15.0);
+      canvas.drawCircle(centerPoint, pulseRadius * 2, outerGlowPaint);
+      
+      // 중간 발광 링
+      final middleGlowPaint = Paint()
+        ..color = Colors.red.withOpacity(pulseOpacity * 0.5)
+        ..style = PaintingStyle.fill
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8.0);
+      canvas.drawCircle(centerPoint, pulseRadius, middleGlowPaint);
+      
+      // 핵심 레이저 점
+      final corePaint = Paint()
+        ..color = Colors.red.withOpacity(pulseOpacity)
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(centerPoint, 4.0, corePaint);
+      
+      // 하이라이트
+      final highlightPaint = Paint()
+        ..color = Colors.white.withOpacity(pulseOpacity * 0.8)
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(centerPoint, 2.0, highlightPaint);
+      
+      // 레이저 크로스헤어
+      final crossPaint = Paint()
+        ..color = Colors.red.withOpacity(pulseOpacity * 0.6)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0;
+      
+      // 수직선
+      canvas.drawLine(
+        Offset(landmarkX, landmarkY - 12),
+        Offset(landmarkX, landmarkY + 12),
+        crossPaint,
+      );
+      
+      // 수평선
+      canvas.drawLine(
+        Offset(landmarkX - 12, landmarkY),
+        Offset(landmarkX + 12, landmarkY),
+        crossPaint,
+      );
+      
+      // 스캐닝 라인 (위아래로 움직임)
+      final scanOffset = math.sin(pointProgress * math.pi * 6) * 20.0;
+      final scanPaint = Paint()
+        ..color = Colors.cyan.withOpacity(pulseOpacity * 0.7)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5;
+      
+      canvas.drawLine(
+        Offset(landmarkX - 25, landmarkY + scanOffset),
+        Offset(landmarkX + 25, landmarkY + scanOffset),
+        scanPaint,
+      );
+    }
+    
+    // 시술 영역 표시 텍스트 (진행 상황 포함)
+    final currentIteration = (totalProgress * iterations).floor() + 1;
+    final maxIteration = iterations.clamp(1, 999);
+    
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: '$treatmentArea 레이저 시술 중... ($currentIteration/$maxIteration)',
+        style: TextStyle(
+          color: Colors.red.withOpacity(0.9),
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+          shadows: [
+            Shadow(
+              color: Colors.white.withOpacity(0.8),
+              blurRadius: 4.0,
+            ),
+            Shadow(
+              color: Colors.red.withOpacity(0.6),
+              blurRadius: 8.0,
+            ),
+          ],
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(
+        (containerSize.width - textPainter.width) / 2,
+        20,
+      ),
+    );
+  }
+
+  @override
+  bool shouldRepaint(LaserEffectPainter oldDelegate) {
+    return true; // 항상 다시 그리기 (애니메이션을 위해)
   }
 }

@@ -51,6 +51,32 @@ class AppState extends ChangeNotifier {
   // 프리셋 로딩 상태
   String? _loadingPresetType; // 현재 로딩 중인 프리셋 타입
   
+  // 워핑 로딩 상태
+  bool _isWarpLoading = false; // 워핑 처리 중 여부
+  
+  // 프리셋 관련 상태
+  Map<String, int> _presetCounters = {
+    'lower_jaw': 0,
+    'middle_jaw': 0,
+    'cheek': 0,
+    'front_protusion': 0,
+    'back_slit': 0,
+  };
+  
+  Map<String, int> _presetSettings = {
+    'lower_jaw': 100,    // 100~500샷
+    'middle_jaw': 100,
+    'cheek': 100,
+    'front_protusion': 10,  // 10~100번
+    'back_slit': 10,
+  };
+  
+  // 레이저 시각화 상태
+  bool _showLaserEffect = false;
+  String? _currentLaserPreset;
+  int _laserIterations = 1;
+  int _laserDurationMs = 1500;
+  
   // 뷰티 스코어 분석 결과
   Map<String, dynamic> _beautyAnalysis = {};
   
@@ -82,6 +108,13 @@ class AppState extends ChangeNotifier {
   Offset get panOffset => _panOffset;
   bool get showOriginalImage => _showOriginalImage;
   String? get loadingPresetType => _loadingPresetType;
+  bool get isWarpLoading => _isWarpLoading;
+  Map<String, int> get presetCounters => _presetCounters;
+  Map<String, int> get presetSettings => _presetSettings;
+  bool get showLaserEffect => _showLaserEffect;
+  String? get currentLaserPreset => _currentLaserPreset;
+  int get laserIterations => _laserIterations;
+  int get laserDurationMs => _laserDurationMs;
   
   // Before/After 비교를 위한 표시 이미지 getter
   Uint8List? get displayImage => _showOriginalImage ? _originalImage : _currentImage;
@@ -468,6 +501,60 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
   
+  // 워핑 로딩 상태 설정
+  void setWarpLoading(bool loading) {
+    _isWarpLoading = loading;
+    if (loading) {
+      _errorMessage = null;
+    }
+    notifyListeners();
+  }
+  
+  // 프리셋 설정 변경
+  void updatePresetSetting(String presetType, int value) {
+    _presetSettings[presetType] = value;
+    notifyListeners();
+  }
+  
+  // 프리셋 카운터 증가
+  void incrementPresetCounter(String presetType, int shots) {
+    _presetCounters[presetType] = (_presetCounters[presetType] ?? 0) + shots;
+    notifyListeners();
+  }
+  
+  // 레이저 효과 표시 (이터래이션 수에 따른 지속 시간)
+  void activateLaserEffect(String presetType, int iterations) {
+    _showLaserEffect = true;
+    _currentLaserPreset = presetType;
+    _laserIterations = iterations;
+    
+    // 이터래이션 수에 따른 지속 시간 계산 (각 이터래이션당 1초 + 0.5초 대기)
+    _laserDurationMs = (iterations * 1000).clamp(1500, 15000); // 최소 1.5초, 최대 15초
+    
+    notifyListeners();
+    
+    // 계산된 시간 후 자동으로 숨김
+    Future.delayed(Duration(milliseconds: _laserDurationMs), () {
+      _showLaserEffect = false;
+      _currentLaserPreset = null;
+      _laserIterations = 1;
+      _laserDurationMs = 1500;
+      notifyListeners();
+    });
+  }
+  
+  // 프리셋 카운터 초기화
+  void resetPresetCounters() {
+    _presetCounters = {
+      'lower_jaw': 0,
+      'middle_jaw': 0,
+      'cheek': 0,
+      'front_protusion': 0,
+      'back_slit': 0,
+    };
+    notifyListeners();
+  }
+  
   // 에러 설정
   void setError(String error) {
     _errorMessage = error;
@@ -492,6 +579,28 @@ class AppState extends ChangeNotifier {
   // 현재 탭 인덱스 설정
   void setCurrentTabIndex(int index) {
     _currentTabIndex = index;
+    
+    // 프리셋 탭(1)이나 프리스타일 탭(2)으로 전환 시 뷰티스코어 시각화 숨김
+    if (index == 1 || index == 2) {
+      _showBeautyScore = false;
+      _isAutoAnimationMode = false;
+      _isAnimationPlaying = false;
+      _currentAnimatingRegion = null;
+      _beautyScoreAnimationProgress = 0.0;
+      _showLandmarks = false; // 랜드마크 시각화 숨기기
+      _beautyAnalysis.clear(); // 뷰티 분석 데이터 클리어
+      
+      // 모든 부위 시각화 숨기기
+      for (final regionKey in _regionVisibility.all.keys) {
+        _regionVisibility.setVisible(regionKey, false);
+      }
+      
+      // 랜드마크 애니메이션 진행률 초기화
+      _animationProgress.clear();
+      
+      stopAutoAnimation(); // 진행 중인 애니메이션 중단
+    }
+    
     notifyListeners();
   }
 

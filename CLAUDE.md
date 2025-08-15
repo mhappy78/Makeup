@@ -180,6 +180,147 @@ def draw_preset_visualization(self, start_point, end_point, influence_radius_px,
     # Auto-hide after 5 seconds: self.root.after(5000, self.clear_preset_visualization)
 ```
 
+### Advanced Preset System (Flutter Web App)
+
+**Latest Implementation Features (January 2025):**
+
+**🎯 Compact Mobile Layout:**
+- One-line preset design for mobile optimization
+- Each preset item contains: title, total counter, slider, apply button
+- Mobile-friendly touch interactions
+- Space-efficient card design with proper spacing
+
+**⚡ Dynamic Laser Animation System:**
+- Real-time laser visualization during preset application
+- Animation duration matches shot count (500 shots = animation for full duration)
+- Iteration-based timing system: `_laserDurationMs = (iterations * 1000).clamp(1500, 15000)`
+- Progress counter display showing current iteration (e.g., "💉 아래턱 레이저 시술 중... (234/500)")
+- Visual laser effects with red/orange gradient patterns
+- Treatment area identification with preset-specific effects
+
+**📊 Shot Count System:**
+- **Jaw Treatments** (아래턱, 중간턱, 볼): 100-500 shots in 100-shot increments
+- **Eye Treatments** (앞트임, 뒷트임): 1%-10% in 1% increments
+- Cumulative counters for each preset type
+- Total shot accumulation display
+- Total treatment percentage display for eye procedures
+
+**🎮 Enhanced Control System:**
+- **Undo**: Step-by-step reversal of transformations
+- **Restore Original**: Complete reset to original image
+- **Before/After**: Interactive slider comparison (borrowed from freestyle tab)
+- **Save/Download**: Browser-based image download with HTML5 Blob API
+- Individual preset loading states (no full-screen flickering)
+
+**Implementation Details:**
+
+```dart
+// AppState.dart - Enhanced preset management
+class AppState extends ChangeNotifier {
+  // Preset state management
+  Map<String, int> _presetCounters = {};
+  Map<String, int> _presetSettings = {};
+  String? _loadingPresetType;
+  
+  // Laser animation system
+  bool _showLaserEffect = false;
+  String? _currentLaserPreset;
+  int _laserIterations = 1;
+  int _laserDurationMs = 1500;
+  
+  // Dynamic laser activation
+  void activateLaserEffect(String presetType, int iterations) {
+    _showLaserEffect = true;
+    _currentLaserPreset = presetType;
+    _laserIterations = iterations;
+    _laserDurationMs = (iterations * 1000).clamp(1500, 15000);
+    notifyListeners();
+    
+    Future.delayed(Duration(milliseconds: _laserDurationMs), () {
+      _showLaserEffect = false;
+      _currentLaserPreset = null;
+      _laserIterations = 1;
+      _laserDurationMs = 1500;
+      notifyListeners();
+    });
+  }
+}
+```
+
+```dart
+// LandmarkControlsWidget.dart - Compact preset layout
+Widget _buildCompactPresetItem(BuildContext context, AppState appState, 
+    String title, String presetType, String unit, int minValue, int maxValue, int stepValue) {
+  return Container(
+    padding: const EdgeInsets.all(12),
+    child: Row(
+      children: [
+        // Title and counter (2/7 of width)
+        Expanded(flex: 2, child: Column([
+          Text(title, style: titleSmall.bold),
+          Text('총 $currentCounter$unit', style: bodySmall.primary.bold),
+        ])),
+        
+        // Slider with value display (3/7 of width)
+        Expanded(flex: 3, child: Column([
+          Slider(value: currentValue, min: minValue, max: maxValue, 
+                 onChanged: (value) => appState.updatePresetSetting(presetType, value.round())),
+          Text('$currentValue$unit'),
+        ])),
+        
+        // Apply button (2/7 of width)
+        SizedBox(width: 80, child: ElevatedButton(
+          onPressed: () => _applyPresetWithSettings(context, presetType),
+          child: Text('적용'),
+        )),
+      ],
+    ),
+  );
+}
+```
+
+```dart
+// ImageDisplayWidget.dart - Laser animation painter
+class LaserEffectPainter extends CustomPainter {
+  final String presetType;
+  final int iterations;
+  final int durationMs;
+  
+  @override
+  void paint(Canvas canvas, Size size) {
+    final totalProgress = ((currentTime / 50) % (durationMs / 50)) / (durationMs / 50);
+    final currentIteration = (totalProgress * iterations).floor() + 1;
+    
+    // Draw laser effects with animated gradients
+    final laserPaint = Paint()
+      ..shader = RadialGradient(colors: [
+        Colors.red.withOpacity(opacity),
+        Colors.orange.withOpacity(opacity * 0.5),
+        Colors.transparent,
+      ]).createShader(Rect.fromCircle(center: center, radius: radius));
+    
+    // Progress text display
+    final textPainter = TextPainter(
+      text: TextSpan(text: '$treatmentArea 레이저 시술 중... ($currentIteration/$iterations)'),
+      textDirection: TextDirection.ltr,
+    );
+  }
+}
+```
+
+**🔧 Backend Integration:**
+- FastAPI `/apply-preset` endpoint with 5 preset types
+- MediaPipe landmark-based transformations
+- Preset-specific algorithms for jaw, cheek, and eye treatments
+- Base64 image encoding for smooth data transfer
+
+**Preset Types Available:**
+1. **💉 아래턱 (Lower Jaw)**: Landmarks 150, 379 → 4 (nose bridge direction)
+2. **💉 중간턱 (Middle Jaw)**: Landmarks 172, 397 → 4 (nose bridge direction)  
+3. **💉 볼 (Cheek)**: Landmarks 215, 435 → 4 (nose bridge direction)
+4. **💉 앞트임 (Front Protusion)**: Eye landmarks with elliptical transformation
+5. **💉 뒷트임 (Back Slit)**: Outer eye corner extension
+
 ### Preset Extension
 
 New presets can be easily added by:
@@ -187,6 +328,8 @@ New presets can be easily added by:
 2. Adding UI button in `setup_warp_controls()`
 3. Using existing transformation functions with specific parameters
 4. Adding visualization calls with `draw_preset_visualization()`
+5. For Flutter: Adding preset configuration to `_buildCompactPresetItem()` calls
+6. For Backend: Extending `PRESET_CONFIGS` dictionary in `apply_preset_transformation()`
 
 ## Beauty Score Analysis System
 
@@ -341,23 +484,23 @@ class AppState extends ChangeNotifier {
 
 ### Tab Navigation System
 
-The application features a streamlined 3-tab interface:
+The application features a rebranded 3-tab interface with project name "BeautyGen":
 
-- **📊 분석 (Analysis)**: Comprehensive beauty score dashboard with professional analytics
-- **✏️ 수정 (Edit)**: Landmark visibility controls and facial region management 
-- **🧠 전문가 (Expert)**: Advanced image warping and transformation tools
+- **📊 뷰티스코어 (BeautyScore)**: Comprehensive beauty score dashboard with professional analytics
+- **⚡ 프리셋 (Preset)**: Quick preset transformations with advanced laser visualization and shot counters
+- **🎨 프리스타일 (Freestyle)**: Advanced image warping and transformation tools
 
 ### Tab Switching Behavior
 
-**Automatic Original Image Restoration:**
-- When switching to the **전문가 (Expert)** tab, the application automatically restores the original uploaded image
-- This ensures users can perform transformations on the unmodified original image
-- The restoration process:
-  - Clears all beauty analysis results and visualizations
-  - Stops ongoing animations
-  - Hides all landmark visualizations (lines and filled areas)
-  - Resets all facial region visibility to hidden state
-- Implementation: `restoreOriginalImage()` method in `AppState` class
+**Beauty Score Visualization Clearing:**
+- When switching to **프리셋 (Preset)** or **프리스타일 (Freestyle)** tabs, the application automatically clears all beauty score visualizations
+- This ensures a clean workspace for transformations
+- The clearing process:
+  - Hides beauty score overlays and animations
+  - Stops all ongoing face region animations
+  - Clears landmark animation progress
+  - Resets beauty score animation progress
+- Implementation: Enhanced `setCurrentTabIndex()` method in `AppState` class
 
 **Animation Control:**
 - Facial region animations only occur in the **분석 (Analysis)** tab
@@ -365,7 +508,7 @@ The application features a streamlined 3-tab interface:
 - Tab switching is tracked via `_currentTabIndex` state variable
 - Animation prevention: `setLandmarks()` checks current tab before starting animations
 
-**Expert Tab Enhanced Features:**
+**Freestyle Tab Enhanced Features:**
 - **Percentage-based Influence Radius**: Similar to face_simulator.py, uses image size percentage (0.5%-25%) instead of fixed pixels
 - **Automatic pixel conversion**: `getInfluenceRadiusPixels()` converts percentage to pixels based on smaller image dimension
 - **History Management**: 
@@ -377,7 +520,7 @@ The application features a streamlined 3-tab interface:
   - **Strength visualization**: Inner colored circle representing transformation intensity
   - **Mode-specific indicators**: Visual icons for Pull/Push/Expand/Shrink modes
   - **Color-coded modes**: Green (Pull), Red (Push), Orange (Expand), Purple (Shrink)
-  - Only active in Expert tab, hidden during dragging operations
+  - Only active in Freestyle tab, hidden during dragging operations
 - **Improved UI**: Face_simulator.py style buttons and controls with real-time pixel preview
 
 ### Mobile Optimization Features
@@ -429,6 +572,67 @@ Container(
 - Mobile-first responsive design with optimized touch interactions
 - Professional chart visualization using fl_chart library
 - Advanced facial measurement analytics with real-time comparison
+
+## Recent Development Evolution (January 2025)
+
+### Phase 1: Project Rebranding & UI Optimization
+- **Tab Renaming**: Changed from "분석, 수정, 전문가" to "뷰티스코어, 프리셋, 프리스타일"
+- **Project Rebranding**: Renamed from "Face Simulator" to "BeautyGen" across all files
+- **AppBar Removal**: Eliminated space-wasting header, added floating reset button with SafeArea positioning
+- **Files Modified**: `home_screen.dart`, `index.html`, project documentation
+
+### Phase 2: Preset Functionality Implementation  
+- **Backend Integration**: Implemented 5 preset algorithms from `face_simulator.py`
+- **API Endpoints**: Added `/apply-preset` with FastAPI backend integration
+- **Preset Types**: Lower jaw, middle jaw, cheek, front protusion, back slit transformations
+- **MediaPipe Integration**: Landmark-based coordinate transformation logic
+- **Files Modified**: `landmark_controls_widget.dart`, `backend/main.py`, `app_state.dart`
+
+### Phase 3: Flickering Resolution & Image Optimization
+- **Individual Loading States**: Replaced full-screen loading with preset-specific indicators
+- **Image Optimization**: Added `gaplessPlayback`, `RepaintBoundary`, `filterQuality` optimizations
+- **Smooth Transitions**: Implemented `updateImageFromPreset()` for flicker-free updates
+- **Extended to Freestyle**: Applied same optimization to warp operations
+- **User Feedback**: "클릭할때마다 깜빡이는 시간이 줄어들기는 했지만 아직 깜빡인다" → resolved
+
+### Phase 4: Advanced Preset Features - First Implementation
+- **Visual Laser Effects**: Real-time laser visualization during preset application
+- **Shot Count Sliders**: 100-500 shots for jaw/cheek, 10-100 for eye treatments  
+- **Cumulative Counters**: Total shot tracking and display system
+- **Control Buttons**: Undo, restore, before/after, save with browser download
+- **State Management**: Enhanced AppState with preset counters, settings, laser effects
+
+### Phase 5: Mobile Optimization & Compact Layout
+- **Before/After Enhancement**: Changed to use freestyle's slider comparison system
+- **Compact Mobile Layout**: One-line preset design with title, counter, slider, button
+- **UI Simplification**: Removed description text, optimized for mobile screens
+- **Eye Treatment Units**: Changed from 10-100 times to 1-10% increments
+- **Counter Updates**: Added "총 트임 %" display alongside "총 누적 샷"
+- **Animation Speed**: Doubled laser animation speed as requested
+
+### Phase 6: Dynamic Animation System & Tab Integration
+- **Dynamic Animation Duration**: Laser animation time matches shot count (500 shots = 500 seconds duration)
+- **Iteration-based Timing**: `_laserDurationMs = (iterations * 1000).clamp(1500, 15000)`
+- **Progress Counters**: Real-time iteration display during animation
+- **Tab Clearing**: Preset tab clears beauty score visualizations like freestyle tab
+- **Continuous Animation**: Animation continues for all iterations without interruption
+- **Enhanced Tab Switching**: `setCurrentTabIndex()` clears visualizations when switching tabs
+
+### Error Resolution Timeline
+1. **Tab Naming**: Fixed Korean text encoding compilation errors
+2. **API Integration**: Resolved 404 errors with backend server restart 
+3. **ImageHistoryItem**: Fixed missing `timestamp` and `_addToHistory` method errors
+4. **Naming Conflicts**: Resolved `showLaserEffect` getter/method naming collision
+5. **Variable Scope**: Fixed `iterations` variable declaration order in `_applyPresetWithSettings`
+6. **Opacity Assertions**: Added `.clamp(0.0, 1.0)` to laser animation opacity calculations
+
+### Key Technical Achievements
+- **Zero-Flicker UI**: Achieved smooth transitions without screen flickering
+- **Medical Simulation**: Professional laser treatment visualization
+- **Mobile-First Design**: Optimized for touch interactions and small screens
+- **Real-time Analytics**: Dynamic shot counting and progress tracking
+- **Scalable Architecture**: Easy preset extension and configuration system
+- **Cross-Platform Integration**: Seamless Flutter web and FastAPI backend communication
 
 ## Rules
 
