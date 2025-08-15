@@ -60,13 +60,22 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
             final imageDisplaySize = imageDisplayInfo['imageDisplaySize'] as Size;
             final imageOffset = imageDisplayInfo['imageOffset'] as Offset;
             
-            return MouseRegion(
-              onEnter: (_) => setState(() => _isHovering = true),
-              onExit: (_) => setState(() {
-                _isHovering = false;
-                _hoverPoint = null;
-              }),
-              onHover: (event) {
+            return Listener(
+              onPointerSignal: (PointerSignalEvent event) {
+                if (event is PointerScrollEvent) {
+                  // 마우스 휠로 줌인/줌아웃
+                  final delta = event.scrollDelta.dy;
+                  final newScale = (appState.zoomScale * (delta > 0 ? 0.9 : 1.1)).clamp(0.5, 3.0);
+                  appState.setZoomScale(newScale);
+                }
+              },
+              child: MouseRegion(
+                onEnter: (_) => setState(() => _isHovering = true),
+                onExit: (_) => setState(() {
+                  _isHovering = false;
+                  _hoverPoint = null;
+                }),
+                onHover: (event) {
                 // 전문가 탭에서만 호버 시각화 (이미지 영역 내에서만)
                 if (appState.currentTabIndex == 2) {
                   final localPos = event.localPosition;
@@ -93,11 +102,14 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
                 child: Stack(
                     alignment: Alignment.center, // Stack 중앙 정렬
                     children: [
-                      // 이미지 (중앙 정렬)
-                      Image.memory(
-                        appState.currentImage!,
-                        fit: BoxFit.contain,
-                        alignment: Alignment.center,
+                      // 이미지 (중앙 정렬, 줌 적용)
+                      Transform.scale(
+                        scale: appState.zoomScale,
+                        child: Image.memory(
+                          appState.currentImage!,
+                          fit: BoxFit.contain,
+                          alignment: Alignment.center,
+                        ),
                       ),
                     
                     // 랜드마크 오버레이 (정확한 이미지 위치 기준)
@@ -191,6 +203,7 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
                         ),
                       ),
                   ],
+                ),
                 ),
               ),
             ),
@@ -748,7 +761,7 @@ class WarpToolPainter extends CustomPainter {
       ..color = Colors.red
       ..style = PaintingStyle.fill;
     
-    canvas.drawCircle(startPoint, 6.0, startPaint);
+    canvas.drawCircle(startPoint, 3.0, startPaint); // 반으로 줄임 (6.0 → 3.0)
     
     if (isDragging) {
       // 드래그 벡터 (2배 가늘게)
@@ -764,7 +777,7 @@ class WarpToolPainter extends CustomPainter {
         ..color = Colors.green
         ..style = PaintingStyle.fill;
       
-      canvas.drawCircle(currentPoint, 4.0, endPaint);
+      canvas.drawCircle(currentPoint, 2.0, endPaint); // 반으로 줄임 (4.0 → 2.0)
       
       // 화살표
       _drawArrow(canvas, startPoint, currentPoint, vectorPaint);
