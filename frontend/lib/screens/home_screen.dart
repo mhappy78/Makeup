@@ -50,26 +50,6 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Face Simulator',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          Consumer<AppState>(
-            builder: (context, appState, child) {
-              return IconButton(
-                onPressed: appState.currentImage != null
-                    ? () => _showResetDialog(context)
-                    : null,
-                icon: const Icon(Icons.refresh),
-                tooltip: '초기화',
-              );
-            },
-          ),
-        ],
-      ),
       body: Consumer<AppState>(
         builder: (context, appState, child) {
           return Stack(
@@ -118,6 +98,19 @@ class _HomeScreenState extends State<HomeScreen>
               else
                 _buildMainLayout(context, appState),
               
+              // 플로팅 초기화 버튼
+              if (appState.currentImage != null)
+                Positioned(
+                  top: MediaQuery.of(context).padding.top + 8, // SafeArea 고려
+                  right: 16,
+                  child: FloatingActionButton.small(
+                    onPressed: () => _showResetDialog(context),
+                    tooltip: '초기화',
+                    backgroundColor: Theme.of(context).colorScheme.surface.withOpacity(0.9),
+                    foregroundColor: Theme.of(context).colorScheme.onSurface,
+                    child: const Icon(Icons.refresh),
+                  ),
+                ),
             ],
           );
 
@@ -139,7 +132,7 @@ class _HomeScreenState extends State<HomeScreen>
                 // 이미지 표시 영역 (모바일 최적화)
                 Container(
                   height: math.max(600, math.min(constraints.maxWidth * 1.2, constraints.maxHeight * 0.6)),
-                  margin: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.fromLTRB(12, 4, 12, 12), // 상단 마진 최소화
                   decoration: BoxDecoration(
                     border: Border.all(
                       color: Theme.of(context).colorScheme.outline,
@@ -162,9 +155,9 @@ class _HomeScreenState extends State<HomeScreen>
                         child: TabBar(
                           controller: _tabController,
                           tabs: const [
-                            Tab(icon: Icon(Icons.analytics, size: 18), text: '분석'),
-                            Tab(icon: Icon(Icons.edit, size: 18), text: '수정'),
-                            Tab(icon: Icon(Icons.psychology, size: 18), text: '전문가'),
+                            Tab(icon: Icon(Icons.analytics, size: 18), text: '뷰티스코어'),
+                            Tab(icon: Icon(Icons.edit, size: 18), text: '프리셋'),
+                            Tab(icon: Icon(Icons.psychology, size: 18), text: '프리스타일'),
                           ],
                           indicatorColor: Theme.of(context).colorScheme.primary,
                           labelColor: Theme.of(context).colorScheme.primary,
@@ -196,7 +189,7 @@ class _HomeScreenState extends State<HomeScreen>
               Expanded(
                 flex: 3,
                 child: Container(
-                  margin: const EdgeInsets.all(16),
+                  margin: const EdgeInsets.fromLTRB(16, 4, 16, 16), // 상단 마진 최소화
                   decoration: BoxDecoration(
                     border: Border.all(
                       color: Theme.of(context).colorScheme.outline,
@@ -214,7 +207,7 @@ class _HomeScreenState extends State<HomeScreen>
               SizedBox(
                 width: 350,
                 child: Container(
-                  margin: const EdgeInsets.only(top: 16, right: 16, bottom: 16),
+                  margin: const EdgeInsets.only(top: 4, right: 16, bottom: 16), // 상단 마진 최소화
                   child: Column(
                     children: [
                       Container(
@@ -222,9 +215,9 @@ class _HomeScreenState extends State<HomeScreen>
                         child: TabBar(
                           controller: _tabController,
                           tabs: const [
-                            Tab(icon: Icon(Icons.analytics, size: 18), text: '분석'),
-                            Tab(icon: Icon(Icons.edit, size: 18), text: '수정'),
-                            Tab(icon: Icon(Icons.psychology, size: 18), text: '전문가'),
+                            Tab(icon: Icon(Icons.analytics, size: 18), text: '뷰티스코어'),
+                            Tab(icon: Icon(Icons.edit, size: 18), text: '프리셋'),
+                            Tab(icon: Icon(Icons.psychology, size: 18), text: '프리스타일'),
                           ],
                           indicatorColor: Theme.of(context).colorScheme.primary,
                           labelColor: Theme.of(context).colorScheme.primary,

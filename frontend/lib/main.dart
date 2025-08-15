@@ -19,7 +19,7 @@ class FaceSimulatorApp extends StatelessWidget {
         Provider<ApiService>(create: (_) => ApiService()),
       ],
       child: MaterialApp(
-        title: 'Face Simulator',
+        title: 'BeautyGen',
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(
             seedColor: const Color(0xFF6366F1), // 인디고 색상

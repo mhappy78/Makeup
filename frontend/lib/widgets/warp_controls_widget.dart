@@ -172,6 +172,19 @@ class WarpControlsWidget extends StatelessWidget {
               
               const SizedBox(height: 20),
               
+              // Before/After 비교 버튼
+              if (appState.originalImage != null && appState.currentImage != null) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () => _showBeforeAfterComparison(context),
+                    icon: const Icon(Icons.compare),
+                    label: const Text('Before / After 비교'),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+              
               // 사용법 안내
               Container(
                 padding: const EdgeInsets.all(12),
@@ -215,19 +228,6 @@ class WarpControlsWidget extends StatelessWidget {
               ),
               
               const SizedBox(height: 20),
-              
-              // Before/After 비교 버튼
-              if (appState.originalImage != null && appState.currentImage != null) ...[
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: () => _showBeforeAfterComparison(context),
-                    icon: const Icon(Icons.compare),
-                    label: const Text('Before / After 비교'),
-                  ),
-                ),
-                const SizedBox(height: 12),
-              ],
               
               // 다운로드 버튼
               if (appState.currentImage != null) ...[

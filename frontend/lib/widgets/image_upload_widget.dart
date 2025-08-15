@@ -37,7 +37,7 @@ class ImageUploadWidget extends StatelessWidget {
             
             // 제목
             Text(
-              'Face Simulator',
+              'BeautyGen',
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: Theme.of(context).colorScheme.primary,
@@ -48,7 +48,7 @@ class ImageUploadWidget extends StatelessWidget {
             
             // 설명
             Text(
-              '얼굴 사진을 업로드하여 자유 변형을 시작하세요',
+              'AI 기반 뷰티 분석과 자유 스타일링을 시작하세요',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
