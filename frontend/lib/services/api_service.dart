@@ -104,6 +104,23 @@ class ApiService {
     }
   }
   
+  /// 프리셋 적용
+  Future<PresetResponse> applyPreset(String imageId, String presetType) async {
+    try {
+      final response = await _dio.post(
+        '/apply-preset',
+        data: {
+          'image_id': imageId,
+          'preset_type': presetType,
+        },
+      );
+      
+      return PresetResponse.fromJson(response.data);
+    } on DioException catch (e) {
+      throw ApiException('프리셋 적용 실패: ${e.message}');
+    }
+  }
+  
   /// 임시 이미지 삭제
   Future<void> deleteImage(String imageId) async {
     try {
@@ -215,6 +232,31 @@ class WarpResponse {
     return WarpResponse(
       imageId: json['image_id'],
       imageData: json['image_data'],
+    );
+  }
+  
+  /// Base64 이미지 데이터를 Uint8List로 디코드
+  Uint8List get imageBytes {
+    return base64Decode(imageData);
+  }
+}
+
+class PresetResponse {
+  final String imageId;
+  final String imageData; // Base64 encoded
+  final String message;
+  
+  PresetResponse({
+    required this.imageId,
+    required this.imageData,
+    required this.message,
+  });
+  
+  factory PresetResponse.fromJson(Map<String, dynamic> json) {
+    return PresetResponse(
+      imageId: json['image_id'],
+      imageData: json['image_data'],
+      message: json['message'] ?? 'Preset applied successfully',
     );
   }
   

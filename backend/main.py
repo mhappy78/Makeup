@@ -58,6 +58,10 @@ class WarpRequest(BaseModel):
     strength: float = 1.0
     mode: str = "pull"  # pull, push, expand, shrink
 
+class PresetRequest(BaseModel):
+    image_id: str
+    preset_type: str  # lower_jaw, middle_jaw, cheek, front_protusion, back_slit
+
 class LandmarkResponse(BaseModel):
     landmarks: List[Tuple[float, float]]
     image_width: int
@@ -224,6 +228,59 @@ async def download_image(image_id: str):
         if "이미지를 찾을 수 없습니다" in str(e):
             raise e
         raise HTTPException(status_code=500, detail=f"이미지 다운로드 실패: {str(e)}")
+
+@app.post("/apply-preset")
+async def apply_preset(request: PresetRequest):
+    """프리셋 적용"""
+    try:
+        temp_path = os.path.join(TEMP_DIR, f"{request.image_id}.jpg")
+        
+        if not os.path.exists(temp_path):
+            raise HTTPException(status_code=404, detail="이미지를 찾을 수 없습니다")
+        
+        # 이미지 로드
+        image = cv2.imread(temp_path)
+        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        
+        # 얼굴 랜드마크 검출
+        results = face_mesh.process(image_rgb)
+        
+        if not results.multi_face_landmarks:
+            raise HTTPException(status_code=404, detail="얼굴을 찾을 수 없습니다")
+        
+        # 랜드마크 좌표 추출
+        height, width = image_rgb.shape[:2]
+        landmarks = []
+        face_landmarks = results.multi_face_landmarks[0]
+        
+        for landmark in face_landmarks.landmark:
+            x = landmark.x * width
+            y = landmark.y * height
+            landmarks.append((x, y))
+        
+        # 프리셋 적용
+        result_image = apply_preset_transformation(image_rgb, landmarks, request.preset_type)
+        
+        # 새로운 UUID로 결과 이미지 저장
+        new_image_id = str(uuid.uuid4())
+        new_temp_path = os.path.join(TEMP_DIR, f"{new_image_id}.jpg")
+        cv2.imwrite(new_temp_path, cv2.cvtColor(result_image, cv2.COLOR_RGB2BGR))
+        
+        # Base64로 인코딩하여 반환
+        pil_image = Image.fromarray(result_image)
+        buffer = io.BytesIO()
+        pil_image.save(buffer, format='JPEG', quality=95)
+        img_base64 = base64.b64encode(buffer.getvalue()).decode()
+        
+        return ImageResponse(
+            image_id=new_image_id,
+            image_data=img_base64
+        )
+        
+    except Exception as e:
+        if "이미지를 찾을 수 없습니다" in str(e) or "얼굴을 찾을 수 없습니다" in str(e):
+            raise e
+        raise HTTPException(status_code=500, detail=f"프리셋 적용 실패: {str(e)}")
 
 @app.delete("/image/{image_id}")
 async def delete_image(image_id: str):
@@ -395,6 +452,202 @@ def apply_radial_warp(image: np.ndarray, center_x: float, center_y: float,
     
     # 리맵핑 적용
     return cv2.remap(image, map_x, map_y, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+
+
+def apply_preset_transformation(image: np.ndarray, landmarks: List[Tuple[float, float]], preset_type: str) -> np.ndarray:
+    """프리셋 변형 적용"""
+    
+    # 프리셋 상수들 (face_simulator.py에서 가져옴)
+    PRESET_CONFIGS = {
+        'lower_jaw': {
+            'strength': 0.05,
+            'influence_ratio': 0.4,
+            'pull_ratio': 0.1,
+            'face_size_landmarks': (234, 447),
+            'target_landmarks': (150, 379, 4)
+        },
+        'middle_jaw': {
+            'strength': 0.05,
+            'influence_ratio': 0.65,
+            'pull_ratio': 0.1,
+            'face_size_landmarks': (234, 447),
+            'target_landmarks': (172, 397, 4)
+        },
+        'cheek': {
+            'strength': 0.05,
+            'influence_ratio': 0.65,
+            'pull_ratio': 0.1,
+            'face_size_landmarks': (234, 447),
+            'target_landmarks': (215, 435, 4)
+        },
+        'front_protusion': {
+            'strength': 0.05,
+            'influence_ratio': 0.1,
+            'pull_ratio': 0.1,
+            'face_size_landmarks': (234, 447),
+            'target_landmarks': (243, 463, (56, 190), (414, 286), 168, 6),
+            'ellipse_ratio': 1.3
+        },
+        'back_slit': {
+            'strength': 0.1,
+            'influence_ratio': 0.1,
+            'pull_ratio': 0.1,
+            'face_size_landmarks': (234, 447),
+            'target_landmarks': (33, 359, (34, 162), (368, 264))
+        }
+    }
+    
+    if preset_type not in PRESET_CONFIGS:
+        raise ValueError(f"Unknown preset type: {preset_type}")
+    
+    config = PRESET_CONFIGS[preset_type]
+    
+    # 얼굴 크기 계산
+    face_size_left = landmarks[config['face_size_landmarks'][0]]
+    face_size_right = landmarks[config['face_size_landmarks'][1]]
+    face_width = abs(face_size_right[0] - face_size_left[0])
+    
+    # 영향 반경 계산
+    influence_radius = face_width * config['influence_ratio']
+    
+    result_image = image.copy()
+    
+    if preset_type in ['lower_jaw', 'middle_jaw', 'cheek']:
+        # 기본 턱선 프리셋 (좌우 대칭)
+        left_landmark = landmarks[config['target_landmarks'][0]]
+        right_landmark = landmarks[config['target_landmarks'][1]]
+        target_landmark = landmarks[config['target_landmarks'][2]]
+        
+        # 좌측 변형
+        distance_left = math.sqrt((left_landmark[0] - target_landmark[0])**2 + 
+                                (left_landmark[1] - target_landmark[1])**2)
+        pull_distance_left = distance_left * config['pull_ratio']
+        
+        dx_left = target_landmark[0] - left_landmark[0]
+        dy_left = target_landmark[1] - left_landmark[1]
+        norm_left = math.sqrt(dx_left**2 + dy_left**2)
+        
+        if norm_left > 0:
+            dx_left = (dx_left / norm_left) * pull_distance_left
+            dy_left = (dy_left / norm_left) * pull_distance_left
+            
+            target_x_left = left_landmark[0] + dx_left
+            target_y_left = left_landmark[1] + dy_left
+            
+            result_image = apply_pull_warp(
+                result_image,
+                left_landmark[0], left_landmark[1],
+                target_x_left, target_y_left,
+                influence_radius, config['strength']
+            )
+        
+        # 우측 변형
+        distance_right = math.sqrt((right_landmark[0] - target_landmark[0])**2 + 
+                                 (right_landmark[1] - target_landmark[1])**2)
+        pull_distance_right = distance_right * config['pull_ratio']
+        
+        dx_right = target_landmark[0] - right_landmark[0]
+        dy_right = target_landmark[1] - right_landmark[1]
+        norm_right = math.sqrt(dx_right**2 + dy_right**2)
+        
+        if norm_right > 0:
+            dx_right = (dx_right / norm_right) * pull_distance_right
+            dy_right = (dy_right / norm_right) * pull_distance_right
+            
+            target_x_right = right_landmark[0] + dx_right
+            target_y_right = right_landmark[1] + dy_right
+            
+            result_image = apply_pull_warp(
+                result_image,
+                right_landmark[0], right_landmark[1],
+                target_x_right, target_y_right,
+                influence_radius, config['strength']
+            )
+    
+    elif preset_type == 'front_protusion':
+        # 앞트임 프리셋 (4개 포인트)
+        landmark_243 = landmarks[243]
+        landmark_463 = landmarks[463]
+        
+        # 중간점들 계산
+        mid_56_190 = ((landmarks[56][0] + landmarks[190][0]) / 2,
+                      (landmarks[56][1] + landmarks[190][1]) / 2)
+        mid_414_286 = ((landmarks[414][0] + landmarks[286][0]) / 2,
+                       (landmarks[414][1] + landmarks[286][1]) / 2)
+        
+        # 타겟 중간점
+        target_mid = ((landmarks[168][0] + landmarks[6][0]) / 2,
+                      (landmarks[168][1] + landmarks[6][1]) / 2)
+        
+        # 각 포인트에 변형 적용
+        for source_landmark, target_point in [
+            (landmark_243, target_mid),
+            (landmark_463, target_mid),
+            (mid_56_190, target_mid),
+            (mid_414_286, target_mid)
+        ]:
+            distance = math.sqrt((source_landmark[0] - target_point[0])**2 + 
+                               (source_landmark[1] - target_point[1])**2)
+            pull_distance = distance * config['pull_ratio']
+            
+            dx = target_point[0] - source_landmark[0]
+            dy = target_point[1] - source_landmark[1]
+            norm = math.sqrt(dx**2 + dy**2)
+            
+            if norm > 0:
+                dx = (dx / norm) * pull_distance
+                dy = (dy / norm) * pull_distance
+                
+                target_x = source_landmark[0] + dx
+                target_y = source_landmark[1] + dy
+                
+                result_image = apply_pull_warp(
+                    result_image,
+                    source_landmark[0], source_landmark[1],
+                    target_x, target_y,
+                    influence_radius, config['strength']
+                )
+    
+    elif preset_type == 'back_slit':
+        # 뒷트임 프리셋
+        landmark_33 = landmarks[33]
+        landmark_359 = landmarks[359]
+        
+        # 타겟 중간점들
+        mid_34_162 = ((landmarks[34][0] + landmarks[162][0]) / 2,
+                      (landmarks[34][1] + landmarks[162][1]) / 2)
+        mid_368_264 = ((landmarks[368][0] + landmarks[264][0]) / 2,
+                       (landmarks[368][1] + landmarks[264][1]) / 2)
+        
+        # 변형 적용
+        for source_landmark, target_point in [
+            (landmark_33, mid_34_162),
+            (landmark_359, mid_368_264)
+        ]:
+            distance = math.sqrt((source_landmark[0] - target_point[0])**2 + 
+                               (source_landmark[1] - target_point[1])**2)
+            pull_distance = distance * config['pull_ratio']
+            
+            dx = target_point[0] - source_landmark[0]
+            dy = target_point[1] - source_landmark[1]
+            norm = math.sqrt(dx**2 + dy**2)
+            
+            if norm > 0:
+                dx = (dx / norm) * pull_distance
+                dy = (dy / norm) * pull_distance
+                
+                target_x = source_landmark[0] + dx
+                target_y = source_landmark[1] + dy
+                
+                result_image = apply_pull_warp(
+                    result_image,
+                    source_landmark[0], source_landmark[1],
+                    target_x, target_y,
+                    influence_radius, config['strength']
+                )
+    
+    return result_image
+
 
 if __name__ == "__main__":
     import uvicorn
