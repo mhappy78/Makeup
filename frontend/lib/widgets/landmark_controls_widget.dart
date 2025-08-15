@@ -65,11 +65,13 @@ class LandmarkControlsWidget extends StatelessWidget {
                     _PresetItem(
                       title: '💉 아래턱 100샷+',
                       description: '아래턱선을 날렵하게 정리',
+                      presetType: 'lower_jaw',
                       onTap: () => _applyPreset(context, 'lower_jaw'),
                     ),
                     _PresetItem(
                       title: '💉 중간턱 100샷+',
                       description: '중간턱 라인을 자연스럽게 개선',
+                      presetType: 'middle_jaw',
                       onTap: () => _applyPreset(context, 'middle_jaw'),
                     ),
                   ],
@@ -85,6 +87,7 @@ class LandmarkControlsWidget extends StatelessWidget {
                     _PresetItem(
                       title: '💉 볼 100샷+',
                       description: '볼살을 자연스럽게 정리',
+                      presetType: 'cheek',
                       onTap: () => _applyPreset(context, 'cheek'),
                     ),
                   ],
@@ -100,11 +103,13 @@ class LandmarkControlsWidget extends StatelessWidget {
                     _PresetItem(
                       title: '💉 앞트임+',
                       description: '눈의 앞쪽을 자연스럽게 확장',
+                      presetType: 'front_protusion',
                       onTap: () => _applyPreset(context, 'front_protusion'),
                     ),
                     _PresetItem(
                       title: '💉 뒷트임+',
                       description: '눈의 뒤쪽을 자연스럽게 확장',
+                      presetType: 'back_slit',
                       onTap: () => _applyPreset(context, 'back_slit'),
                     ),
                   ],
@@ -210,7 +215,7 @@ class LandmarkControlsWidget extends StatelessWidget {
           child: SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: appState.isLoading ? null : item.onTap,
+              onPressed: appState.loadingPresetType != null ? null : item.onTap,
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.all(16),
                 alignment: Alignment.centerLeft,
@@ -218,22 +223,41 @@ class LandmarkControlsWidget extends StatelessWidget {
                 backgroundColor: Theme.of(context).colorScheme.surface,
                 foregroundColor: Theme.of(context).colorScheme.onSurface,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Text(
-                    item.title,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.title,
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          item.description,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    item.description,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  // 해당 프리셋이 로딩 중일 때만 스피너 표시
+                  if (appState.isPresetLoading(item.presetType))
+                    Container(
+                      margin: const EdgeInsets.only(left: 12),
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -250,7 +274,8 @@ class LandmarkControlsWidget extends StatelessWidget {
     if (appState.currentImageId == null) return;
     
     try {
-      appState.setLoading(true);
+      // 특정 프리셋만 로딩 상태로 설정 (전체 화면 로딩 X)
+      appState.setPresetLoading(presetType);
       
       // API를 통해 프리셋 적용
       final response = await apiService.applyPreset(
@@ -258,26 +283,28 @@ class LandmarkControlsWidget extends StatelessWidget {
         presetType,
       );
       
-      // 상태 업데이트
-      appState.setImage(
+      // 상태 업데이트 (부드러운 전환을 위해 프리셋 전용 메서드 사용)
+      appState.updateImageFromPreset(
         response.imageBytes,
         response.imageId,
-        appState.imageWidth,
-        appState.imageHeight,
       );
       
-      appState.setLoading(false);
+      // 로딩 상태 해제
+      appState.setPresetLoading(null);
       
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${_getPresetName(presetType)} 적용 완료!'),
             backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
           ),
         );
       }
       
     } catch (e) {
+      // 로딩 상태 해제
+      appState.setPresetLoading(null);
       appState.setError('프리셋 적용 실패: $e');
       
       if (context.mounted) {
@@ -285,6 +312,7 @@ class LandmarkControlsWidget extends StatelessWidget {
           SnackBar(
             content: Text('프리셋 적용 실패: $e'),
             backgroundColor: Theme.of(context).colorScheme.error,
+            duration: const Duration(seconds: 3),
           ),
         );
       }
@@ -312,11 +340,13 @@ class LandmarkControlsWidget extends StatelessWidget {
 class _PresetItem {
   final String title;
   final String description;
+  final String presetType;
   final VoidCallback onTap;
 
   _PresetItem({
     required this.title,
     required this.description,
+    required this.presetType,
     required this.onTap,
   });
 }

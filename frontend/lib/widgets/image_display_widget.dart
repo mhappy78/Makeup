@@ -194,14 +194,53 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
                     alignment: Alignment.center, // Stack 중앙 정렬
                     children: [
                       // 이미지 (중앙 정렬, 줌과 팬 적용)
-                      Transform.translate(
-                        offset: appState.panOffset,
-                        child: Transform.scale(
-                          scale: appState.zoomScale,
-                          child: Image.memory(
-                            appState.displayImage!,
-                            fit: BoxFit.contain,
-                            alignment: Alignment.center,
+                      RepaintBoundary(
+                        child: Transform.translate(
+                          offset: appState.panOffset,
+                          child: Transform.scale(
+                            scale: appState.zoomScale,
+                            child: Image.memory(
+                              appState.displayImage!,
+                              key: ValueKey(appState.currentImageId), // 이미지 식별을 위한 키
+                              fit: BoxFit.contain,
+                              alignment: Alignment.center,
+                              gaplessPlayback: true, // 이미지 전환 시 깜빡임 방지
+                              filterQuality: FilterQuality.medium, // 필터 품질 최적화
+                              isAntiAlias: true, // 안티 앨리어싱으로 부드러운 렌더링
+                            ),
+                          ),
+                        ),
+                      ),
+                    
+                    // 프리셋 처리 중 오버레이
+                    if (appState.loadingPresetType != null)
+                      Container(
+                        color: Colors.black.withOpacity(0.1),
+                        child: Center(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.9),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Theme.of(context).colorScheme.primary,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '프리셋 적용 중...',
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),

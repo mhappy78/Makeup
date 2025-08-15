@@ -48,6 +48,9 @@ class AppState extends ChangeNotifier {
   double _beautyScoreAnimationProgress = 0.0;
   int _currentTabIndex = 0; // 현재 탭 인덱스 (0: 분석, 1: 수정, 2: 전문가)
   
+  // 프리셋 로딩 상태
+  String? _loadingPresetType; // 현재 로딩 중인 프리셋 타입
+  
   // 뷰티 스코어 분석 결과
   Map<String, dynamic> _beautyAnalysis = {};
   
@@ -78,9 +81,13 @@ class AppState extends ChangeNotifier {
   double get zoomScale => _zoomScale;
   Offset get panOffset => _panOffset;
   bool get showOriginalImage => _showOriginalImage;
+  String? get loadingPresetType => _loadingPresetType;
   
   // Before/After 비교를 위한 표시 이미지 getter
   Uint8List? get displayImage => _showOriginalImage ? _originalImage : _currentImage;
+  
+  // 특정 프리셋이 로딩 중인지 확인
+  bool isPresetLoading(String presetType) => _loadingPresetType == presetType;
   
   // 이미지 설정 (새 이미지 업로드 시)
   void setImage(Uint8List imageData, String imageId, int width, int height) {
@@ -102,6 +109,28 @@ class AppState extends ChangeNotifier {
   // 워핑 결과 이미지로 현재 이미지만 업데이트 (원본은 유지)
   void updateCurrentImage(Uint8List imageData) {
     _currentImage = imageData;
+    notifyListeners();
+  }
+  
+  // 프리셋 적용용 이미지 업데이트 (히스토리 보존)
+  void updateImageFromPreset(Uint8List imageData, String imageId) {
+    // 현재 이미지를 히스토리에 저장
+    if (_currentImage != null && _currentImageId != null) {
+      _imageHistory.add(ImageHistoryItem(
+        imageData: Uint8List.fromList(_currentImage!),
+        imageId: _currentImageId!,
+      ));
+      
+      // 히스토리 크기 제한
+      if (_imageHistory.length > _maxHistorySize) {
+        _imageHistory.removeAt(0);
+      }
+    }
+    
+    // 새 이미지로 업데이트 (원본은 유지)
+    _currentImage = imageData;
+    _currentImageId = imageId;
+    
     notifyListeners();
   }
   
@@ -425,6 +454,15 @@ class AppState extends ChangeNotifier {
   void setLoading(bool loading) {
     _isLoading = loading;
     if (loading) {
+      _errorMessage = null;
+    }
+    notifyListeners();
+  }
+  
+  // 프리셋 로딩 상태 설정
+  void setPresetLoading(String? presetType) {
+    _loadingPresetType = presetType;
+    if (presetType != null) {
       _errorMessage = null;
     }
     notifyListeners();
