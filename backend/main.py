@@ -481,17 +481,17 @@ def apply_preset_transformation(image: np.ndarray, landmarks: List[Tuple[float, 
             'target_landmarks': (215, 435, 4)
         },
         'front_protusion': {
-            'strength': 0.1,
+            'strength': 0.4,
             'influence_ratio': 0.1,
-            'pull_ratio': 0.8,
+            'pull_ratio': 3.2,
             'face_size_landmarks': (234, 447),
             'target_landmarks': (243, 463, (56, 190), (414, 286), 168, 6),
             'ellipse_ratio': 1.3
         },
         'back_slit': {
-            'strength': 0.1,
+            'strength': 0.4,
             'influence_ratio': 0.1,
-            'pull_ratio': 0.8,
+            'pull_ratio': 16.0,
             'face_size_landmarks': (234, 447),
             'target_landmarks': (33, 359, (34, 162), (368, 264))
         }

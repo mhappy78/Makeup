@@ -52,6 +52,7 @@ class _HomeScreenState extends State<HomeScreen>
     return Scaffold(
       body: Consumer<AppState>(
         builder: (context, appState, child) {
+          // 컨텍스트 설정 제거 (이제 ImageDisplayWidget 내부에서 직접 처리)
           return Stack(
             children: [
               // 메인 컨텐츠
@@ -111,6 +112,8 @@ class _HomeScreenState extends State<HomeScreen>
                     child: const Icon(Icons.refresh),
                   ),
                 ),
+              
+              
             ],
           );
 
@@ -270,4 +273,5 @@ class _HomeScreenState extends State<HomeScreen>
       },
     );
   }
+  
 }

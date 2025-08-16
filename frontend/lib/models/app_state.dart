@@ -48,6 +48,9 @@ class AppState extends ChangeNotifier {
   double _beautyScoreAnimationProgress = 0.0;
   int _currentTabIndex = 0; // 현재 탭 인덱스 (0: 분석, 1: 수정, 2: 전문가)
   
+  // 컨텍스트 저장 (오버레이 사용을 위해)
+  BuildContext? _context;
+  
   // 프리셋 로딩 상태
   String? _loadingPresetType; // 현재 로딩 중인 프리셋 타입
   
@@ -492,13 +495,18 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
   
+  // 컨텍스트 설정 (앱 시작 시 호출)
+  void setContext(BuildContext context) {
+    _context = context;
+  }
+  
   // 프리셋 로딩 상태 설정
   void setPresetLoading(String? presetType) {
     _loadingPresetType = presetType;
     if (presetType != null) {
       _errorMessage = null;
     }
-    notifyListeners();
+    notifyListeners(); // 간단하게 상태만 업데이트
   }
   
   // 워핑 로딩 상태 설정
@@ -507,7 +515,7 @@ class AppState extends ChangeNotifier {
     if (loading) {
       _errorMessage = null;
     }
-    notifyListeners();
+    notifyListeners(); // 간단하게 상태만 업데이트
   }
   
   // 프리셋 설정 변경

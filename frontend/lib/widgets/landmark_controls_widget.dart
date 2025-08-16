@@ -718,31 +718,13 @@ class LandmarkControlsWidget extends StatelessWidget {
       
       // 로딩 상태 해제
       appState.setPresetLoading(null);
-      
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${_getPresetName(presetType)} 적용 완료!'),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
+      // 스냅샷 제거 - 깜빡임 방지
       
     } catch (e) {
       // 로딩 상태 해제
       appState.setPresetLoading(null);
       appState.setError('프리셋 적용 실패: $e');
-      
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('프리셋 적용 실패: $e'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
+      // 에러 스냅샷도 제거 - 깜빡임 방지
     }
   }
 

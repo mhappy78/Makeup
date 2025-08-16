@@ -196,53 +196,80 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
                     children: [
                       // 이미지 (중앙 정렬, 줌과 팬 적용)
                       RepaintBoundary(
-                        child: Transform.translate(
-                          offset: appState.panOffset,
-                          child: Transform.scale(
-                            scale: appState.zoomScale,
-                            child: Image.memory(
-                              appState.displayImage!,
-                              key: ValueKey(appState.currentImageId), // 이미지 식별을 위한 키
-                              fit: BoxFit.contain,
-                              alignment: Alignment.center,
-                              gaplessPlayback: true, // 이미지 전환 시 깜빡임 방지
-                              filterQuality: FilterQuality.medium, // 필터 품질 최적화
-                              isAntiAlias: true, // 안티 앨리어싱으로 부드러운 렌더링
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 150), // 부드러운 전환
+                          switchInCurve: Curves.easeIn,
+                          switchOutCurve: Curves.easeOut,
+                          child: Transform.translate(
+                            key: ValueKey(appState.currentImageId), // 키를 AnimatedSwitcher 자식으로 이동
+                            offset: appState.panOffset,
+                            child: Transform.scale(
+                              scale: appState.zoomScale,
+                              child: Image.memory(
+                                appState.displayImage!,
+                                fit: BoxFit.contain,
+                                alignment: Alignment.center,
+                                gaplessPlayback: true, // 이미지 전환 시 깜빡임 방지
+                                filterQuality: FilterQuality.medium, // 필터 품질 최적화
+                                isAntiAlias: true, // 안티 앨리어싱으로 부드러운 렌더링
+                              ),
                             ),
                           ),
                         ),
                       ),
                     
-                    // 프리셋 또는 워핑 처리 중 오버레이
+                    // 이미지 영역 내 고정 위치 로딩 메시지 (깜빡임 방지)
                     if (appState.loadingPresetType != null || appState.isWarpLoading)
-                      Container(
-                        color: Colors.black.withOpacity(0.1),
-                        child: Center(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.9),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Theme.of(context).colorScheme.primary,
+                      Positioned(
+                        bottom: 20, // 이미지 하단에서 20px 위
+                        left: 0,
+                        right: 0,
+                        child: IgnorePointer(
+                          child: Center(
+                            child: Container(
+                              key: const ValueKey('stable_loading_message'), // 안정적인 키
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              margin: const EdgeInsets.symmetric(horizontal: 20),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.8),
+                                borderRadius: BorderRadius.circular(25),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
                                   ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  appState.loadingPresetType != null 
-                                      ? '프리셋 적용 중...' 
-                                      : '워핑 적용 중...',
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                              ],
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.cyan.shade300),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    _getPresetMessage(appState.loadingPresetType),
+                                    style: TextStyle(
+                                      color: Colors.cyan.shade300,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      letterSpacing: 0.5,
+                                      shadows: [
+                                        Shadow(
+                                          color: Colors.cyan.withOpacity(0.6),
+                                          blurRadius: 4.0,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -461,6 +488,7 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
     );
   }
 
+
   // 워핑 수행 메서드 (기존 _onPanEnd 로직)
   Future<void> _performWarp(BoxConstraints constraints, AppState appState) async {
     if (_startPoint == null || _currentPoint == null || !_isDragging) {
@@ -651,6 +679,26 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
     } finally {
       // 워핑 로딩 상태 종료
       appState.setWarpLoading(false);
+    }
+  }
+  
+  // 프리셋별 메시지 반환
+  String _getPresetMessage(String? presetType) {
+    if (presetType == null) return '워핑 적용 중..';
+    
+    switch (presetType) {
+      case 'lower_jaw':
+        return '아래턱선 날렵하게 커스터마이징 중..';
+      case 'middle_jaw':
+        return '중간턱 라인 자연스럽게 다듬는 중..';
+      case 'cheek':
+        return '볼살 슬림하게 개선하는 중..';
+      case 'front_protusion':
+        return '앞트임으로 더 큰 눈매 만드는 중..';
+      case 'back_slit':
+        return '뒷트임으로 시원한 눈매 연출 중..';
+      default:
+        return '프리셋 적용 중..';
     }
   }
 }
@@ -1742,40 +1790,7 @@ class LaserEffectPainter extends CustomPainter {
       );
     }
     
-    // 시술 영역 표시 텍스트 (진행 상황 포함)
-    final currentIteration = (totalProgress * iterations).floor() + 1;
-    final maxIteration = iterations.clamp(1, 999);
-    
-    final textPainter = TextPainter(
-      text: TextSpan(
-        text: '$treatmentArea 레이저 시술 중... ($currentIteration/$maxIteration)',
-        style: TextStyle(
-          color: Colors.red.withOpacity(0.9),
-          fontSize: 14,
-          fontWeight: FontWeight.bold,
-          shadows: [
-            Shadow(
-              color: Colors.white.withOpacity(0.8),
-              blurRadius: 4.0,
-            ),
-            Shadow(
-              color: Colors.red.withOpacity(0.6),
-              blurRadius: 8.0,
-            ),
-          ],
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    );
-    
-    textPainter.layout();
-    textPainter.paint(
-      canvas,
-      Offset(
-        (containerSize.width - textPainter.width) / 2,
-        20,
-      ),
-    );
+    // 레이저 애니메이션에서는 텍스트 표시하지 않음 (로딩 오버레이에서 처리)
   }
 
   @override
