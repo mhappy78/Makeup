@@ -135,7 +135,7 @@ class _HomeScreenState extends State<HomeScreen>
                 // 이미지 표시 영역 (모바일 최적화)
                 Container(
                   height: math.max(600, math.min(constraints.maxWidth * 1.2, constraints.maxHeight * 0.6)),
-                  margin: const EdgeInsets.fromLTRB(12, 4, 12, 12), // 상단 마진 최소화
+                  margin: const EdgeInsets.fromLTRB(12, 4, 12, 4), // 상하 마진 최소화
                   decoration: BoxDecoration(
                     border: Border.all(
                       color: Theme.of(context).colorScheme.outline,

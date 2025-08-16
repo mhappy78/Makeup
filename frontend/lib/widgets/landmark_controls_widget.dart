@@ -14,430 +14,131 @@ class LandmarkControlsWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<AppState>(
       builder: (context, appState, child) {
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 헤더
-              Row(
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final isMobile = constraints.maxWidth < 768;
+            
+            return SingleChildScrollView(
+              padding: EdgeInsets.all(isMobile ? 8.0 : 16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    Icons.auto_fix_high,
-                    size: 24,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '⚡ 빠른 프리셋',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 8),
-              
-              // 컴팩트 모바일 프리셋
-              if (appState.currentImage != null) ...[
-                _buildCompactPresetItem(context, appState, '💉 아래턱', 'lower_jaw', '샷', 100, 500, 100),
-                const SizedBox(height: 8),
-                _buildCompactPresetItem(context, appState, '💉 중간턱', 'middle_jaw', '샷', 100, 500, 100),
-                const SizedBox(height: 8),
-                _buildCompactPresetItem(context, appState, '💉 볼', 'cheek', '샷', 100, 500, 100),
-                const SizedBox(height: 8),
-                _buildCompactPresetItem(context, appState, '💉 앞트임', 'front_protusion', '%', 1, 10, 1),
-                const SizedBox(height: 8),
-                _buildCompactPresetItem(context, appState, '💉 뒷트임', 'back_slit', '%', 1, 10, 1),
-                const SizedBox(height: 16), // 컴팩트 레이아웃 완료
-                /*
-                  [
-                    _PresetItemWithSlider(
-                      title: '💉 아래턱',
-                      description: '아래턱선을 날렵하게 정리',
-                      presetType: 'lower_jaw',
-                      unit: '샷',
-                      minValue: 100,
-                      maxValue: 500,
-                      stepValue: 100,
-                      onTap: () => _applyPresetWithSettings(context, 'lower_jaw'),
-                    ),
-                    _PresetItemWithSlider(
-                      title: '💉 중간턱',
-                      description: '중간턱 라인을 자연스럽게 개선',
-                      presetType: 'middle_jaw',
-                      unit: '샷',
-                      minValue: 100,
-                      maxValue: 500,
-                      stepValue: 100,
-                      onTap: () => _applyPresetWithSettings(context, 'middle_jaw'),
-                    ),
-                  ],
-                ),
-                
-                const SizedBox(height: 20),
-                
-                _buildPresetSectionWithSlider(
-                  context,
-                  appState,
-                  '🔹 볼륨 조절',
-                  [
-                    _PresetItemWithSlider(
-                      title: '💉 볼',
-                      description: '볼살을 자연스럽게 정리',
-                      presetType: 'cheek',
-                      unit: '샷',
-                      minValue: 100,
-                      maxValue: 500,
-                      stepValue: 100,
-                      onTap: () => _applyPresetWithSettings(context, 'cheek'),
-                    ),
-                  ],
-                ),
-                
-                const SizedBox(height: 20),
-                
-                _buildPresetSectionWithSlider(
-                  context,
-                  appState,
-                  '🔹 눈매 개선',
-                  [
-                    _PresetItemWithSlider(
-                      title: '💉 앞트임',
-                      description: '눈의 앞쪽을 자연스럽게 확장',
-                      presetType: 'front_protusion',
-                      unit: '번',
-                      minValue: 10,
-                      maxValue: 100,
-                      stepValue: 10,
-                      onTap: () => _applyPresetWithSettings(context, 'front_protusion'),
-                    ),
-                    _PresetItemWithSlider(
-                      title: '💉 뒷트임',
-                      description: '눈의 뒤쪽을 자연스럽게 확장',
-                      presetType: 'back_slit',
-                      unit: '번',
-                      minValue: 10,
-                      maxValue: 100,
-                      stepValue: 10,
-                      onTap: () => _applyPresetWithSettings(context, 'back_slit'),
-                    ),
-                  ],
-                */ // 이전 코드 끝
-                
-                const SizedBox(height: 16),
-                
-                // 총 누적 통계
-                _buildTotalCounters(context, appState),
-                
-                const SizedBox(height: 24),
-                
-                // 컨트롤 버튼들
-                _buildControlButtons(context, appState),
-                
-                const SizedBox(height: 32),
-                
-                // 주의사항
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.errorContainer.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.error.withOpacity(0.3),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.info_outline,
-                            size: 16,
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            '주의사항',
-                            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: Theme.of(context).colorScheme.error,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '• 프리셋은 시뮬레이션 목적입니다\n'
-                        '• 실제 시술과는 차이가 있을 수 있습니다\n'
-                        '• 여러 프리셋을 조합하여 사용 가능합니다\n'
-                        '• 뒤로가기로 언제든 되돌릴 수 있습니다',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onErrorContainer,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ] else ...[
-                // 이미지 없을 때 안내
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.photo_camera_outlined,
-                        size: 48,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        '이미지를 업로드하면\n프리셋을 사용할 수 있습니다',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildPresetSection(
-    BuildContext context,
-    AppState appState,
-    String title,
-    List<_PresetItem> items,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 12),
-        ...items.map((item) => Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: appState.loadingPresetType != null ? null : item.onTap,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.all(16),
-                alignment: Alignment.centerLeft,
-                elevation: 2,
-                backgroundColor: Theme.of(context).colorScheme.surface,
-                foregroundColor: Theme.of(context).colorScheme.onSurface,
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  // 헤더 (모바일에서는 숨김)
+                  if (!isMobile) ...[
+                    Row(
                       children: [
-                        Text(
-                          item.title,
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                        Icon(
+                          Icons.auto_fix_high,
+                          size: 24,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(width: 8),
                         Text(
-                          item.description,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          '⚡ 빠른 프리셋',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                         ),
                       ],
                     ),
-                  ),
-                  // 해당 프리셋이 로딩 중일 때만 스피너 표시
-                  if (appState.isPresetLoading(item.presetType))
+                    const SizedBox(height: 8),
+                  ],
+                  
+                  // 컴팩트 모바일 프리셋
+                  if (appState.currentImage != null) ...[
+                    _buildCompactPresetItem(context, appState, '🌟 아래턱', 'lower_jaw', '샷', 100, 500, 100, isMobile),
+                    SizedBox(height: isMobile ? 4 : 8),
+                    _buildCompactPresetItem(context, appState, '🌟 중간턱', 'middle_jaw', '샷', 100, 500, 100, isMobile),
+                    SizedBox(height: isMobile ? 4 : 8),
+                    _buildCompactPresetItem(context, appState, '🌟 볼', 'cheek', '샷', 100, 500, 100, isMobile),
+                    SizedBox(height: isMobile ? 4 : 8),
+                    _buildCompactPresetItem(context, appState, '✂️ 앞트임', 'front_protusion', '%', 1, 5, 1, isMobile),
+                    SizedBox(height: isMobile ? 4 : 8),
+                    _buildCompactPresetItem(context, appState, '✂️ 뒷트임', 'back_slit', '%', 1, 5, 1, isMobile),
+                    SizedBox(height: isMobile ? 8 : 16),
+                    
+                    // 컨트롤 버튼들
+                    _buildControlButtons(context, appState, isMobile),
+                    
+                    const SizedBox(height: 32),
+                    
+                    // 주의사항
                     Container(
-                      margin: const EdgeInsets.only(left: 12),
-                      child: SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Theme.of(context).colorScheme.primary,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.errorContainer.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.error.withOpacity(0.3),
                         ),
                       ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        )),
-      ],
-    );
-  }
-
-  Widget _buildPresetSectionWithSlider(
-    BuildContext context,
-    AppState appState,
-    String title,
-    List<_PresetItemWithSlider> items,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 12),
-        ...items.map((item) => _buildPresetItemWithSlider(context, appState, item)),
-      ],
-    );
-  }
-
-  Widget _buildPresetItemWithSlider(
-    BuildContext context,
-    AppState appState,
-    _PresetItemWithSlider item,
-  ) {
-    final currentValue = appState.presetSettings[item.presetType] ?? item.minValue;
-    final currentCounter = appState.presetCounters[item.presetType] ?? 0;
-    
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 헤더 (제목 + 현재 누적)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.title,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Text(
-                    item.description,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '총 $currentCounter${item.unit}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 12),
-          
-          // 슬라이더
-          Row(
-            children: [
-              Text(
-                '${item.minValue}${item.unit}',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              Expanded(
-                child: Slider(
-                  value: currentValue.toDouble(),
-                  min: item.minValue.toDouble(),
-                  max: item.maxValue.toDouble(),
-                  divisions: ((item.maxValue - item.minValue) / item.stepValue).round(),
-                  label: '$currentValue${item.unit}',
-                  onChanged: (value) {
-                    appState.updatePresetSetting(item.presetType, value.round());
-                  },
-                ),
-              ),
-              Text(
-                '${item.maxValue}${item.unit}',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 8),
-          
-          // 적용 버튼
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: appState.loadingPresetType != null ? null : item.onTap,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (appState.isPresetLoading(item.presetType))
-                    Container(
-                      margin: const EdgeInsets.only(right: 8),
-                      child: SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Theme.of(context).colorScheme.onPrimary,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.info_outline,
+                                size: 16,
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                '주의사항',
+                                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: Theme.of(context).colorScheme.error,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '• 프리셋은 시뮬레이션 목적입니다\\n'
+                            '• 실제 시술과는 차이가 있을 수 있습니다\\n'
+                            '• 여러 프리셋을 조합하여 사용 가능합니다\\n'
+                            '• 뒤로가기로 언제든 되돌릴 수 있습니다',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onErrorContainer,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  Text('$currentValue${item.unit} 적용'),
+                  ] else ...[
+                    // 이미지 없을 때 안내
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.photo_camera_outlined,
+                            size: 48,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            '이미지를 업로드하면\\n프리셋을 사용할 수 있습니다',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
-            ),
-          ),
-        ],
-      ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -449,13 +150,14 @@ class LandmarkControlsWidget extends StatelessWidget {
     String unit, 
     int minValue, 
     int maxValue, 
-    int stepValue
+    int stepValue,
+    bool isMobile
   ) {
-    final currentValue = appState.presetSettings[presetType] ?? minValue;
+    final currentValue = math.max(minValue, math.min(maxValue, appState.presetSettings[presetType] ?? minValue));
     final currentCounter = appState.presetCounters[presetType] ?? 0;
     
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(isMobile ? 6 : 12),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
@@ -467,7 +169,7 @@ class LandmarkControlsWidget extends StatelessWidget {
         children: [
           // 레이블 및 카운터
           Expanded(
-            flex: 2,
+            flex: isMobile ? 1 : 2,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -475,45 +177,68 @@ class LandmarkControlsWidget extends StatelessWidget {
                   title,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w600,
+                    fontSize: isMobile ? 12 : null,
                   ),
                 ),
-                Text(
-                  '총 $currentCounter$unit',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.w600,
+                if (!isMobile)
+                  Text(
+                    '총 $currentCounter$unit',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
               ],
             ),
           ),
           
           // 슬라이더
           Expanded(
-            flex: 3,
-            child: Column(
-              children: [
-                Slider(
-                  value: currentValue.toDouble(),
-                  min: minValue.toDouble(),
-                  max: maxValue.toDouble(),
-                  divisions: ((maxValue - minValue) / stepValue).round(),
-                  label: '$currentValue$unit',
-                  onChanged: (value) {
-                    appState.updatePresetSetting(presetType, value.round());
-                  },
-                ),
-                Text(
-                  '$currentValue$unit',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
-            ),
+            flex: isMobile ? 2 : 3,
+            child: isMobile 
+                ? Slider(
+                    value: currentValue.toDouble(),
+                    min: minValue.toDouble(),
+                    max: maxValue.toDouble(),
+                    divisions: math.max(1, ((maxValue - minValue) / stepValue).round()),
+                    label: '$currentValue$unit',
+                    onChanged: (value) {
+                      appState.updatePresetSetting(presetType, value.round());
+                    },
+                  )
+                : Column(
+                    children: [
+                      Slider(
+                        value: currentValue.toDouble(),
+                        min: minValue.toDouble(),
+                        max: maxValue.toDouble(),
+                        divisions: math.max(1, ((maxValue - minValue) / stepValue).round()),
+                        label: '$currentValue$unit',
+                        onChanged: (value) {
+                          appState.updatePresetSetting(presetType, value.round());
+                        },
+                      ),
+                      Text(
+                        '$currentValue$unit',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
           ),
+          
+          if (isMobile)
+            Text(
+              '$currentValue$unit',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          
+          const SizedBox(width: 8),
           
           // 적용 버튼
           SizedBox(
-            width: 80,
+            width: isMobile ? 60 : 80,
             child: ElevatedButton(
               onPressed: appState.loadingPresetType != null 
                   ? null 
@@ -521,7 +246,7 @@ class LandmarkControlsWidget extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                padding: EdgeInsets.symmetric(vertical: isMobile ? 6 : 8, horizontal: 4),
               ),
               child: appState.isPresetLoading(presetType)
                   ? SizedBox(
@@ -532,7 +257,7 @@ class LandmarkControlsWidget extends StatelessWidget {
                         color: Theme.of(context).colorScheme.onPrimary,
                       ),
                     )
-                  : const Text('적용', style: TextStyle(fontSize: 12)),
+                  : Text('적용', style: TextStyle(fontSize: isMobile ? 10 : 12)),
             ),
           ),
         ],
@@ -540,140 +265,164 @@ class LandmarkControlsWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildTotalCounters(BuildContext context, AppState appState) {
-    final totalShots = (appState.presetCounters['lower_jaw'] ?? 0) +
-                     (appState.presetCounters['middle_jaw'] ?? 0) +
-                     (appState.presetCounters['cheek'] ?? 0);
-    
-    final totalTreatments = (appState.presetCounters['front_protusion'] ?? 0) +
-                           (appState.presetCounters['back_slit'] ?? 0);
-    
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+  Widget _buildControlButtons(BuildContext context, AppState appState, bool isMobile) {
+    if (isMobile) {
+      // 모바일: 2줄 배치로 변경
+      return Column(
         children: [
-          Column(
+          // 첫 번째 줄: 뒤로, 원본
+          Row(
             children: [
-              Text(
-                '총 누적 샷',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: appState.canUndo ? () => appState.undo() : null,
+                  icon: const Icon(Icons.undo, size: 16),
+                  label: const Text('뒤로', style: TextStyle(fontSize: 11)),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                    foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                  ),
                 ),
               ),
-              Text(
-                '$totalShots샷',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.primary,
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: appState.originalImage != null 
+                      ? () => appState.restoreToOriginal() 
+                      : null,
+                  icon: const Icon(Icons.restore, size: 16),
+                  label: const Text('원본', style: TextStyle(fontSize: 11)),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                    foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                  ),
                 ),
               ),
             ],
           ),
-          Container(
-            width: 1,
-            height: 40,
-            color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
-          ),
-          Column(
+          const SizedBox(height: 8),
+          // 두 번째 줄: Before/After, 저장
+          Row(
             children: [
-              Text(
-                '총 트임 %',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: (appState.originalImage != null && appState.currentImage != null)
+                      ? () => _showBeforeAfterComparison(context)
+                      : null,
+                  icon: const Icon(Icons.compare, size: 16),
+                  label: const Text('Before/After', style: TextStyle(fontSize: 11)),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                  ),
                 ),
               ),
-              Text(
-                '$totalTreatments%',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.primary,
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: appState.currentImage != null 
+                      ? () => _downloadImage(context) 
+                      : null,
+                  icon: const Icon(Icons.download, size: 16),
+                  label: const Text('저장', style: TextStyle(fontSize: 11)),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.secondary,
+                    foregroundColor: Theme.of(context).colorScheme.onSecondary,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                  ),
                 ),
               ),
             ],
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildControlButtons(BuildContext context, AppState appState) {
-    return Column(
-      children: [
-        // 첫 번째 줄: 뒤로가기, 원본복원
-        Row(
-          children: [
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: appState.canUndo ? () => appState.undo() : null,
-                icon: const Icon(Icons.undo, size: 18),
-                label: const Text('뒤로가기'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+      );
+    } else {
+      // 데스크톱: 기존 레이아웃
+      return Column(
+        children: [
+          // 첫 번째 줄: 뒤로가기, 원본복원
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: appState.canUndo ? () => appState.undo() : null,
+                  icon: const Icon(Icons.undo, size: 18),
+                  label: const Text('뒤로'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                    foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: appState.originalImage != null 
-                    ? () => appState.restoreToOriginal() 
-                    : null,
-                icon: const Icon(Icons.restore, size: 18),
-                label: const Text('원본복원'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: appState.originalImage != null 
+                      ? () => appState.restoreToOriginal() 
+                      : null,
+                  icon: const Icon(Icons.restore, size: 18),
+                  label: const Text('원본'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                    foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-        
-        const SizedBox(height: 12),
-        
-        // 두 번째 줄: Before/After, 저장하기
-        Row(
-          children: [
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: (appState.originalImage != null && appState.currentImage != null)
-                    ? () => _showBeforeAfterComparison(context)
-                    : null,
-                icon: const Icon(Icons.compare, size: 18),
-                label: const Text('Before/After'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+            ],
+          ),
+          
+          const SizedBox(height: 12),
+          
+          // 두 번째 줄: Before/After와 저장 (프리스타일 탭 스타일)
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: (appState.originalImage != null && appState.currentImage != null)
+                      ? () => _showBeforeAfterComparison(context)
+                      : null,
+                  icon: const Icon(Icons.compare, size: 18),
+                  label: const Text('Before/After'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: appState.currentImage != null 
-                    ? () => _downloadImage(context) 
-                    : null,
-                icon: const Icon(Icons.download, size: 18),
-                label: const Text('저장하기'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: appState.currentImage != null 
+                      ? () => _downloadImage(context) 
+                      : null,
+                  icon: const Icon(Icons.download, size: 18),
+                  label: const Text('저장'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.secondary,
+                    foregroundColor: Theme.of(context).colorScheme.onSecondary,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-      ],
-    );
+            ],
+          ),
+        ],
+      );
+    }
   }
 
   Future<void> _applyPresetWithSettings(BuildContext context, String presetType) async {
     final appState = context.read<AppState>();
     final shots = appState.presetSettings[presetType] ?? 100;
+    
+    // 프리셋 시각화 표시
+    appState.showPresetVisualizationFor(presetType);
     
     // 설정된 샷 수만큼 반복 적용
     final baseShots = presetType.contains('protusion') || presetType.contains('slit') ? 1 : 100;
@@ -683,7 +432,9 @@ class LandmarkControlsWidget extends StatelessWidget {
     appState.activateLaserEffect(presetType, iterations);
     
     for (int i = 0; i < iterations; i++) {
-      await _applyPreset(context, presetType);
+      // 현재 진행 상황 계산
+      final currentShots = (i + 1) * baseShots;
+      await _applyPresetWithProgress(context, presetType, currentShots);
       if (i < iterations - 1) {
         // 마지막이 아니면 0.5초 대기
         await Future.delayed(const Duration(milliseconds: 500));
@@ -694,15 +445,15 @@ class LandmarkControlsWidget extends StatelessWidget {
     appState.incrementPresetCounter(presetType, shots);
   }
 
-  Future<void> _applyPreset(BuildContext context, String presetType) async {
+  Future<void> _applyPresetWithProgress(BuildContext context, String presetType, int progress) async {
     final appState = context.read<AppState>();
     final apiService = context.read<ApiService>();
     
     if (appState.currentImageId == null) return;
     
     try {
-      // 특정 프리셋만 로딩 상태로 설정 (전체 화면 로딩 X)
-      appState.setPresetLoading(presetType);
+      // 특정 프리셋만 로딩 상태로 설정 + 진행 상황 표시
+      appState.setPresetLoading(presetType, progress);
       
       // API를 통해 프리셋 적용
       final response = await apiService.applyPreset(
@@ -716,32 +467,13 @@ class LandmarkControlsWidget extends StatelessWidget {
         response.imageId,
       );
       
-      // 로딩 상태 해제
+      // 로딩 상태 즉시 해제 (지연 제거)
       appState.setPresetLoading(null);
-      // 스냅샷 제거 - 깜빡임 방지
       
     } catch (e) {
-      // 로딩 상태 해제
+      // 에러 시에도 즉시 로딩 상태 해제
       appState.setPresetLoading(null);
       appState.setError('프리셋 적용 실패: $e');
-      // 에러 스냅샷도 제거 - 깜빡임 방지
-    }
-  }
-
-  String _getPresetName(String presetType) {
-    switch (presetType) {
-      case 'lower_jaw':
-        return '아래턱 100샷+';
-      case 'middle_jaw':
-        return '중간턱 100샷+';
-      case 'cheek':
-        return '볼 100샷+';
-      case 'front_protusion':
-        return '앞트임+';
-      case 'back_slit':
-        return '뒷트임+';
-      default:
-        return '프리셋';
     }
   }
 
@@ -806,40 +538,4 @@ class LandmarkControlsWidget extends StatelessWidget {
       }
     }
   }
-}
-
-class _PresetItem {
-  final String title;
-  final String description;
-  final String presetType;
-  final VoidCallback onTap;
-
-  _PresetItem({
-    required this.title,
-    required this.description,
-    required this.presetType,
-    required this.onTap,
-  });
-}
-
-class _PresetItemWithSlider {
-  final String title;
-  final String description;
-  final String presetType;
-  final String unit;
-  final int minValue;
-  final int maxValue;
-  final int stepValue;
-  final VoidCallback onTap;
-
-  _PresetItemWithSlider({
-    required this.title,
-    required this.description,
-    required this.presetType,
-    required this.unit,
-    required this.minValue,
-    required this.maxValue,
-    required this.stepValue,
-    required this.onTap,
-  });
 }

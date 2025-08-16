@@ -5,6 +5,36 @@ import 'dart:math' as math;
 import 'face_regions.dart';
 import '../services/api_service.dart';
 
+// 애니메이션 상수들
+class AnimationConstants {
+  // 애니메이션 지속 시간 (밀리초)
+  static const int eyebrowAreaDuration = 3000;
+  static const int eyebrowsDuration = 2000;
+  static const int eyesAreaDuration = 2500;
+  static const int eyelidLowerAreaDuration = 2500;
+  static const int cheekAreaDuration = 2500;
+  static const int noseBridgeDuration = 1500;
+  static const int noseSidesDuration = 1500;
+  static const int noseWingsDuration = 2000;
+  static const int lipUpperDuration = 2000;
+  static const int lipLowerDuration = 2000;
+  static const int jawlineAreaDuration = 3500;
+  static const int defaultDuration = 2000;
+  
+  // 레이저 효과
+  static const int minLaserDuration = 1500;
+  static const int maxLaserDuration = 15000;
+  static const int laserIterationDuration = 1000;
+  
+  // 뷰티 스코어 애니메이션
+  static const int beautyScoreAnimationDuration = 2000;
+  static const int beautyScoreAnimationSteps = 60;
+  static const int beautyScoreStepDuration = 33;
+  
+  // 공통 스텝 설정
+  static const int stepDurationMs = 50;
+}
+
 /// 앱의 전역 상태 관리
 class AppState extends ChangeNotifier {
   // 이미지 관련 상태
@@ -53,6 +83,7 @@ class AppState extends ChangeNotifier {
   
   // 프리셋 로딩 상태
   String? _loadingPresetType; // 현재 로딩 중인 프리셋 타입
+  int _currentProgress = 0; // 현재 진행된 샷/퍼센트 수
   
   // 워핑 로딩 상태
   bool _isWarpLoading = false; // 워핑 처리 중 여부
@@ -70,8 +101,8 @@ class AppState extends ChangeNotifier {
     'lower_jaw': 100,    // 100~500샷
     'middle_jaw': 100,
     'cheek': 100,
-    'front_protusion': 10,  // 10~100번
-    'back_slit': 10,
+    'front_protusion': 3,  // 1~5%
+    'back_slit': 3,        // 1~5%
   };
   
   // 레이저 시각화 상태
@@ -82,6 +113,11 @@ class AppState extends ChangeNotifier {
   
   // 뷰티 스코어 분석 결과
   Map<String, dynamic> _beautyAnalysis = {};
+  
+  // 프리셋 시각화 상태
+  bool _showPresetVisualization = false;
+  String? _currentPresetType;
+  Map<String, dynamic> _presetVisualizationData = {};
   
   
   // Getters
@@ -111,6 +147,7 @@ class AppState extends ChangeNotifier {
   Offset get panOffset => _panOffset;
   bool get showOriginalImage => _showOriginalImage;
   String? get loadingPresetType => _loadingPresetType;
+  int get currentProgress => _currentProgress;
   bool get isWarpLoading => _isWarpLoading;
   Map<String, int> get presetCounters => _presetCounters;
   Map<String, int> get presetSettings => _presetSettings;
@@ -118,6 +155,9 @@ class AppState extends ChangeNotifier {
   String? get currentLaserPreset => _currentLaserPreset;
   int get laserIterations => _laserIterations;
   int get laserDurationMs => _laserDurationMs;
+  bool get showPresetVisualization => _showPresetVisualization;
+  String? get currentPresetType => _currentPresetType;
+  Map<String, dynamic> get presetVisualizationData => _presetVisualizationData;
   
   // Before/After 비교를 위한 표시 이미지 getter
   Uint8List? get displayImage => _showOriginalImage ? _originalImage : _currentImage;
@@ -287,33 +327,33 @@ class AppState extends ChangeNotifier {
     int duration;
     switch (regionKey) {
       case 'eyebrow_area':
-        duration = 3000; // 3초
+        duration = AnimationConstants.eyebrowAreaDuration; // 3초
         break;
       case 'eyebrows':
-        duration = 2000; // 2초
+        duration = AnimationConstants.eyebrowsDuration; // 2초
         break;
       case 'eyes':
       case 'eyelid_lower_area':
       case 'cheek_area':
-        duration = 2500; // 2.5초
+        duration = AnimationConstants.eyesAreaDuration; // 2.5초
         break;
       case 'nose_bridge':
       case 'nose_sides':
-        duration = 1500; // 1.5초
+        duration = AnimationConstants.noseBridgeDuration; // 1.5초
         break;
       case 'nose_wings':
       case 'lip_upper':
       case 'lip_lower':
-        duration = 2000; // 2초
+        duration = AnimationConstants.noseWingsDuration; // 2초
         break;
       case 'jawline_area':
-        duration = 3500; // 3.5초
+        duration = AnimationConstants.jawlineAreaDuration; // 3.5초
         break;
       default:
-        duration = 2000;
+        duration = AnimationConstants.defaultDuration;
     }
     
-    const stepDuration = Duration(milliseconds: 50);
+    const stepDuration = Duration(milliseconds: AnimationConstants.stepDurationMs);
     final steps = duration ~/ 50;
     
     for (int i = 0; i <= steps; i++) {
@@ -501,8 +541,9 @@ class AppState extends ChangeNotifier {
   }
   
   // 프리셋 로딩 상태 설정
-  void setPresetLoading(String? presetType) {
+  void setPresetLoading(String? presetType, [int progress = 0]) {
     _loadingPresetType = presetType;
+    _currentProgress = progress;
     if (presetType != null) {
       _errorMessage = null;
     }
@@ -537,7 +578,7 @@ class AppState extends ChangeNotifier {
     _laserIterations = iterations;
     
     // 이터래이션 수에 따른 지속 시간 계산 (각 이터래이션당 1초 + 0.5초 대기)
-    _laserDurationMs = (iterations * 1000).clamp(1500, 15000); // 최소 1.5초, 최대 15초
+    _laserDurationMs = (iterations * AnimationConstants.laserIterationDuration).clamp(AnimationConstants.minLaserDuration, AnimationConstants.maxLaserDuration); // 최소 1.5초, 최대 15초
     
     notifyListeners();
     
@@ -546,7 +587,7 @@ class AppState extends ChangeNotifier {
       _showLaserEffect = false;
       _currentLaserPreset = null;
       _laserIterations = 1;
-      _laserDurationMs = 1500;
+      _laserDurationMs = AnimationConstants.minLaserDuration;
       notifyListeners();
     });
   }
@@ -574,6 +615,197 @@ class AppState extends ChangeNotifier {
   void clearError() {
     _errorMessage = null;
     notifyListeners();
+  }
+  
+  // 프리셋 시각화 활성화 (현재 임시로 비활성화)
+  void showPresetVisualizationFor(String presetType) {
+    if (_landmarks.isEmpty) return;
+    
+    _currentPresetType = presetType;
+    _presetVisualizationData = _generatePresetVisualizationData(presetType);
+    // _showPresetVisualization = true; // 임시로 주석 처리
+    notifyListeners();
+    
+    // 5초 후 자동으로 숨김
+    Future.delayed(const Duration(seconds: 5), () {
+      hidePresetVisualization();
+    });
+  }
+  
+  // 프리셋 시각화 숨김
+  void hidePresetVisualization() {
+    _showPresetVisualization = false;
+    _currentPresetType = null;
+    _presetVisualizationData.clear();
+    notifyListeners();
+  }
+  
+  // 프리셋별 시각화 데이터 생성
+  Map<String, dynamic> _generatePresetVisualizationData(String presetType) {
+    if (_landmarks.isEmpty) return {};
+    
+    // 얼굴 크기 계산 (백엔드와 동일한 로직)
+    final faceLeft = _landmarks[234];
+    final faceRight = _landmarks[447];
+    final faceWidth = (faceRight.x - faceLeft.x).abs();
+    
+    List<Map<String, dynamic>> transformations = [];
+    
+    switch (presetType) {
+      case 'lower_jaw':
+        transformations = _getLowerJawTransformations(faceWidth);
+        break;
+      case 'middle_jaw':
+        transformations = _getMiddleJawTransformations(faceWidth);
+        break;
+      case 'cheek':
+        transformations = _getCheekTransformations(faceWidth);
+        break;
+      case 'front_protusion':
+        transformations = _getFrontProtusionTransformations(faceWidth);
+        break;
+      case 'back_slit':
+        transformations = _getBackSlitTransformations(faceWidth);
+        break;
+    }
+    
+    return {
+      'transformations': transformations,
+      'presetType': presetType,
+      'faceWidth': faceWidth,
+    };
+  }
+  
+  // 아래턱 변형 데이터
+  List<Map<String, dynamic>> _getLowerJawTransformations(double faceWidth) {
+    final leftLandmark = _landmarks[150];
+    final rightLandmark = _landmarks[379];
+    final targetLandmark = _landmarks[4];
+    final influenceRadius = faceWidth * 0.4;
+    
+    return [
+      _createTransformationData(leftLandmark, targetLandmark, influenceRadius, 0.05, 0.1),
+      _createTransformationData(rightLandmark, targetLandmark, influenceRadius, 0.05, 0.1),
+    ];
+  }
+  
+  // 중간턱 변형 데이터
+  List<Map<String, dynamic>> _getMiddleJawTransformations(double faceWidth) {
+    final leftLandmark = _landmarks[172];
+    final rightLandmark = _landmarks[397];
+    final targetLandmark = _landmarks[4];
+    final influenceRadius = faceWidth * 0.65;
+    
+    return [
+      _createTransformationData(leftLandmark, targetLandmark, influenceRadius, 0.05, 0.1),
+      _createTransformationData(rightLandmark, targetLandmark, influenceRadius, 0.05, 0.1),
+    ];
+  }
+  
+  // 볼 변형 데이터
+  List<Map<String, dynamic>> _getCheekTransformations(double faceWidth) {
+    final leftLandmark = _landmarks[215];
+    final rightLandmark = _landmarks[435];
+    final targetLandmark = _landmarks[4];
+    final influenceRadius = faceWidth * 0.65;
+    
+    return [
+      _createTransformationData(leftLandmark, targetLandmark, influenceRadius, 0.05, 0.1),
+      _createTransformationData(rightLandmark, targetLandmark, influenceRadius, 0.05, 0.1),
+    ];
+  }
+  
+  // 앞트임 변형 데이터
+  List<Map<String, dynamic>> _getFrontProtusionTransformations(double faceWidth) {
+    final landmark243 = _landmarks[243];
+    final landmark463 = _landmarks[463];
+    final influenceRadius = faceWidth * 0.1; // 예전 방식: 10%
+    
+    // 중간점들 계산
+    final mid56190 = Landmark(
+      x: (_landmarks[56].x + _landmarks[190].x) / 2,
+      y: (_landmarks[56].y + _landmarks[190].y) / 2,
+      index: -1,
+    );
+    final mid414286 = Landmark(
+      x: (_landmarks[414].x + _landmarks[286].x) / 2,
+      y: (_landmarks[414].y + _landmarks[286].y) / 2,
+      index: -1,
+    );
+    
+    // 타겟 중간점 (예전 방식: 코 중심)
+    final targetMid = Landmark(
+      x: (_landmarks[168].x + _landmarks[6].x) / 2,
+      y: (_landmarks[168].y + _landmarks[6].y) / 2,
+      index: -1,
+    );
+    
+    return [
+      _createTransformationData(landmark243, targetMid, influenceRadius, 0.3, 0.1, ellipseRatio: 1.3),
+      _createTransformationData(landmark463, targetMid, influenceRadius, 0.3, 0.1, ellipseRatio: 1.3),
+      _createTransformationData(mid56190, targetMid, influenceRadius, 0.3, 0.1, ellipseRatio: 1.3),
+      _createTransformationData(mid414286, targetMid, influenceRadius, 0.3, 0.1, ellipseRatio: 1.3),
+    ];
+  }
+  
+  // 뒷트임 변형 데이터
+  List<Map<String, dynamic>> _getBackSlitTransformations(double faceWidth) {
+    final landmark33 = _landmarks[33];
+    final landmark359 = _landmarks[359];
+    final influenceRadius = faceWidth * 0.1; // 예전 방식: 10%
+    
+    // 타겟 중간점들
+    final mid34162 = Landmark(
+      x: (_landmarks[34].x + _landmarks[162].x) / 2,
+      y: (_landmarks[34].y + _landmarks[162].y) / 2,
+      index: -1,
+    );
+    final mid368264 = Landmark(
+      x: (_landmarks[368].x + _landmarks[264].x) / 2,
+      y: (_landmarks[368].y + _landmarks[264].y) / 2,
+      index: -1,
+    );
+    
+    return [
+      _createTransformationData(landmark33, mid34162, influenceRadius, 0.5, 0.1),
+      _createTransformationData(landmark359, mid368264, influenceRadius, 0.5, 0.1),
+    ];
+  }
+  
+  // 변형 데이터 생성 헬퍼
+  Map<String, dynamic> _createTransformationData(
+    Landmark startLandmark, 
+    Landmark targetLandmark, 
+    double influenceRadius, 
+    double strength, 
+    double pullRatio,
+    {double? ellipseRatio}
+  ) {
+    final distance = math.sqrt(
+      math.pow(startLandmark.x - targetLandmark.x, 2) + 
+      math.pow(startLandmark.y - targetLandmark.y, 2)
+    );
+    final pullDistance = distance * pullRatio;
+    
+    // 방향 벡터 계산
+    final dx = targetLandmark.x - startLandmark.x;
+    final dy = targetLandmark.y - startLandmark.y;
+    final norm = math.sqrt(dx * dx + dy * dy);
+    
+    final endX = norm > 0 ? startLandmark.x + (dx / norm) * pullDistance : startLandmark.x;
+    final endY = norm > 0 ? startLandmark.y + (dy / norm) * pullDistance : startLandmark.y;
+    
+    return {
+      'startX': startLandmark.x,
+      'startY': startLandmark.y,
+      'endX': endX,
+      'endY': endY,
+      'influenceRadius': influenceRadius,
+      'strength': strength,
+      'pullDistance': pullDistance,
+      'distance': distance,
+      'ellipseRatio': ellipseRatio,
+    };
   }
   
   // 자동 애니메이션 중단
@@ -636,9 +868,9 @@ class AppState extends ChangeNotifier {
     _beautyScoreAnimationProgress = 0.0;
     notifyListeners();
     
-    const duration = Duration(milliseconds: 2000); // 2초 동안 애니메이션
-    const steps = 60; // 60 프레임
-    const stepDuration = Duration(milliseconds: 33); // ~60 FPS
+    const duration = Duration(milliseconds: AnimationConstants.beautyScoreAnimationDuration); // 2초 동안 애니메이션
+    const steps = AnimationConstants.beautyScoreAnimationSteps; // 60 프레임
+    const stepDuration = Duration(milliseconds: AnimationConstants.beautyScoreStepDuration); // ~60 FPS
     
     for (int i = 0; i <= steps; i++) {
       if (!_showBeautyScore) break; // 중단 조건

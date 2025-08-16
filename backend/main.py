@@ -323,11 +323,11 @@ def apply_warp(image: np.ndarray, start_x: float, start_y: float,
         return image
 
 def apply_pull_warp(image: np.ndarray, start_x: float, start_y: float,
-                   end_x: float, end_y: float, influence_radius: float, strength: float) -> np.ndarray:
+                   end_x: float, end_y: float, influence_radius: float, strength: float, ellipse_ratio: float = None) -> np.ndarray:
     """당기기 워핑"""
     img_height, img_width = image.shape[:2]
     
-    # 드래그 벡터 (반대 방향)
+    # 드래그 벡터 (예전 방식: 반대 방향)
     dx = start_x - end_x
     dy = start_y - end_y
     
@@ -456,6 +456,9 @@ def apply_radial_warp(image: np.ndarray, center_x: float, center_y: float,
 
 def apply_preset_transformation(image: np.ndarray, landmarks: List[Tuple[float, float]], preset_type: str) -> np.ndarray:
     """프리셋 변형 적용"""
+    print(f"\n=== PRESET DEBUG: {preset_type} ===")
+    print(f"Image shape: {image.shape}")
+    print(f"Total landmarks: {len(landmarks)}")
     
     # 프리셋 상수들 (face_simulator.py에서 가져옴)
     PRESET_CONFIGS = {
@@ -481,17 +484,17 @@ def apply_preset_transformation(image: np.ndarray, landmarks: List[Tuple[float, 
             'target_landmarks': (215, 435, 4)
         },
         'front_protusion': {
-            'strength': 0.4,
+            'strength': 0.3,
             'influence_ratio': 0.1,
-            'pull_ratio': 3.2,
+            'pull_ratio': 0.1,
             'face_size_landmarks': (234, 447),
             'target_landmarks': (243, 463, (56, 190), (414, 286), 168, 6),
             'ellipse_ratio': 1.3
         },
         'back_slit': {
-            'strength': 0.4,
+            'strength': 0.5,
             'influence_ratio': 0.1,
-            'pull_ratio': 16.0,
+            'pull_ratio': 0.1,
             'face_size_landmarks': (234, 447),
             'target_landmarks': (33, 359, (34, 162), (368, 264))
         }
@@ -507,8 +510,13 @@ def apply_preset_transformation(image: np.ndarray, landmarks: List[Tuple[float, 
     face_size_right = landmarks[config['face_size_landmarks'][1]]
     face_width = abs(face_size_right[0] - face_size_left[0])
     
+    print(f"Face landmarks: left={face_size_left}, right={face_size_right}")
+    print(f"Face width: {face_width}px")
+    
     # 영향 반경 계산
     influence_radius = face_width * config['influence_ratio']
+    print(f"Influence radius: {influence_radius}px (ratio: {config['influence_ratio']})")
+    print(f"Config: {config}")
     
     result_image = image.copy()
     
@@ -569,23 +577,33 @@ def apply_preset_transformation(image: np.ndarray, landmarks: List[Tuple[float, 
         landmark_243 = landmarks[243]
         landmark_463 = landmarks[463]
         
+        print(f"\n--- FRONT PROTUSION DEBUG ---")
+        print(f"Landmark 243 (left inner): {landmark_243}")
+        print(f"Landmark 463 (right inner): {landmark_463}")
+        
         # 중간점들 계산
         mid_56_190 = ((landmarks[56][0] + landmarks[190][0]) / 2,
                       (landmarks[56][1] + landmarks[190][1]) / 2)
         mid_414_286 = ((landmarks[414][0] + landmarks[286][0]) / 2,
                        (landmarks[414][1] + landmarks[286][1]) / 2)
         
-        # 타겟 중간점
+        print(f"Mid 56_190: {mid_56_190}")
+        print(f"Mid 414_286: {mid_414_286}")
+        
+        # 앞트임: 예전 방식 - 코 중심으로 당기기
+        # 타겟 중간점 계산 (168 + 6의 중간점)
         target_mid = ((landmarks[168][0] + landmarks[6][0]) / 2,
                       (landmarks[168][1] + landmarks[6][1]) / 2)
         
-        # 각 포인트에 변형 적용
-        for source_landmark, target_point in [
+        print(f"Target mid (nose center): {target_mid}")
+        
+        # 각 포인트에 변형 적용 (코 중심으로)
+        for i, (source_landmark, target_point) in enumerate([
             (landmark_243, target_mid),
             (landmark_463, target_mid),
             (mid_56_190, target_mid),
             (mid_414_286, target_mid)
-        ]:
+        ]):
             distance = math.sqrt((source_landmark[0] - target_point[0])**2 + 
                                (source_landmark[1] - target_point[1])**2)
             pull_distance = distance * config['pull_ratio']
@@ -594,6 +612,12 @@ def apply_preset_transformation(image: np.ndarray, landmarks: List[Tuple[float, 
             dy = target_point[1] - source_landmark[1]
             norm = math.sqrt(dx**2 + dy**2)
             
+            print(f"\nPoint {i+1}: {source_landmark} -> {target_point}")
+            print(f"Distance: {distance:.2f}px")
+            print(f"Pull ratio: {config['pull_ratio']}")
+            print(f"Pull distance: {pull_distance:.2f}px")
+            print(f"Direction vector: ({dx:.2f}, {dy:.2f})")
+            
             if norm > 0:
                 dx = (dx / norm) * pull_distance
                 dy = (dy / norm) * pull_distance
@@ -601,11 +625,19 @@ def apply_preset_transformation(image: np.ndarray, landmarks: List[Tuple[float, 
                 target_x = source_landmark[0] + dx
                 target_y = source_landmark[1] + dy
                 
+                print(f"Normalized direction: ({dx:.2f}, {dy:.2f})")
+                print(f"Final target: ({target_x:.2f}, {target_y:.2f})")
+                print(f"Actual movement: ({dx:.2f}, {dy:.2f})")
+                print(f"Strength: {config['strength']}")
+                print(f"Influence radius: {influence_radius:.2f}px")
+                print(f"Ellipse ratio: {config.get('ellipse_ratio')}")
+                
                 result_image = apply_pull_warp(
                     result_image,
                     source_landmark[0], source_landmark[1],
                     target_x, target_y,
-                    influence_radius, config['strength']
+                    influence_radius, config['strength'],
+                    config.get('ellipse_ratio')
                 )
     
     elif preset_type == 'back_slit':
@@ -643,7 +675,8 @@ def apply_preset_transformation(image: np.ndarray, landmarks: List[Tuple[float, 
                     result_image,
                     source_landmark[0], source_landmark[1],
                     target_x, target_y,
-                    influence_radius, config['strength']
+                    influence_radius, config['strength'],
+                    config.get('ellipse_ratio')
                 )
     
     return result_image
@@ -651,4 +684,4 @@ def apply_preset_transformation(image: np.ndarray, landmarks: List[Tuple[float, 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8081)
+    uvicorn.run(app, host="0.0.0.0", port=8082)

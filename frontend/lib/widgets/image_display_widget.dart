@@ -9,6 +9,30 @@ import 'dart:math' as math;
 import 'beauty_score_visualizer.dart';
 import '../models/app_state.dart' show Landmark, WarpMode;
 
+// 시각화 상수들
+class VisualizationConstants {
+  // 기본 크기
+  static const double landmarkRadius = 5.0;
+  static const double arrowLength = 7.5;
+  static const double arrowHeadSize = 15.0;
+  static const double influenceRadius = 50.0;
+  static const double dashWidth = 5.0;
+  static const double dashGap = 5.0;
+  
+  // 애니메이션 관련
+  static const double pulseBaseRadius = 15.0;
+  static const double pulseAmplitude = 8.0;
+  static const double scanAreaHeight = 50.0;
+  static const double scanOffset = 20.0;
+  static const double blurRadius = 15.0;
+  
+  // 색상
+  static const Color startPointColor = Colors.red;
+  static const Color endPointColor = Colors.blue;
+  static const Color arrowColor = Colors.orange;
+  static const Color influenceCircleColor = Colors.yellow;
+}
+
 /// 이미지 표시 및 상호작용 위젯
 class ImageDisplayWidget extends StatefulWidget {
   const ImageDisplayWidget({super.key});
@@ -218,62 +242,68 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
                         ),
                       ),
                     
-                    // 이미지 영역 내 고정 위치 로딩 메시지 (깜빡임 방지)
-                    if (appState.loadingPresetType != null || appState.isWarpLoading)
-                      Positioned(
-                        bottom: 20, // 이미지 하단에서 20px 위
-                        left: 0,
-                        right: 0,
-                        child: IgnorePointer(
-                          child: Center(
-                            child: Container(
-                              key: const ValueKey('stable_loading_message'), // 안정적인 키
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              margin: const EdgeInsets.symmetric(horizontal: 20),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.8),
-                                borderRadius: BorderRadius.circular(25),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.3),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.5,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.cyan.shade300),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    _getPresetMessage(appState.loadingPresetType),
-                                    style: TextStyle(
-                                      color: Colors.cyan.shade300,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                      letterSpacing: 0.5,
-                                      shadows: [
-                                        Shadow(
-                                          color: Colors.cyan.withOpacity(0.6),
-                                          blurRadius: 4.0,
+                    // 이미지 영역 내 고정 위치 로딩 메시지 (AnimatedSwitcher로 깜빡임 방지)
+                    Positioned(
+                      bottom: 20, // 이미지 하단에서 20px 위
+                      left: 0,
+                      right: 0,
+                      child: IgnorePointer(
+                        child: Center(
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 100), // 매우 빠른 페이드 인/아웃
+                            switchInCurve: Curves.easeIn,
+                            switchOutCurve: Curves.easeOut,
+                            child: (appState.loadingPresetType != null || appState.isWarpLoading)
+                                ? Container(
+                                    key: ValueKey('loading_${appState.loadingPresetType ?? 'warp'}'), // 프리셋별 고유 키
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                    margin: const EdgeInsets.symmetric(horizontal: 20),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.8),
+                                      borderRadius: BorderRadius.circular(25),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.3),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 4),
                                         ),
                                       ],
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2.5,
+                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.cyan.shade300),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Text(
+                                          _getPresetMessage(appState.loadingPresetType, appState.currentProgress),
+                                          style: TextStyle(
+                                            color: Colors.cyan.shade300,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                            letterSpacing: 0.5,
+                                            shadows: [
+                                              Shadow(
+                                                color: Colors.cyan.withOpacity(0.6),
+                                                blurRadius: 4.0,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                : const SizedBox.shrink(key: ValueKey('empty_loading')), // 빈 상태
                           ),
                         ),
                       ),
+                    ),
                     
                     // 랜드마크 오버레이 (정확한 이미지 위치 기준)
                     if (appState.showLandmarks)
@@ -385,6 +415,25 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
                             zoomScale: appState.zoomScale,
                             panOffset: appState.panOffset,
                             originalContainerSize: constraints.biggest,
+                          ),
+                        ),
+                      ),
+                    
+                    // 프리셋 시각화 (프리셋 탭에서만)
+                    if (appState.currentTabIndex == 1 && appState.showPresetVisualization && appState.presetVisualizationData.isNotEmpty)
+                      Positioned(
+                        left: imageOffset.dx,
+                        top: imageOffset.dy,
+                        width: imageDisplaySize.width,
+                        height: imageDisplaySize.height,
+                        child: CustomPaint(
+                          painter: PresetVisualizationPainter(
+                            visualizationData: appState.presetVisualizationData,
+                            imageWidth: appState.imageWidth,
+                            imageHeight: appState.imageHeight,
+                            containerSize: imageDisplaySize,
+                            zoomScale: appState.zoomScale,
+                            panOffset: appState.panOffset,
                           ),
                         ),
                       ),
@@ -682,23 +731,45 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
     }
   }
   
-  // 프리셋별 메시지 반환
-  String _getPresetMessage(String? presetType) {
+  // 프리셋별 메시지 반환 (진행 상황 포함)
+  String _getPresetMessage(String? presetType, [int progress = 0]) {
     if (presetType == null) return '워핑 적용 중..';
+    
+    String baseMessage;
+    String unit;
     
     switch (presetType) {
       case 'lower_jaw':
-        return '아래턱선 날렵하게 커스터마이징 중..';
+        baseMessage = '아래턱선 날렵하게 커스터마이징 중';
+        unit = '샷';
+        break;
       case 'middle_jaw':
-        return '중간턱 라인 자연스럽게 다듬는 중..';
+        baseMessage = '중간턱 라인 자연스럽게 다듬는 중';
+        unit = '샷';
+        break;
       case 'cheek':
-        return '볼살 슬림하게 개선하는 중..';
+        baseMessage = '볼살 슬림하게 개선하는 중';
+        unit = '샷';
+        break;
       case 'front_protusion':
-        return '앞트임으로 더 큰 눈매 만드는 중..';
+        baseMessage = '앞트임으로 더 큰 눈매 만드는 중';
+        unit = '%';
+        break;
       case 'back_slit':
-        return '뒷트임으로 시원한 눈매 연출 중..';
+        baseMessage = '뒷트임으로 시원한 눈매 연출 중';
+        unit = '%';
+        break;
       default:
-        return '프리셋 적용 중..';
+        baseMessage = '프리셋 적용 중';
+        unit = '';
+        break;
+    }
+    
+    // 진행 상황이 있으면 표시
+    if (progress > 0) {
+      return '$baseMessage.. $progress$unit';
+    } else {
+      return '$baseMessage..';
     }
   }
 }
@@ -1018,7 +1089,7 @@ class AnimatedFaceRegionsPainter extends CustomPainter {
       ..color = color.withOpacity(0.6 * intensity)
       ..style = PaintingStyle.fill
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.0);
-    canvas.drawCircle(position, 5.0, innerGlowPaint);
+    canvas.drawCircle(position, VisualizationConstants.landmarkRadius, innerGlowPaint);
     
     // 중심 랜드마크 점
     final corePaint = Paint()
@@ -1071,7 +1142,7 @@ class WarpToolPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     // 영향 반경 원
     final radiusPaint = Paint()
-      ..color = Colors.blue.withOpacity(0.3)
+      ..color = VisualizationConstants.endPointColor.withOpacity(0.3)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0;
     
@@ -1079,7 +1150,7 @@ class WarpToolPainter extends CustomPainter {
     
     // 시작점
     final startPaint = Paint()
-      ..color = Colors.red
+      ..color = VisualizationConstants.startPointColor
       ..style = PaintingStyle.fill;
     
     canvas.drawCircle(startPoint, 3.0, startPaint); // 반으로 줄임 (6.0 → 3.0)
@@ -1106,7 +1177,7 @@ class WarpToolPainter extends CustomPainter {
   }
   
   void _drawArrow(Canvas canvas, Offset start, Offset end, Paint paint) {
-    const arrowLength = 7.5; // 2배 작게 (15.0 → 7.5)
+    const arrowLength = VisualizationConstants.arrowLength; // 2배 작게
     const arrowAngle = 0.5;
     
     final direction = (end - start).direction;
@@ -1216,7 +1287,7 @@ class FaceScanAnimationPainter extends CustomPainter {
     );
     
     // 스캔 영역 표시 (그라데이션 없어도 되는 방식)
-    final scanAreaHeight = 50.0;
+    final scanAreaHeight = VisualizationConstants.scanAreaHeight;
     final scanRect = Rect.fromLTWH(
       imageOffset.dx,
       scanY - scanAreaHeight / 2,
@@ -1479,7 +1550,7 @@ class HoverPreviewPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     // 영향 반경 원 (점선 테두리, 내부 투명)
     final radiusStrokePaint = Paint()
-      ..color = Colors.blue.withOpacity(0.8)
+      ..color = VisualizationConstants.endPointColor.withOpacity(0.8)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0;
     
@@ -1676,15 +1747,22 @@ class LaserEffectPainter extends CustomPainter {
         treatmentArea = '중간턱';
         break;
       case 'cheek':
-        targetLandmarks = [215, 435, 192, 234, 447, 116, 117, 118, 119, 120, 121, 126, 142, 36, 205, 206, 207, 213, 192, 147, 187, 207, 213, 192, 147];
+        targetLandmarks = [
+          215, 435, // 메인 볼 랜드마크
+          132, 147, 187, 207, 192, 138, 214, // 왼쪽 볼 주변
+          301, 376, 411, 427, 434, 367, 416  // 오른쪽 볼 주변
+        ];
         treatmentArea = '볼';
         break;
       case 'front_protusion':
-        targetLandmarks = [243, 463, 56, 190, 414, 286, 168, 6];
+        targetLandmarks = [243, 463, 56, 190, 414, 286]; // 168, 6 삭제
         treatmentArea = '앞트임';
         break;
       case 'back_slit':
-        targetLandmarks = [33, 359, 34, 162, 368, 264];
+        targetLandmarks = [
+          33, 359, // 메인 외안각
+          124, 35, 111, 143, 353, 265, 340, 372 // 새로 추가된 랜드마크
+        ];
         treatmentArea = '뒷트임';
         break;
     }
@@ -1727,26 +1805,26 @@ class LaserEffectPainter extends CustomPainter {
       final centerPoint = Offset(landmarkX, landmarkY);
       
       // 펄스 효과
-      final pulseRadius = 15.0 + (math.sin(pointProgress * math.pi * 4) * 8.0);
+      final pulseRadius = VisualizationConstants.pulseBaseRadius + (math.sin(pointProgress * math.pi * 4) * VisualizationConstants.pulseAmplitude);
       final pulseOpacity = (0.3 + (math.sin(pointProgress * math.pi * 2) * 0.4)).clamp(0.0, 1.0);
       
       // 외부 발광 링
       final outerGlowPaint = Paint()
-        ..color = Colors.red.withOpacity(pulseOpacity * 0.2)
+        ..color = VisualizationConstants.startPointColor.withOpacity(pulseOpacity * 0.2)
         ..style = PaintingStyle.fill
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 15.0);
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, VisualizationConstants.blurRadius);
       canvas.drawCircle(centerPoint, pulseRadius * 2, outerGlowPaint);
       
       // 중간 발광 링
       final middleGlowPaint = Paint()
-        ..color = Colors.red.withOpacity(pulseOpacity * 0.5)
+        ..color = VisualizationConstants.startPointColor.withOpacity(pulseOpacity * 0.5)
         ..style = PaintingStyle.fill
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8.0);
       canvas.drawCircle(centerPoint, pulseRadius, middleGlowPaint);
       
       // 핵심 레이저 점
       final corePaint = Paint()
-        ..color = Colors.red.withOpacity(pulseOpacity)
+        ..color = VisualizationConstants.startPointColor.withOpacity(pulseOpacity)
         ..style = PaintingStyle.fill;
       canvas.drawCircle(centerPoint, 4.0, corePaint);
       
@@ -1758,7 +1836,7 @@ class LaserEffectPainter extends CustomPainter {
       
       // 레이저 크로스헤어
       final crossPaint = Paint()
-        ..color = Colors.red.withOpacity(pulseOpacity * 0.6)
+        ..color = VisualizationConstants.startPointColor.withOpacity(pulseOpacity * 0.6)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.0;
       
@@ -1777,7 +1855,7 @@ class LaserEffectPainter extends CustomPainter {
       );
       
       // 스캐닝 라인 (위아래로 움직임)
-      final scanOffset = math.sin(pointProgress * math.pi * 6) * 20.0;
+      final scanOffset = math.sin(pointProgress * math.pi * 6) * VisualizationConstants.scanOffset;
       final scanPaint = Paint()
         ..color = Colors.cyan.withOpacity(pulseOpacity * 0.7)
         ..style = PaintingStyle.stroke
@@ -1796,5 +1874,269 @@ class LaserEffectPainter extends CustomPainter {
   @override
   bool shouldRepaint(LaserEffectPainter oldDelegate) {
     return true; // 항상 다시 그리기 (애니메이션을 위해)
+  }
+}
+
+/// 프리셋 시각화를 그리는 CustomPainter
+class PresetVisualizationPainter extends CustomPainter {
+  final Map<String, dynamic> visualizationData;
+  final int imageWidth;
+  final int imageHeight;
+  final Size containerSize;
+  final double zoomScale;
+  final Offset panOffset;
+
+  PresetVisualizationPainter({
+    required this.visualizationData,
+    required this.imageWidth,
+    required this.imageHeight,
+    required this.containerSize,
+    required this.zoomScale,
+    required this.panOffset,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (visualizationData.isEmpty || !visualizationData.containsKey('transformations')) {
+      return;
+    }
+
+    final transformations = visualizationData['transformations'] as List<Map<String, dynamic>>;
+    
+    for (final transformation in transformations) {
+      _drawTransformation(canvas, transformation);
+    }
+  }
+
+  void _drawTransformation(Canvas canvas, Map<String, dynamic> transformation) {
+    final startX = transformation['startX'] as double;
+    final startY = transformation['startY'] as double;
+    final endX = transformation['endX'] as double;
+    final endY = transformation['endY'] as double;
+    final influenceRadius = transformation['influenceRadius'] as double;
+    final ellipseRatio = transformation['ellipseRatio'] as double?;
+
+    // 화면 좌표로 변환
+    final startPoint = _transformToScreenCoords(startX, startY);
+    final endPoint = _transformToScreenCoords(endX, endY);
+    final radiusInScreen = influenceRadius * (containerSize.width / imageWidth) * zoomScale;
+
+    // 1. 영향 반경 (타원 또는 원)
+    final radiusPaint = Paint()
+      ..color = VisualizationConstants.influenceCircleColor.withOpacity(0.2)
+      ..style = PaintingStyle.fill;
+    
+    final radiusBorderPaint = Paint()
+      ..color = VisualizationConstants.influenceCircleColor.withOpacity(0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    if (ellipseRatio != null) {
+      // 타원형 영향반경
+      final ellipseWidth = radiusInScreen * 2;
+      final ellipseHeight = radiusInScreen * 2 * ellipseRatio;
+      
+      final ellipseRect = Rect.fromCenter(
+        center: startPoint,
+        width: ellipseWidth,
+        height: ellipseHeight,
+      );
+      
+      canvas.drawOval(ellipseRect, radiusPaint);
+      _drawDashedOval(canvas, ellipseRect, radiusBorderPaint);
+    } else {
+      // 원형 영향반경 (기존 방식)
+      canvas.drawCircle(startPoint, radiusInScreen, radiusPaint);
+      _drawDashedCircle(canvas, startPoint, radiusInScreen, radiusBorderPaint);
+    }
+
+    // 3. 출발점 (빨간색 원)
+    final startPaint = Paint()
+      ..color = VisualizationConstants.startPointColor
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(startPoint, 4.0, startPaint);
+
+    // 4. 끝점 (파란색 원)
+    final endPaint = Paint()
+      ..color = VisualizationConstants.endPointColor
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(endPoint, 4.0, endPaint);
+
+    // 5. 화살표 (주황색)
+    final arrowPaint = Paint()
+      ..color = VisualizationConstants.arrowColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0
+      ..strokeCap = StrokeCap.round;
+    
+    // 화살표 선
+    canvas.drawLine(startPoint, endPoint, arrowPaint);
+    
+    // 화살표 머리
+    _drawArrowHead(canvas, startPoint, endPoint, arrowPaint);
+
+    // 6. 정보 라벨 (거리와 강도)
+    final distance = transformation['distance'] as double;
+    final strength = transformation['strength'] as double;
+    final pullDistance = transformation['pullDistance'] as double;
+    
+    _drawInfoLabel(canvas, startPoint, distance, strength, pullDistance);
+  }
+
+  Offset _transformToScreenCoords(double x, double y) {
+    // 정규화된 좌표로 변환
+    final normalizedX = x / imageWidth;
+    final normalizedY = y / imageHeight;
+    
+    // 기본 이미지 영역에서의 좌표
+    final baseX = normalizedX * containerSize.width;
+    final baseY = normalizedY * containerSize.height;
+    
+    // 이미지 중심점 계산
+    final imageCenter = Offset(containerSize.width / 2, containerSize.height / 2);
+    
+    // 이미지 중심 기준으로 좌표 변환
+    final offsetFromCenter = Offset(baseX - imageCenter.dx, baseY - imageCenter.dy);
+    
+    // 줌 적용
+    final scaledOffset = offsetFromCenter * zoomScale;
+    
+    // 실제 좌표 (중심점 + 줌된 오프셋 + 팬 오프셋)
+    return Offset(
+      imageCenter.dx + scaledOffset.dx + panOffset.dx,
+      imageCenter.dy + scaledOffset.dy + panOffset.dy,
+    );
+  }
+
+  void _drawDashedCircle(Canvas canvas, Offset center, double radius, Paint paint) {
+    const dashWidth = VisualizationConstants.dashWidth;
+    const dashSpace = 3.0;
+    final circumference = 2 * math.pi * radius;
+    final dashCount = (circumference / (dashWidth + dashSpace)).floor();
+    
+    for (int i = 0; i < dashCount; i++) {
+      final startAngle = (i * 2 * math.pi) / dashCount;
+      final endAngle = startAngle + (dashWidth / circumference) * 2 * math.pi;
+      
+      final path = Path();
+      path.addArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        endAngle - startAngle,
+      );
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  void _drawArrowHead(Canvas canvas, Offset start, Offset end, Paint paint) {
+    final direction = end - start;
+    final length = direction.distance;
+    
+    if (length == 0) return;
+    
+    final unitVector = direction / length;
+    final arrowLength = math.min(VisualizationConstants.arrowHeadSize, length * 0.3);
+    
+    // 화살표 각도 (30도)
+    const arrowAngle = math.pi / 6;
+    
+    // 화살표 왼쪽 날개
+    final leftWing = Offset(
+      end.dx - arrowLength * (unitVector.dx * math.cos(arrowAngle) + unitVector.dy * math.sin(arrowAngle)),
+      end.dy - arrowLength * (unitVector.dy * math.cos(arrowAngle) - unitVector.dx * math.sin(arrowAngle)),
+    );
+    
+    // 화살표 오른쪽 날개  
+    final rightWing = Offset(
+      end.dx - arrowLength * (unitVector.dx * math.cos(-arrowAngle) + unitVector.dy * math.sin(-arrowAngle)),
+      end.dy - arrowLength * (unitVector.dy * math.cos(-arrowAngle) - unitVector.dx * math.sin(-arrowAngle)),
+    );
+    
+    canvas.drawLine(end, leftWing, paint);
+    canvas.drawLine(end, rightWing, paint);
+  }
+
+  void _drawInfoLabel(Canvas canvas, Offset position, double distance, double strength, double pullDistance) {
+    final textStyle = TextStyle(
+      color: Colors.white,
+      fontSize: 10,
+      fontWeight: FontWeight.w600,
+      shadows: [
+        Shadow(
+          offset: const Offset(1, 1),
+          blurRadius: 2,
+          color: Colors.black.withOpacity(0.8),
+        ),
+      ],
+    );
+
+    final text = 'D:${distance.toStringAsFixed(0)}px\nS:${strength.toStringAsFixed(1)}\nP:${pullDistance.toStringAsFixed(0)}px';
+    final textPainter = TextPainter(
+      text: TextSpan(text: text, style: textStyle),
+      textDirection: TextDirection.ltr,
+    );
+    
+    textPainter.layout();
+    
+    // 라벨 위치 (출발점 오른쪽 위)
+    final labelOffset = Offset(position.dx + 10, position.dy - 20);
+    
+    // 배경 그리기
+    final backgroundPaint = Paint()
+      ..color = Colors.black.withOpacity(0.7);
+    
+    final backgroundRect = Rect.fromLTWH(
+      labelOffset.dx - 2,
+      labelOffset.dy - 2,
+      textPainter.width + 4,
+      textPainter.height + 4,
+    );
+    
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(backgroundRect, const Radius.circular(4)),
+      backgroundPaint,
+    );
+    
+    // 텍스트 그리기
+    textPainter.paint(canvas, labelOffset);
+  }
+
+  void _drawDashedOval(Canvas canvas, Rect rect, Paint paint) {
+    // 타원 점선 그리기 (간단한 구현)
+    const dashWidth = VisualizationConstants.dashWidth;
+    const dashSpace = 3.0;
+    
+    final path = Path()..addOval(rect);
+    final pathMetrics = path.computeMetrics();
+    
+    for (final metric in pathMetrics) {
+      double distance = 0.0;
+      bool draw = true;
+      
+      while (distance < metric.length) {
+        final nextDistance = distance + (draw ? dashWidth : dashSpace);
+        if (nextDistance > metric.length) {
+          if (draw) {
+            final extractPath = metric.extractPath(distance, metric.length);
+            canvas.drawPath(extractPath, paint);
+          }
+          break;
+        } else {
+          if (draw) {
+            final extractPath = metric.extractPath(distance, nextDistance);
+            canvas.drawPath(extractPath, paint);
+          }
+          distance = nextDistance;
+          draw = !draw;
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(PresetVisualizationPainter oldDelegate) {
+    return visualizationData != oldDelegate.visualizationData ||
+           zoomScale != oldDelegate.zoomScale ||
+           panOffset != oldDelegate.panOffset;
   }
 }
