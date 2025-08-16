@@ -368,15 +368,8 @@ class WarpControlsWidget extends StatelessWidget {
   void _showBeforeAfterComparison(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => Scaffold(
-          appBar: AppBar(
-            title: const Text('Before / After 비교'),
-            leading: IconButton(
-              icon: const Icon(Icons.close),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ),
-          body: const BeforeAfterComparison(),
+        builder: (context) => const Scaffold(
+          body: BeforeAfterComparison(),
         ),
       ),
     );

@@ -480,12 +480,8 @@ class LandmarkControlsWidget extends StatelessWidget {
   void _showBeforeAfterComparison(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => Scaffold(
-          appBar: AppBar(
-            title: const Text('Before / After 비교'),
-            centerTitle: true,
-          ),
-          body: const BeforeAfterComparison(),
+        builder: (context) => const Scaffold(
+          body: BeforeAfterComparison(),
         ),
       ),
     );
