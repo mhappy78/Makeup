@@ -192,11 +192,11 @@ class WarpControlsWidget extends StatelessWidget {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Row(
-                        children: WarpMode.values.asMap().entries.map((entry) {
+                        children: [WarpMode.pull, WarpMode.push, WarpMode.shrink, WarpMode.expand].asMap().entries.map((entry) {
                           final index = entry.key;
                           final mode = entry.value;
                           final isSelected = appState.warpMode == mode;
-                          final isLast = index == WarpMode.values.length - 1;
+                          final isLast = index == 3; // 4개 버튼 중 마지막
                           
                           return Expanded(
                             child: Container(
@@ -272,15 +272,15 @@ class WarpControlsWidget extends StatelessWidget {
                 
                 const SizedBox(height: 16),
                 
-                // 세 번째 줄: 확대, 축소
+                // 세 번째 줄: 확대, 축소 
                 Row(
                   children: [
                     Expanded(
-                      child: _buildDesktopModeButton(context, appState, WarpMode.expand),
+                      child: _buildDesktopModeButton(context, appState, WarpMode.shrink),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: _buildDesktopModeButton(context, appState, WarpMode.shrink),
+                      child: _buildDesktopModeButton(context, appState, WarpMode.expand),
                     ),
                   ],
                 ),

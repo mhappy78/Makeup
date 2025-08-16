@@ -1438,8 +1438,8 @@ class Landmark {
 enum WarpMode {
   pull('pull', '당기기', '선택한 점을 드래그 방향으로 당김'),
   push('push', '밀어내기', '선택한 점을 드래그 방향으로 밀어냄'),
-  expand('expand', '확대', '선택한 점 주변을 방사형으로 확대'),
-  shrink('shrink', '축소', '선택한 점 주변을 방사형으로 축소');
+  expand('expand', '축소', '선택한 점 주변을 방사형으로 축소'),
+  shrink('shrink', '확대', '선택한 점 주변을 방사형으로 확대');
   
   const WarpMode(this.value, this.displayName, this.description);
   

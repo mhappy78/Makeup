@@ -311,15 +311,19 @@ def apply_warp(image: np.ndarray, start_x: float, start_y: float,
     end_x = max(0, min(end_x, img_width - 1))
     end_y = max(0, min(end_y, img_height - 1))
     
+    print(f"워핑 모드: {mode}")
     if mode == "pull":
         return apply_pull_warp(image, start_x, start_y, end_x, end_y, influence_radius, strength)
     elif mode == "push":
         return apply_push_warp(image, start_x, start_y, end_x, end_y, influence_radius, strength)
     elif mode == "expand":
+        print("확대 모드 실행 - expand=True")
         return apply_radial_warp(image, start_x, start_y, influence_radius, strength, expand=True)
     elif mode == "shrink":
+        print("축소 모드 실행 - expand=False")
         return apply_radial_warp(image, start_x, start_y, influence_radius, strength, expand=False)
     else:
+        print(f"알 수 없는 모드: {mode}")
         return image
 
 def apply_pull_warp(image: np.ndarray, start_x: float, start_y: float,
@@ -430,11 +434,11 @@ def apply_radial_warp(image: np.ndarray, center_x: float, center_y: float,
     strength_factor = strength * 0.3
     
     if expand:
-        # 확대: 중심에서 멀어지게
-        scale_factor = 1 + strength_factor * (1 - distance / influence_radius)
-    else:
-        # 축소: 중심으로 가까워지게
+        # 확대: 중심으로 가까워지게 (팽창 효과)
         scale_factor = 1 - strength_factor * (1 - distance / influence_radius)
+    else:
+        # 축소: 중심에서 멀어지게 (수축 효과)
+        scale_factor = 1 + strength_factor * (1 - distance / influence_radius)
     
     scale_factor = np.maximum(scale_factor, 0.1)  # 최소 스케일 제한
     

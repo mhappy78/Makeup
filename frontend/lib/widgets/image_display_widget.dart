@@ -112,6 +112,29 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
                 }
               },
               child: GestureDetector(
+                  onTapDown: (details) {
+                    // 확대/축소 모드에서 단일 클릭 처리
+                    print('onTapDown 호출됨: 탭=${appState.currentTabIndex}, 모드=${appState.warpMode?.displayName}');
+                    if (appState.currentTabIndex == 2 && 
+                        (appState.warpMode == WarpMode.expand || appState.warpMode == WarpMode.shrink)) {
+                      print('확대/축소 클릭 감지됨');
+                      final localPosition = details.localPosition;
+                      if (_isPointInImageBounds(localPosition, constraints, appState)) {
+                        setState(() {
+                          _startPoint = localPosition;
+                          _currentPoint = localPosition;
+                          _isDragging = false;
+                        });
+                        print('워핑 실행 중...');
+                        _performWarp(constraints, appState);
+                        setState(() {
+                          _startPoint = null;
+                          _currentPoint = null;
+                          _isDragging = false;
+                        });
+                      }
+                    }
+                  },
                   onDoubleTap: () {
                     // 더블클릭으로 줌 리셋
                     appState.resetZoom();
@@ -148,7 +171,8 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
                   // 스케일 제스처 시작 - 현재 스케일을 기준으로 설정
                   _baseScaleValue = appState.zoomScale;
                   
-                  // 전문가 탭에서 단일 터치인 경우 워핑 시작점 설정 (팬 모드가 아닐 때만)
+                  // 프리스타일 탭에서 단일 터치인 경우 워핑 시작점 설정 (팬 모드가 아닐 때만)
+                  print('현재 탭: ${appState.currentTabIndex}, 포인터 수: ${details.pointerCount}, 팬 모드: $_isPanMode');
                   if (appState.currentTabIndex == 2 && details.pointerCount == 1 && !_isPanMode) {
                     final localPosition = details.localFocalPoint;
                     if (_isPointInImageBounds(localPosition, constraints, appState)) {
@@ -157,6 +181,18 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
                         _currentPoint = localPosition;
                         _isDragging = false;
                       });
+                      
+                      // 확대/축소 모드일 때는 클릭 즉시 워핑 실행
+                      print('현재 워핑 모드: ${appState.warpMode.displayName}, 값: ${appState.warpMode.value}');
+                      if (appState.warpMode == WarpMode.expand || appState.warpMode == WarpMode.shrink) {
+                        print('확대/축소 모드 감지됨, 즉시 워핑 실행');
+                        _performWarp(constraints, appState);
+                        setState(() {
+                          _startPoint = null;
+                          _currentPoint = null;
+                          _isDragging = false;
+                        });
+                      }
                     }
                   }
                 },
@@ -175,8 +211,8 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
                         // 팬 모드: 이미지 이동
                         appState.addPanOffset(details.focalPointDelta * 0.5);
                       } else {
-                        // 워핑 모드: 워핑 도구
-                        if (_startPoint != null) {
+                        // 워핑 모드: 워핑 도구 (확대/축소 모드가 아닐 때만)
+                        if (_startPoint != null && appState.warpMode != WarpMode.expand && appState.warpMode != WarpMode.shrink) {
                           setState(() {
                             _currentPoint = details.localFocalPoint;
                             _isDragging = true;
@@ -200,8 +236,9 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
                   // 스케일 제스처 완료
                   _baseScaleValue = appState.zoomScale;
                   
-                  // 전문가 탭에서 워핑 완료 처리 (팬 모드가 아닐 때만)
-                  if (appState.currentTabIndex == 2 && !_isPanMode && _startPoint != null && _currentPoint != null && _isDragging) {
+                  // 전문가 탭에서 워핑 완료 처리 (팬 모드가 아니고, 확대/축소 모드가 아닐 때만)
+                  if (appState.currentTabIndex == 2 && !_isPanMode && _startPoint != null && _currentPoint != null && _isDragging && 
+                      appState.warpMode != WarpMode.expand && appState.warpMode != WarpMode.shrink) {
                     _performWarp(constraints, appState);
                   }
                   
@@ -540,7 +577,16 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
 
   // 워핑 수행 메서드 (기존 _onPanEnd 로직)
   Future<void> _performWarp(BoxConstraints constraints, AppState appState) async {
-    if (_startPoint == null || _currentPoint == null || !_isDragging) {
+    print('_performWarp 호출됨: startPoint=$_startPoint, currentPoint=$_currentPoint, isDragging=$_isDragging, mode=${appState.warpMode.value}');
+    
+    if (_startPoint == null || _currentPoint == null) {
+      print('시작점 또는 현재점이 null');
+      return;
+    }
+    
+    // 확대/축소 모드가 아니면서 드래그하지 않은 경우 리턴
+    if ((appState.warpMode != WarpMode.expand && appState.warpMode != WarpMode.shrink) && !_isDragging) {
+      print('드래그 모드이지만 드래그하지 않음');
       return;
     }
 
@@ -567,7 +613,7 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
         endY: imageCoordinates['endY']!,
         influenceRadius: appState.getInfluenceRadiusPixels(),
         strength: appState.warpStrength,
-        mode: appState.warpMode.name,
+        mode: appState.warpMode.value,
       );
 
       final response = await apiService.warpImage(warpRequest);
