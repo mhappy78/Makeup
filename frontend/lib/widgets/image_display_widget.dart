@@ -355,6 +355,9 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
                             containerSize: imageDisplaySize,
                             iterations: appState.laserIterations,
                             durationMs: appState.laserDurationMs,
+                            zoomScale: appState.zoomScale,
+                            panOffset: appState.panOffset,
+                            originalContainerSize: constraints.biggest,
                           ),
                         ),
                       ),
@@ -1583,6 +1586,9 @@ class LaserEffectPainter extends CustomPainter {
   final Size containerSize;
   final int iterations;
   final int durationMs;
+  final double zoomScale;
+  final Offset panOffset;
+  final Size originalContainerSize;
 
   LaserEffectPainter({
     required this.presetType,
@@ -1592,6 +1598,9 @@ class LaserEffectPainter extends CustomPainter {
     required this.containerSize,
     required this.iterations,
     required this.durationMs,
+    required this.zoomScale,
+    required this.panOffset,
+    required this.originalContainerSize,
   });
 
   @override
@@ -1640,8 +1649,27 @@ class LaserEffectPainter extends CustomPainter {
       if (landmarkIndex >= landmarks.length) continue;
       
       final landmark = landmarks[landmarkIndex];
-      final landmarkX = (landmark.x / imageWidth) * containerSize.width;
-      final landmarkY = (landmark.y / imageHeight) * containerSize.height;
+      
+      // 이미지 좌표를 화면 좌표로 변환 (줌과 팬 고려)
+      final normalizedX = landmark.x / imageWidth;
+      final normalizedY = landmark.y / imageHeight;
+      
+      // 기본 이미지 영역에서의 좌표
+      final baseX = normalizedX * containerSize.width;
+      final baseY = normalizedY * containerSize.height;
+      
+      // 이미지 중심점 계산
+      final imageCenter = Offset(containerSize.width / 2, containerSize.height / 2);
+      
+      // 이미지 중심 기준으로 좌표 변환
+      final offsetFromCenter = Offset(baseX - imageCenter.dx, baseY - imageCenter.dy);
+      
+      // 줌 적용
+      final scaledOffset = offsetFromCenter * zoomScale;
+      
+      // 실제 좌표 (중심점 + 줌된 오프셋 + 팬 오프셋)
+      final landmarkX = imageCenter.dx + scaledOffset.dx + panOffset.dx;
+      final landmarkY = imageCenter.dy + scaledOffset.dy + panOffset.dy;
       
       // 개별 레이저 포인트의 애니메이션 오프셋
       final pointAnimationOffset = (i * 0.1) % 1.0;
