@@ -14,70 +14,113 @@ class WarpControlsWidget extends StatelessWidget {
       builder: (context, appState, child) {
         return LayoutBuilder(
           builder: (context, constraints) {
-            final isMobile = constraints.maxWidth < 768;
+            // 브라우저 화면 크기 기준 반응형 (프리셋 탭과 동일한 로직)
+            final screenWidth = MediaQuery.of(context).size.width;
+            final isMobile = screenWidth <= 768;
             
             return SingleChildScrollView(
               padding: EdgeInsets.all(isMobile ? 8.0 : 16.0),
               child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 영향 반경 (한 줄에 텍스트와 슬라이더)
-              Row(
-                children: [
-                  SizedBox(
-                    width: isMobile ? 70 : 100,
-                    child: Text(
-                      isMobile ? '반경:${appState.influenceRadiusPercent.toStringAsFixed(1)}%' : '영향 반경: ${appState.influenceRadiusPercent.toStringAsFixed(1)}%',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        fontSize: isMobile ? 12 : null,
+              // 영향 반경과 변형 강도
+              if (isMobile) ...[
+                // 모바일: 한 줄에 텍스트와 슬라이더
+                Row(
+                  children: [
+                    SizedBox(
+                      width: 70,
+                      child: Text(
+                        '반경:${appState.influenceRadiusPercent.toStringAsFixed(1)}%',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
-                  ),
-                  Expanded(
-                    child: Slider(
-                      value: appState.influenceRadiusPercent,
-                      min: 0.5,
-                      max: 50.0,
-                      divisions: 99,
-                      label: '${appState.influenceRadiusPercent.toStringAsFixed(1)}%',
-                      onChanged: appState.currentImage != null
-                          ? (value) => appState.setInfluenceRadiusPercent(value)
-                          : null,
-                    ),
-                  ),
-                ],
-              ),
-              
-              // 변형 강도 (한 줄에 텍스트와 슬라이더)
-              Row(
-                children: [
-                  SizedBox(
-                    width: isMobile ? 70 : 100,
-                    child: Text(
-                      isMobile ? '강도:${(appState.warpStrength * 100).toInt()}%' : '변형 강도: ${(appState.warpStrength * 100).toInt()}%',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        fontSize: isMobile ? 12 : null,
+                    Expanded(
+                      child: Slider(
+                        value: appState.influenceRadiusPercent,
+                        min: 0.5,
+                        max: 50.0,
+                        divisions: 99,
+                        label: '${appState.influenceRadiusPercent.toStringAsFixed(1)}%',
+                        onChanged: appState.currentImage != null
+                            ? (value) => appState.setInfluenceRadiusPercent(value)
+                            : null,
                       ),
                     ),
-                  ),
-                  Expanded(
-                    child: Slider(
-                      value: appState.warpStrength,
-                      min: 0.05, // 5%
-                      max: 1.0, // 100%
-                      divisions: 19, // 5%씩 이동 (5%, 10%, 15%, ..., 100%)
-                      label: '${(appState.warpStrength * 100).toInt()}%',
-                      onChanged: appState.currentImage != null
-                          ? (value) => appState.setWarpStrength(value)
-                          : null,
+                  ],
+                ),
+                
+                Row(
+                  children: [
+                    SizedBox(
+                      width: 70,
+                      child: Text(
+                        '강도:${(appState.warpStrength * 100).toInt()}%',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
+                      ),
                     ),
+                    Expanded(
+                      child: Slider(
+                        value: appState.warpStrength,
+                        min: 0.05, // 5%
+                        max: 1.0, // 100%
+                        divisions: 19, // 5%씩 이동 (5%, 10%, 15%, ..., 100%)
+                        label: '${(appState.warpStrength * 100).toInt()}%',
+                        onChanged: appState.currentImage != null
+                            ? (value) => appState.setWarpStrength(value)
+                            : null,
+                      ),
+                    ),
+                  ],
+                ),
+              ] else ...[
+                // 데스크톱: 텍스트 위, 슬라이더 아래
+                Text(
+                  '영향 반경: ${appState.influenceRadiusPercent.toStringAsFixed(1)}%',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 12),
+                Slider(
+                  value: appState.influenceRadiusPercent,
+                  min: 0.5,
+                  max: 50.0,
+                  divisions: 99,
+                  label: '${appState.influenceRadiusPercent.toStringAsFixed(1)}%',
+                  onChanged: appState.currentImage != null
+                      ? (value) => appState.setInfluenceRadiusPercent(value)
+                      : null,
+                ),
+                
+                const SizedBox(height: 20),
+                
+                Text(
+                  '변형 강도: ${(appState.warpStrength * 100).toInt()}%',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Slider(
+                  value: appState.warpStrength,
+                  min: 0.05, // 5%
+                  max: 1.0, // 100%
+                  divisions: 19, // 5%씩 이동 (5%, 10%, 15%, ..., 100%)
+                  label: '${(appState.warpStrength * 100).toInt()}%',
+                  onChanged: appState.currentImage != null
+                      ? (value) => appState.setWarpStrength(value)
+                      : null,
+                ),
+              ],
               
-              SizedBox(height: isMobile ? 8 : 20),
+              SizedBox(height: isMobile ? 8 : 30),
               
               // 히스토리 관리 버튼들
               Row(
@@ -128,7 +171,7 @@ class WarpControlsWidget extends StatelessWidget {
                 ],
               ),
               
-              SizedBox(height: isMobile ? 8 : 20),
+              SizedBox(height: isMobile ? 8 : 30),
               
               // 변형 모드와 버튼들을 한 줄에 (모바일에서)
               if (isMobile) ...[
@@ -158,7 +201,7 @@ class WarpControlsWidget extends StatelessWidget {
                           return Expanded(
                             child: Container(
                               height: 32,
-                              margin: EdgeInsets.only(right: isLast ? 0 : 1),
+                              margin: EdgeInsets.only(right: isLast ? 0 : 4),
                               child: FilledButton(
                                 onPressed: appState.currentImage != null 
                                     ? () => appState.setWarpMode(mode)
@@ -203,58 +246,66 @@ class WarpControlsWidget extends StatelessWidget {
                   ],
                 ),
               ] else ...[
-                // 데스크톱: 기존 레이아웃
+                // 데스크톱: 3줄 레이아웃
+                // 첫 번째 줄: 제목
                 Text(
                   '변형 모드',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
                 
-                // 모드 버튼들
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: WarpMode.values.map((mode) {
-                    final isSelected = appState.warpMode == mode;
-                    return FilterChip(
-                      label: Text(mode.displayName),
-                      selected: isSelected,
-                      onSelected: appState.currentImage != null 
-                          ? (selected) {
-                              if (selected) {
-                                appState.setWarpMode(mode);
-                              }
-                            }
-                          : null,
-                      tooltip: mode.description,
-                    );
-                  }).toList(),
+                // 두 번째 줄: 당기기, 밀어내기
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildDesktopModeButton(context, appState, WarpMode.pull),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildDesktopModeButton(context, appState, WarpMode.push),
+                    ),
+                  ],
                 ),
                 
                 const SizedBox(height: 16),
                 
+                // 세 번째 줄: 확대, 축소
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildDesktopModeButton(context, appState, WarpMode.expand),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildDesktopModeButton(context, appState, WarpMode.shrink),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 20),
+                
                 // 현재 모드 설명 (데스크톱에서만)
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     children: [
                       Icon(
                         _getModeIcon(appState.warpMode),
-                        size: 20,
+                        size: 24,
                         color: Theme.of(context).colorScheme.primary,
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           appState.warpMode.description,
-                          style: Theme.of(context).textTheme.bodySmall,
+                          style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       ),
                     ],
@@ -262,42 +313,78 @@ class WarpControlsWidget extends StatelessWidget {
                 ),
               ],
               
-              SizedBox(height: isMobile ? 8 : 20),
+              SizedBox(height: isMobile ? 8 : 30),
               
-              // Before/After와 결과저장 버튼 (한 줄에)
+              // Before/After와 결과저장 버튼
               if (appState.originalImage != null && appState.currentImage != null) ...[
-                Row(
-                  children: [
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: () => _showBeforeAfterComparison(context),
-                        icon: Icon(Icons.compare, size: isMobile ? 16 : 20),
-                        label: Text(
-                          'Before/After',
-                          style: TextStyle(fontSize: isMobile ? 12 : null),
-                        ),
-                        style: FilledButton.styleFrom(
-                          padding: EdgeInsets.symmetric(vertical: isMobile ? 8 : 12),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: isMobile ? 8 : 12),
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: () => _downloadImage(context),
-                        icon: Icon(Icons.download, size: isMobile ? 16 : 20),
-                        label: Text(
-                          isMobile ? '저장' : '결과 저장',
-                          style: TextStyle(fontSize: isMobile ? 12 : null),
-                        ),
-                        style: FilledButton.styleFrom(
-                          padding: EdgeInsets.symmetric(vertical: isMobile ? 8 : 12),
+                if (isMobile) ...[
+                  // 모바일: 한 줄에
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: () => _showBeforeAfterComparison(context),
+                          icon: Icon(Icons.compare, size: 16),
+                          label: Text(
+                            'Before/After',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          style: FilledButton.styleFrom(
+                            padding: EdgeInsets.symmetric(vertical: 8),
+                          ),
                         ),
                       ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: () => _downloadImage(context),
+                          icon: Icon(Icons.download, size: 16),
+                          label: Text(
+                            '저장',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          style: FilledButton.styleFrom(
+                            padding: EdgeInsets.symmetric(vertical: 8),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ] else ...[
+                  // 데스크톱: 각각 한 줄씩
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () => _showBeforeAfterComparison(context),
+                      icon: Icon(Icons.compare, size: 24),
+                      label: Text(
+                        'Before/After',
+                        style: TextStyle(fontSize: 16),
+                      ),
+                      style: FilledButton.styleFrom(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                      ),
                     ),
-                  ],
-                ),
-                SizedBox(height: isMobile ? 8 : 20),
+                  ),
+                  
+                  const SizedBox(height: 16),
+                  
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () => _downloadImage(context),
+                      icon: Icon(Icons.download, size: 24),
+                      label: Text(
+                        '결과 저장',
+                        style: TextStyle(fontSize: 16),
+                      ),
+                      style: FilledButton.styleFrom(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                      ),
+                    ),
+                  ),
+                ],
+                SizedBox(height: isMobile ? 8 : 30),
               ] else if (appState.currentImage != null) ...[
                 // 이미지는 있지만 원본이 없는 경우 저장만 표시
                 SizedBox(
@@ -370,6 +457,48 @@ class WarpControlsWidget extends StatelessWidget {
       MaterialPageRoute(
         builder: (context) => const Scaffold(
           body: BeforeAfterComparison(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDesktopModeButton(BuildContext context, AppState appState, WarpMode mode) {
+    final isSelected = appState.warpMode == mode;
+    return SizedBox(
+      height: 60,
+      child: FilledButton.icon(
+        onPressed: appState.currentImage != null 
+            ? () => appState.setWarpMode(mode)
+            : null,
+        icon: Icon(
+          _getModeIcon(mode),
+          size: 24,
+        ),
+        label: Text(
+          mode.displayName,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        style: FilledButton.styleFrom(
+          backgroundColor: isSelected 
+              ? Theme.of(context).colorScheme.primary
+              : Theme.of(context).colorScheme.surfaceVariant,
+          foregroundColor: isSelected 
+              ? Theme.of(context).colorScheme.onPrimary
+              : Theme.of(context).colorScheme.onSurfaceVariant,
+          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color: isSelected 
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.outline.withOpacity(0.3),
+              width: 2,
+            ),
+          ),
+          elevation: isSelected ? 4 : 1,
         ),
       ),
     );
