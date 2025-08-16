@@ -24,7 +24,15 @@ class _LandmarkControlsWidgetState extends State<LandmarkControlsWidget> {
       builder: (context, appState, child) {
         return LayoutBuilder(
           builder: (context, constraints) {
-            final isMobile = constraints.maxWidth < 768;
+            // 실제 브라우저 화면 크기 기준 반응형 감지
+            final constraintWidth = constraints.maxWidth;
+            final screenWidth = MediaQuery.of(context).size.width;
+            final screenHeight = MediaQuery.of(context).size.height;
+            
+            // 실제 브라우저 화면 크기로 모바일 판단 (탭 제약 무시)
+            // 768px 이하면 모바일, 그 이상이면 데스크톱
+            final isMobile = screenWidth <= 768;
+            
             
             return SingleChildScrollView(
               padding: EdgeInsets.all(isMobile ? 8.0 : 16.0),
@@ -53,30 +61,34 @@ class _LandmarkControlsWidgetState extends State<LandmarkControlsWidget> {
                     const SizedBox(height: 8),
                   ],
                   
-                  // 모바일에서는 카테고리 버튼, 데스크톱에서는 모두 표시
+                  // 반응형 프리셋 표시: 모바일은 선택형, 데스크톱은 전체 표시
                   if (appState.currentImage != null) ...[
+                    // 모바일 모드 (좁은 화면)
                     if (isMobile) ...[
-                      // 모바일: 카테고리 버튼들
-                      _buildCategoryButtons(context, isMobile),
+                      // 모바일: 부위별 선택 버튼
+                      _buildCategoryButtons(context, true),
                       const SizedBox(height: 16),
                       
-                      // 선택된 카테고리의 프리셋들
+                      // 선택된 프리셋만 표시
                       if (_selectedCategory != null) ...[
-                        _buildSelectedCategoryPresets(context, appState, _selectedCategory!, isMobile),
+                        _buildSelectedCategoryPresets(context, appState, _selectedCategory!, true),
                         const SizedBox(height: 16),
                       ],
-                    ] else ...[
-                      // 데스크톱: 모든 프리셋 표시 (디폴트 300샷)
-                      _buildCompactPresetItem(context, appState, '🌟 아래턱', 'lower_jaw', '샷', 100, 500, 100, isMobile, defaultValue: 300),
-                      SizedBox(height: isMobile ? 4 : 8),
-                      _buildCompactPresetItem(context, appState, '🌟 중간턱', 'middle_jaw', '샷', 100, 500, 100, isMobile, defaultValue: 300),
-                      SizedBox(height: isMobile ? 4 : 8),
-                      _buildCompactPresetItem(context, appState, '🌟 볼', 'cheek', '샷', 100, 500, 100, isMobile, defaultValue: 300),
-                      SizedBox(height: isMobile ? 4 : 8),
-                      _buildCompactPresetItem(context, appState, '✂️ 앞트임', 'front_protusion', '%', 1, 5, 1, isMobile),
-                      SizedBox(height: isMobile ? 4 : 8),
-                      _buildCompactPresetItem(context, appState, '✂️ 뒷트임', 'back_slit', '%', 1, 5, 1, isMobile),
-                      SizedBox(height: isMobile ? 8 : 16),
+                    ],
+                    
+                    // 데스크톱 모드 (넓은 화면)
+                    if (!isMobile) ...[
+                      // 데스크톱: 모든 프리셋 동시 표시 (선택 버튼 없음)
+                      _buildCompactPresetItem(context, appState, '🌟 아래턱', 'lower_jaw', '샷', 100, 500, 100, false, defaultValue: 300),
+                      const SizedBox(height: 8),
+                      _buildCompactPresetItem(context, appState, '🌟 중간턱', 'middle_jaw', '샷', 100, 500, 100, false, defaultValue: 300),
+                      const SizedBox(height: 8),
+                      _buildCompactPresetItem(context, appState, '🌟 볼', 'cheek', '샷', 100, 500, 100, false, defaultValue: 300),
+                      const SizedBox(height: 8),
+                      _buildCompactPresetItem(context, appState, '✂️ 앞트임', 'front_protusion', '%', 1, 5, 1, false),
+                      const SizedBox(height: 8),
+                      _buildCompactPresetItem(context, appState, '✂️ 뒷트임', 'back_slit', '%', 1, 5, 1, false),
+                      const SizedBox(height: 16),
                     ],
                     
                     // 컨트롤 버튼들
