@@ -7,8 +7,16 @@ import 'dart:math' as math;
 import 'before_after_comparison.dart';
 
 /// 프리셋 컨트롤 위젯
-class LandmarkControlsWidget extends StatelessWidget {
+class LandmarkControlsWidget extends StatefulWidget {
   const LandmarkControlsWidget({super.key});
+  
+  @override
+  State<LandmarkControlsWidget> createState() => _LandmarkControlsWidgetState();
+}
+
+class _LandmarkControlsWidgetState extends State<LandmarkControlsWidget> {
+  // 모바일에서 선택된 카테고리 (데스크톱에서는 모두 표시)
+  String? _selectedCategory;
 
   @override
   Widget build(BuildContext context) {
@@ -45,18 +53,31 @@ class LandmarkControlsWidget extends StatelessWidget {
                     const SizedBox(height: 8),
                   ],
                   
-                  // 컴팩트 모바일 프리셋
+                  // 모바일에서는 카테고리 버튼, 데스크톱에서는 모두 표시
                   if (appState.currentImage != null) ...[
-                    _buildCompactPresetItem(context, appState, '🌟 아래턱', 'lower_jaw', '샷', 100, 500, 100, isMobile),
-                    SizedBox(height: isMobile ? 4 : 8),
-                    _buildCompactPresetItem(context, appState, '🌟 중간턱', 'middle_jaw', '샷', 100, 500, 100, isMobile),
-                    SizedBox(height: isMobile ? 4 : 8),
-                    _buildCompactPresetItem(context, appState, '🌟 볼', 'cheek', '샷', 100, 500, 100, isMobile),
-                    SizedBox(height: isMobile ? 4 : 8),
-                    _buildCompactPresetItem(context, appState, '✂️ 앞트임', 'front_protusion', '%', 1, 5, 1, isMobile),
-                    SizedBox(height: isMobile ? 4 : 8),
-                    _buildCompactPresetItem(context, appState, '✂️ 뒷트임', 'back_slit', '%', 1, 5, 1, isMobile),
-                    SizedBox(height: isMobile ? 8 : 16),
+                    if (isMobile) ...[
+                      // 모바일: 카테고리 버튼들
+                      _buildCategoryButtons(context, isMobile),
+                      const SizedBox(height: 16),
+                      
+                      // 선택된 카테고리의 프리셋들
+                      if (_selectedCategory != null) ...[
+                        _buildSelectedCategoryPresets(context, appState, _selectedCategory!, isMobile),
+                        const SizedBox(height: 16),
+                      ],
+                    ] else ...[
+                      // 데스크톱: 모든 프리셋 표시 (디폴트 300샷)
+                      _buildCompactPresetItem(context, appState, '🌟 아래턱', 'lower_jaw', '샷', 100, 500, 100, isMobile, defaultValue: 300),
+                      SizedBox(height: isMobile ? 4 : 8),
+                      _buildCompactPresetItem(context, appState, '🌟 중간턱', 'middle_jaw', '샷', 100, 500, 100, isMobile, defaultValue: 300),
+                      SizedBox(height: isMobile ? 4 : 8),
+                      _buildCompactPresetItem(context, appState, '🌟 볼', 'cheek', '샷', 100, 500, 100, isMobile, defaultValue: 300),
+                      SizedBox(height: isMobile ? 4 : 8),
+                      _buildCompactPresetItem(context, appState, '✂️ 앞트임', 'front_protusion', '%', 1, 5, 1, isMobile),
+                      SizedBox(height: isMobile ? 4 : 8),
+                      _buildCompactPresetItem(context, appState, '✂️ 뒷트임', 'back_slit', '%', 1, 5, 1, isMobile),
+                      SizedBox(height: isMobile ? 8 : 16),
+                    ],
                     
                     // 컨트롤 버튼들
                     _buildControlButtons(context, appState, isMobile),
@@ -142,6 +163,79 @@ class LandmarkControlsWidget extends StatelessWidget {
     );
   }
 
+  // 부위별 버튼들 생성 (모바일용)
+  Widget _buildCategoryButtons(BuildContext context, bool isMobile) {
+    final presets = [
+      {'id': 'lower_jaw', 'title': '아래턱'},
+      {'id': 'middle_jaw', 'title': '중간턱'},
+      {'id': 'cheek', 'title': '볼'},
+      {'id': 'front_protusion', 'title': '앞트임'},
+      {'id': 'back_slit', 'title': '뒷트임'},
+    ];
+
+    return Row(
+      children: presets.map((preset) {
+        final isSelected = _selectedCategory == preset['id'];
+        return Expanded(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 2),
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedCategory = isSelected ? null : preset['id'] as String;
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: isSelected 
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isSelected 
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Text(
+                  preset['title'] as String,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: isSelected 
+                        ? Theme.of(context).colorScheme.onPrimary
+                        : Theme.of(context).colorScheme.onSurface,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  // 선택된 프리셋 생성
+  Widget _buildSelectedCategoryPresets(BuildContext context, AppState appState, String category, bool isMobile) {
+    switch (category) {
+      case 'lower_jaw':
+        return _buildCompactPresetItem(context, appState, '🌟 아래턱', 'lower_jaw', '샷', 100, 500, 100, isMobile, defaultValue: 300);
+      case 'middle_jaw':
+        return _buildCompactPresetItem(context, appState, '🌟 중간턱', 'middle_jaw', '샷', 100, 500, 100, isMobile, defaultValue: 300);
+      case 'cheek':
+        return _buildCompactPresetItem(context, appState, '🌟 볼', 'cheek', '샷', 100, 500, 100, isMobile, defaultValue: 300);
+      case 'front_protusion':
+        return _buildCompactPresetItem(context, appState, '✂️ 앞트임', 'front_protusion', '%', 1, 5, 1, isMobile);
+      case 'back_slit':
+        return _buildCompactPresetItem(context, appState, '✂️ 뒷트임', 'back_slit', '%', 1, 5, 1, isMobile);
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
   Widget _buildCompactPresetItem(
     BuildContext context,
     AppState appState, 
@@ -151,10 +245,19 @@ class LandmarkControlsWidget extends StatelessWidget {
     int minValue, 
     int maxValue, 
     int stepValue,
-    bool isMobile
-  ) {
-    final currentValue = math.max(minValue, math.min(maxValue, appState.presetSettings[presetType] ?? minValue));
+    bool isMobile, {
+    int? defaultValue,
+  }) {
+    final actualDefault = defaultValue ?? minValue;
+    final currentValue = math.max(minValue, math.min(maxValue, appState.presetSettings[presetType] ?? actualDefault));
     final currentCounter = appState.presetCounters[presetType] ?? 0;
+    
+    // 처음 로드 시 디폴트 값 설정
+    if (appState.presetSettings[presetType] == null && defaultValue != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        appState.updatePresetSetting(presetType, defaultValue);
+      });
+    }
     
     return Container(
       padding: EdgeInsets.all(isMobile ? 6 : 12),
