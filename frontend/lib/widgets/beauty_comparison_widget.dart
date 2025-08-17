@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/app_state.dart';
 
 /// 뷰티 점수 비교 결과 표시 위젯
@@ -161,40 +163,54 @@ class BeautyComparisonWidget extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 8),
-                        Text(
-                          comparison['analysisText'] as String,
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
+                        _buildRichAnalysisText(context, comparison['analysisText'] as String),
                       ],
                     ),
                   ),
                   const SizedBox(height: 16),
                 ],
                 
-                // 추천사항
-                if (comparison['recommendations'] != null) ...[
-                  Text(
-                    '💡 맞춤 추천사항',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
+                // 실천 가능한 케어 팁
+                if (comparison['recommendations'] != null && (comparison['recommendations'] as List<String>).isNotEmpty) ...[
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.green.shade50,
+                          Colors.blue.shade50,
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.green.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.lightbulb,
+                              size: 20,
+                              color: Colors.green.shade700,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '💡 실천 가능한 케어 팁',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        _buildRichCareTipText(context, (comparison['recommendations'] as List<String>)[0]),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  ...((comparison['recommendations'] as List<String>).map((rec) => 
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('• ', style: TextStyle(
-                            color: Theme.of(context).colorScheme.primary,
-                            fontWeight: FontWeight.bold,
-                          )),
-                          Expanded(child: Text(rec, style: Theme.of(context).textTheme.bodyMedium)),
-                        ],
-                      ),
-                    ),
-                  )),
                 ],
               ],
             ),
@@ -325,4 +341,231 @@ class BeautyComparisonWidget extends StatelessWidget {
         return key;
     }
   }
+
+  /// AI 전문가 분석 텍스트를 2번 항목까지만 표시
+  Widget _buildTruncatedAnalysisText(BuildContext context, String text) {
+    // --- 구분선 이전의 내용만 사용 (1, 2번 분석 부분)
+    final parts = text.split('---');
+    final analysisOnly = parts[0].trim();
+    
+    return Text(
+      analysisOnly,
+      style: Theme.of(context).textTheme.bodyMedium,
+    );
+  }
+
+  /// AI 전문가 분석 텍스트를 리치 텍스트로 변환 (초기 분석과 동일한 스타일)
+  Widget _buildRichAnalysisText(BuildContext context, String text) {
+    final lines = text.split('\n');
+    final List<Widget> widgets = [];
+    
+    for (String line in lines) {
+      line = line.trim();
+      if (line.isEmpty) continue;
+      
+      // ### 1. 전반적인 변화 요약, ### 2. 항목별 상세 분석 형태의 메인 제목
+      if (line.startsWith('### 1.') || line.startsWith('### 2.') || line.startsWith('1.') || line.startsWith('2.')) {
+        widgets.add(Padding(
+          padding: EdgeInsets.only(bottom: 8, top: widgets.isEmpty ? 0 : 16),
+          child: _buildRichTextLine(context, line, TextType.mainTitle),
+        ));
+      }
+      // 개선된 점: 형태의 서브 제목 (이모지 및 : 제거)
+      else if (line.contains('개선된 점')) {
+        String cleanLine = line.replaceAll('🟢', '').replaceAll(':', '').trim();
+        widgets.add(Padding(
+          padding: const EdgeInsets.only(bottom: 6, top: 12),
+          child: _buildRichTextLine(context, cleanLine, TextType.subTitle),
+        ));
+      }
+      // 아쉬운 점: 형태의 서브 제목 (이모지 및 : 제거)
+      else if (line.contains('아쉬운 점')) {
+        String cleanLine = line.replaceAll('🔸', '').replaceAll(':', '').trim();
+        widgets.add(Padding(
+          padding: const EdgeInsets.only(bottom: 6, top: 12),
+          child: _buildRichTextLine(context, cleanLine, TextType.subTitle),
+        ));
+      }
+      // - 항목명: 내용 형태의 리스트 아이템
+      else if (line.startsWith('-')) {
+        widgets.add(Padding(
+          padding: const EdgeInsets.only(bottom: 6, left: 16),
+          child: _buildRichTextLine(context, line, TextType.body),
+        ));
+      }
+      // 일반 본문 텍스트
+      else {
+        widgets.add(Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: _buildRichTextLine(context, line, TextType.body),
+        ));
+      }
+    }
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: widgets,
+    );
+  }
+
+  /// 케어 팁 텍스트를 리치 텍스트로 변환 (초기 분석과 동일한 스타일)
+  Widget _buildRichCareTipText(BuildContext context, String text) {
+    final lines = text.split('\n');
+    final List<Widget> widgets = [];
+    
+    for (String line in lines) {
+      line = line.trim();
+      if (line.isEmpty) continue;
+      
+      // 🎯 **가로 황금비율 개선** 형태의 메인 제목
+      if (line.contains('🎯') && line.contains('**')) {
+        widgets.add(Padding(
+          padding: EdgeInsets.only(bottom: 8, top: widgets.isEmpty ? 0 : 16),
+          child: _buildRichTextLine(context, line, TextType.mainTitle),
+        ));
+      }
+      // 💪 **운동/습관**: 형태의 서브 제목
+      else if ((line.contains('💪') || line.contains('🏥')) && line.contains('**')) {
+        widgets.add(Padding(
+          padding: const EdgeInsets.only(bottom: 6, top: 12),
+          child: _buildRichTextLine(context, line, TextType.subTitle),
+        ));
+      }
+      // 단순히 🎯, 💪, 🏥 아이콘만 있는 라인 (볼드 없음)
+      else if (line.contains('🎯') || line.contains('💪') || line.contains('🏥')) {
+        widgets.add(Padding(
+          padding: EdgeInsets.only(bottom: 6, top: widgets.isEmpty ? 0 : 12),
+          child: _buildRichTextLine(context, line, TextType.title),
+        ));
+      }
+      // **볼드** 텍스트만 있는 소제목
+      else if (line.contains('**')) {
+        widgets.add(Padding(
+          padding: const EdgeInsets.only(bottom: 4, top: 8),
+          child: _buildRichTextLine(context, line, TextType.subtitle),
+        ));
+      }
+      // 일반 본문 텍스트 (들여쓰기 16px)
+      else {
+        widgets.add(Padding(
+          padding: const EdgeInsets.only(bottom: 6, left: 16),
+          child: _buildRichTextLine(context, line, TextType.body),
+        ));
+      }
+    }
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: widgets,
+    );
+  }
+
+  /// URL 클릭 기능이 있는 리치 텍스트 라인 생성
+  Widget _buildRichTextLine(BuildContext context, String text, TextType type) {
+    // **볼드** 및 ### 마크다운 헤더 제거
+    text = text.replaceAll('**', '').replaceAll('###', '').trim();
+    
+    // URL이 있는지 확인
+    if (text.contains('http')) {
+      return _buildTextWithLinks(context, text, type);
+    } else {
+      return SelectableText(
+        text,
+        style: _getTextStyle(context, type),
+      );
+    }
+  }
+
+  /// URL이 포함된 텍스트 처리
+  Widget _buildTextWithLinks(BuildContext context, String text, TextType type) {
+    final urlPattern = RegExp(r'\[([^\]]+)\]\((https?://[^\s\)]+)\)');
+    final matches = urlPattern.allMatches(text);
+    
+    if (matches.isEmpty) {
+      return SelectableText(text, style: _getTextStyle(context, type));
+    }
+
+    List<InlineSpan> spans = [];
+    int lastIndex = 0;
+
+    for (final match in matches) {
+      // URL 이전 텍스트 추가
+      if (match.start > lastIndex) {
+        spans.add(TextSpan(
+          text: text.substring(lastIndex, match.start),
+          style: _getTextStyle(context, type),
+        ));
+      }
+
+      // 클릭 가능한 URL 추가
+      final linkText = match.group(1)!;
+      final url = match.group(2)!;
+      
+      spans.add(TextSpan(
+        text: linkText,
+        style: _getTextStyle(context, type).copyWith(
+          color: Colors.lightGreen.shade700, // 연두색
+          decoration: TextDecoration.underline,
+        ),
+        recognizer: TapGestureRecognizer()
+          ..onTap = () async {
+            if (await canLaunchUrl(Uri.parse(url))) {
+              await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+            }
+          },
+      ));
+
+      lastIndex = match.end;
+    }
+
+    // 마지막 부분 추가
+    if (lastIndex < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(lastIndex),
+        style: _getTextStyle(context, type),
+      ));
+    }
+
+    return SelectableText.rich(
+      TextSpan(children: spans),
+    );
+  }
+
+  /// 텍스트 타입에 따른 스타일 반환
+  TextStyle _getTextStyle(BuildContext context, TextType type) {
+    switch (type) {
+      case TextType.mainTitle:
+        return Theme.of(context).textTheme.titleMedium!.copyWith(
+          fontWeight: FontWeight.bold,
+          color: Colors.green.shade700,
+          fontSize: 16,
+        );
+      case TextType.subTitle:
+        return Theme.of(context).textTheme.bodyMedium!.copyWith(
+          fontWeight: FontWeight.bold,
+          color: Colors.green.shade700,
+          fontSize: 14,
+        );
+      case TextType.title:
+        return Theme.of(context).textTheme.bodyMedium!.copyWith(
+          fontWeight: FontWeight.bold,
+          color: Colors.green.shade700,
+          fontSize: 15,
+        );
+      case TextType.subtitle:
+        return Theme.of(context).textTheme.bodyMedium!.copyWith(
+          fontWeight: FontWeight.normal,
+          color: Colors.grey.shade800,
+          fontSize: 14,
+        );
+      case TextType.body:
+        return Theme.of(context).textTheme.bodyMedium!.copyWith(
+          fontWeight: FontWeight.normal,
+          color: Colors.grey.shade800,
+          fontSize: 14,
+        );
+    }
+  }
 }
+
+enum TextType { mainTitle, subTitle, title, subtitle, body }

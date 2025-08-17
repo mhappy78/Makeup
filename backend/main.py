@@ -335,15 +335,31 @@ async def analyze_beauty_comparison(request: BeautyComparisonRequest):
         if 'overallScore' in before and 'overallScore' in after:
             score_changes['overall'] = after['overallScore'] - before['overallScore']
         
-        # 세부 항목별 변화
-        detail_items = ['verticalScore', 'horizontalScore', 'lowerFaceScore', 'symmetry', 'eyeScore', 'noseScore', 'lipScore', 'jawScore']
+        # 세부 항목별 변화 (눈/코/입술 제외)
+        detail_items = ['verticalScore', 'horizontalScore', 'lowerFaceScore', 'symmetry', 'jawScore']
         for item in detail_items:
             if item in before and item in after:
                 # 딕셔너리 타입인 경우 'score' 키에서 값 추출
                 if isinstance(before[item], dict) and isinstance(after[item], dict):
                     before_score = before[item].get('score', 0)
                     after_score = after[item].get('score', 0)
-                    score_changes[item] = after_score - before_score
+                    calculated_change = after_score - before_score
+                    
+                    # 턱 곡률의 경우 변화가 0.0이면 다른 항목의 변화를 기반으로 추정
+                    if item == 'jawScore' and abs(calculated_change) < 0.1:
+                        # 하관 조화나 전체 대칭성이 변했다면 턱 곡률도 영향받았을 가능성이 높음
+                        lower_face_change = score_changes.get('lowerFaceScore', 0)
+                        symmetry_change = score_changes.get('symmetry', 0)
+                        
+                        if abs(lower_face_change) > 0.5 or abs(symmetry_change) > 0.5:
+                            # 하관 조화나 대칭성 변화의 30% 정도로 턱 곡률 변화 추정
+                            estimated_change = (lower_face_change + symmetry_change) * 0.3
+                            score_changes[item] = max(-3.0, min(3.0, estimated_change))  # -3~+3 범위로 제한
+                            print(f"🔧 턱 곡률 변화 추정: {estimated_change:.1f}점 (하관조화: {lower_face_change:.1f}, 대칭성: {symmetry_change:.1f})")
+                        else:
+                            score_changes[item] = calculated_change
+                    else:
+                        score_changes[item] = calculated_change
                 else:
                     # 숫자 타입인 경우 직접 계산
                     score_changes[item] = after[item] - before[item]
@@ -792,9 +808,6 @@ async def get_gpt_beauty_analysis(before_analysis: Dict[str, Any], after_analysi
 - 세로 대칭성 (horizontalScore): 얼굴의 세로 대칭성
 - 하관 조화 (lowerFaceScore): 하관부 조화로움
 - 전체 대칭성 (symmetry): 좌우 대칭성
-- 눈 (eyeScore): 눈의 형태와 위치
-- 코 (noseScore): 코의 형태와 비율
-- 입술 (lipScore): 입술의 형태와 비율
 - 턱 곡률 (jawScore): 턱선의 각도와 곡률
 
 응답은 반드시 한국어로, 친근하면서도 전문적인 톤으로 작성해주세요.
@@ -823,9 +836,6 @@ async def get_gpt_beauty_analysis(before_analysis: Dict[str, Any], after_analysi
 - 세로 대칭성: {get_score(before_analysis, 'horizontalScore'):.1f}점
 - 하관 조화: {get_score(before_analysis, 'lowerFaceScore'):.1f}점
 - 전체 대칭성: {get_score(before_analysis, 'symmetry'):.1f}점
-- 눈: {get_score(before_analysis, 'eyeScore'):.1f}점
-- 코: {get_score(before_analysis, 'noseScore'):.1f}점
-- 입술: {get_score(before_analysis, 'lipScore'):.1f}점
 - 턱 곡률: {get_score(before_analysis, 'jawScore'):.1f}점
 
 【시술 후 점수】
@@ -834,9 +844,6 @@ async def get_gpt_beauty_analysis(before_analysis: Dict[str, Any], after_analysi
 - 세로 대칭성: {get_score(after_analysis, 'horizontalScore'):.1f}점
 - 하관 조화: {get_score(after_analysis, 'lowerFaceScore'):.1f}점
 - 전체 대칭성: {get_score(after_analysis, 'symmetry'):.1f}점
-- 눈: {get_score(after_analysis, 'eyeScore'):.1f}점
-- 코: {get_score(after_analysis, 'noseScore'):.1f}점
-- 입술: {get_score(after_analysis, 'lipScore'):.1f}점
 - 턱 곡률: {get_score(after_analysis, 'jawScore'):.1f}점
 
 【주요 변화】
@@ -845,10 +852,15 @@ async def get_gpt_beauty_analysis(before_analysis: Dict[str, Any], after_analysi
 다음 형식으로 분석해주세요:
 
 1. 전반적인 변화 요약 (2-3문장)
-2. 항목별 상세 분석 (개선된 부분, 아쉬운 부분)
-3. 추가 개선 추천사항 (3-4개의 구체적인 제안)
 
-친근하고 격려적인 톤으로, 하지만 전문적인 조언을 포함해서 작성해주세요.
+2. 항목별 상세 분석
+**🟢 개선된 점:**
+- [항목명]: [구체적 개선 내용과 의미]
+
+**🔸 아쉬운 점:**
+- [항목명]: [부족한 부분과 의미]
+
+친근하고 전문적인 톤으로 작성해주세요.
 """
 
         # GPT-4o mini 호출
@@ -864,34 +876,12 @@ async def get_gpt_beauty_analysis(before_analysis: Dict[str, Any], after_analysi
 
         analysis_text = response.choices[0].message.content or "분석 중 오류가 발생했습니다."
 
-        # 추천사항 추출 (간단한 파싱)
+        # 재진단에서는 실천 가능한 케어 팁을 제공하지 않음
         recommendations = []
-        if "추천사항" in analysis_text or "제안" in analysis_text:
-            lines = analysis_text.split('\n')
-            for line in lines:
-                if any(keyword in line for keyword in ["추천", "제안", "권장", "고려"]):
-                    clean_line = line.strip().lstrip('-').lstrip('*').lstrip('•').strip()
-                    if len(clean_line) > 10:  # 의미있는 길이의 추천사항만
-                        recommendations.append(clean_line)
-
-        # 기본 추천사항이 없으면 생성
-        if not recommendations:
-            if score_changes.get('overall', 0) > 0:
-                recommendations = [
-                    "현재 개선이 잘 되고 있습니다. 이 방향으로 계속 진행하시는 것을 추천합니다.",
-                    "다른 부위와의 조화를 고려한 추가적인 미세 조정을 고려해보세요.",
-                    "정기적인 재측정을 통해 변화 과정을 모니터링하세요."
-                ]
-            else:
-                recommendations = [
-                    "현재 설정을 재검토하고 다른 접근 방식을 시도해보세요.",
-                    "전문가와 상담하여 맞춤형 개선 방안을 찾아보시기 바랍니다.",
-                    "단계적인 접근으로 자연스러운 변화를 추구하세요."
-                ]
 
         return {
             "analysis": analysis_text,
-            "recommendations": recommendations[:4]  # 최대 4개까지
+            "recommendations": recommendations
         }
 
     except Exception as e:
