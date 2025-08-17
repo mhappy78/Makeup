@@ -18,6 +18,35 @@
 
   <title>BeautyGen</title>
   <link rel="manifest" href="manifest.json">
+  
+  <!-- Google Fonts for Korean -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- Fallback font for immediate display -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    /* 폰트 로딩 중에도 텍스트가 보이도록 설정 */
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      font-display: swap; /* 폰트 로딩 완료까지 fallback 폰트 사용 */
+      /* 텍스트 렌더링 최적화 */
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+    }
+    
+    /* 모든 텍스트 요소에 대해 font-display 설정 */
+    * {
+      font-display: swap;
+      font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+    }
+    
+  </style>
 
   <script>
     // The value below is injected by flutter build, do not touch.

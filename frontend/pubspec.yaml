@@ -40,6 +40,9 @@ dependencies:
   
   # URL 런처
   url_launcher: ^6.2.2
+  
+  # Google Fonts
+  google_fonts: ^6.1.0
 
 dev_dependencies:
   flutter_test:
