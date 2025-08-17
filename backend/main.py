@@ -355,7 +355,7 @@ async def analyze_beauty_comparison(request: BeautyComparisonRequest):
                             # 하관 조화나 대칭성 변화의 30% 정도로 턱 곡률 변화 추정
                             estimated_change = (lower_face_change + symmetry_change) * 0.3
                             score_changes[item] = max(-3.0, min(3.0, estimated_change))  # -3~+3 범위로 제한
-                            print(f"🔧 턱 곡률 변화 추정: {estimated_change:.1f}점 (하관조화: {lower_face_change:.1f}, 대칭성: {symmetry_change:.1f})")
+                            print(f"🔧 턱 곡률 변화 추정: {int(estimated_change)}점 (하관조화: {int(lower_face_change)}, 대칭성: {int(symmetry_change)})")
                         else:
                             score_changes[item] = calculated_change
                     else:
@@ -818,7 +818,7 @@ async def get_gpt_beauty_analysis(before_analysis: Dict[str, Any], after_analysi
         for key, change in score_changes.items():
             if abs(change) > 0.5:  # 0.5점 이상 변화만 포함
                 direction = "상승" if change > 0 else "하락"
-                changes_summary.append(f"{key}: {change:.1f}점 {direction}")
+                changes_summary.append(f"{key}: {int(change)}점 {direction}")
 
         # 안전한 점수 추출 함수
         def get_score(analysis, key, default=0):
@@ -831,20 +831,20 @@ async def get_gpt_beauty_analysis(before_analysis: Dict[str, Any], after_analysi
 뷰티 시술 전후 분석 결과:
 
 【시술 전 점수】
-- 종합점수: {get_score(before_analysis, 'overallScore'):.1f}점
-- 가로 황금비율: {get_score(before_analysis, 'verticalScore'):.1f}점
-- 세로 대칭성: {get_score(before_analysis, 'horizontalScore'):.1f}점
-- 하관 조화: {get_score(before_analysis, 'lowerFaceScore'):.1f}점
-- 전체 대칭성: {get_score(before_analysis, 'symmetry'):.1f}점
-- 턱 곡률: {get_score(before_analysis, 'jawScore'):.1f}점
+- 종합점수: {int(get_score(before_analysis, 'overallScore'))}점
+- 가로 황금비율: {int(get_score(before_analysis, 'verticalScore'))}점
+- 세로 대칭성: {int(get_score(before_analysis, 'horizontalScore'))}점
+- 하관 조화: {int(get_score(before_analysis, 'lowerFaceScore'))}점
+- 전체 대칭성: {int(get_score(before_analysis, 'symmetry'))}점
+- 턱 곡률: {int(get_score(before_analysis, 'jawScore'))}점
 
 【시술 후 점수】
-- 종합점수: {get_score(after_analysis, 'overallScore'):.1f}점
-- 가로 황금비율: {get_score(after_analysis, 'verticalScore'):.1f}점
-- 세로 대칭성: {get_score(after_analysis, 'horizontalScore'):.1f}점
-- 하관 조화: {get_score(after_analysis, 'lowerFaceScore'):.1f}점
-- 전체 대칭성: {get_score(after_analysis, 'symmetry'):.1f}점
-- 턱 곡률: {get_score(after_analysis, 'jawScore'):.1f}점
+- 종합점수: {int(get_score(after_analysis, 'overallScore'))}점
+- 가로 황금비율: {int(get_score(after_analysis, 'verticalScore'))}점
+- 세로 대칭성: {int(get_score(after_analysis, 'horizontalScore'))}점
+- 하관 조화: {int(get_score(after_analysis, 'lowerFaceScore'))}점
+- 전체 대칭성: {int(get_score(after_analysis, 'symmetry'))}점
+- 턱 곡률: {int(get_score(after_analysis, 'jawScore'))}점
 
 【주요 변화】
 {', '.join(changes_summary) if changes_summary else '큰 변화 없음'}
@@ -1015,45 +1015,45 @@ async def get_gpt_initial_beauty_analysis(beauty_analysis: Dict[str, Any]) -> Di
         
         # 가로 황금비율 (5구간 퍼센트)
         if main_scores['vertical'] >= 10:
-            analysis_text = f"가로 황금비율: {main_scores['vertical']:.1f}점"
+            analysis_text = f"가로 황금비율: {int(main_scores['vertical'])}점"
             if 'percentages' in vertical_info and vertical_info['percentages']:
                 percentages = vertical_info['percentages']
                 sections = ['왼쪽바깥', '왼쪽눈', '미간', '오른쪽눈', '오른쪽바깥']
                 percent_details = []
                 for i, pct in enumerate(percentages[:5]):
-                    percent_details.append(f"{sections[i]} {pct:.1f}%")
+                    percent_details.append(f"{sections[i]} {int(pct)}%")
                 analysis_text += f" (구간별: {', '.join(percent_details)})"
             detailed_analysis.append(analysis_text)
         
         # 세로 대칭성 (2구간 퍼센트)
         if main_scores['horizontal'] >= 10:
-            analysis_text = f"세로 대칭성: {main_scores['horizontal']:.1f}점"
+            analysis_text = f"세로 대칭성: {int(main_scores['horizontal'])}점"
             if 'upperPercentage' in horizontal_info and 'lowerPercentage' in horizontal_info:
                 upper = horizontal_info['upperPercentage']
                 lower = horizontal_info['lowerPercentage']
-                analysis_text += f" (눈~코 {upper:.1f}%, 코~턱 {lower:.1f}%)"
+                analysis_text += f" (눈~코 {int(upper)}%, 코~턱 {int(lower)}%)"
             detailed_analysis.append(analysis_text)
         
         # 하관 조화 (2구간 퍼센트)
         if main_scores['lowerFace'] >= 10:
-            analysis_text = f"하관 조화: {main_scores['lowerFace']:.1f}점"
+            analysis_text = f"하관 조화: {int(main_scores['lowerFace'])}점"
             if 'upperPercentage' in lowerface_info and 'lowerPercentage' in lowerface_info:
                 upper = lowerface_info['upperPercentage']
                 lower = lowerface_info['lowerPercentage']
-                analysis_text += f" (인중 {upper:.1f}%, 입~턱 {lower:.1f}%)"
+                analysis_text += f" (인중 {int(upper)}%, 입~턱 {int(lower)}%)"
             detailed_analysis.append(analysis_text)
         
         # 전체 대칭성
         if main_scores['symmetry'] >= 10:
-            detailed_analysis.append(f"전체 대칭성: {main_scores['symmetry']:.1f}점")
+            detailed_analysis.append(f"전체 대칭성: {int(main_scores['symmetry'])}점")
         
         # 턱 곡률 (각도 정보)
         if main_scores['jaw'] >= 10:
-            analysis_text = f"턱 곡률: {main_scores['jaw']:.1f}점"
+            analysis_text = f"턱 곡률: {int(main_scores['jaw'])}점"
             if 'gonialAngle' in jaw_info and 'cervicoMentalAngle' in jaw_info:
                 gonial = jaw_info['gonialAngle']
                 cervico = jaw_info['cervicoMentalAngle']
-                analysis_text += f" (하악각 {gonial:.1f}°, 턱목각 {cervico:.1f}°)"
+                analysis_text += f" (하악각 {int(gonial)}°, 턱목각 {int(cervico)}°)"
             detailed_analysis.append(analysis_text)
         
         # 개선 포인트만 추출 (이상적 범위에서 벗어난 특징적인 부분)
@@ -1066,30 +1066,30 @@ async def get_gpt_initial_beauty_analysis(beauty_analysis: Dict[str, Any]) -> Di
             for i, pct in enumerate(percentages[:5]):
                 diff = abs(pct - 20.0)
                 if diff > 3.0:
-                    improvement_points.append(f"{sections[i]} {pct:.1f}% (이상 20%)")
+                    improvement_points.append(f"{sections[i]} {int(pct)}% (이상적 20%)")
         
         # 세로 대칭성 체크 (50:50에서 3% 이상 벗어난 경우)
         if 'upperPercentage' in horizontal_info and 'lowerPercentage' in horizontal_info:
             upper = horizontal_info['upperPercentage']
             lower = horizontal_info['lowerPercentage']
             if abs(upper - 50.0) > 3.0:
-                improvement_points.append(f"상안면 {upper:.1f}% (이상 50%)")
+                improvement_points.append(f"상안면 {int(upper)}% (이상적 50%)")
         
         # 하관 조화 체크 (33:67에서 벗어난 경우)
         if 'upperPercentage' in lowerface_info and 'lowerPercentage' in lowerface_info:
             upper = lowerface_info['upperPercentage']
             lower = lowerface_info['lowerPercentage']
             if abs(upper - 33.0) > 3.0:
-                improvement_points.append(f"인중 {upper:.1f}% (이상 33%)")
+                improvement_points.append(f"인중 {int(upper)}% (이상적 33%)")
         
         # 턱 곡률 체크 (90-120도 범위 벗어난 경우)
         if 'gonialAngle' in jaw_info:
             gonial = jaw_info['gonialAngle']
             if gonial < 90 or gonial > 120:
-                improvement_points.append(f"하악각 {gonial:.1f}° (이상 90-120°)")
+                improvement_points.append(f"하악각 {int(gonial)}° (이상적 90-120°)")
 
         user_prompt = f"""
-측정 결과: 종합 {main_scores['overall']:.1f}점
+측정 결과: 종합 {int(main_scores['overall'])}점
 
 강점 항목: {', '.join(strengths) if strengths else '균형 잡힌 전체적 비율'}
 개선 항목: {', '.join(improvement_areas) if improvement_areas else '없음'}

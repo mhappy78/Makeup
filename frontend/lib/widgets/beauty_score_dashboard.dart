@@ -777,14 +777,8 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
       }
       
       if (reachedEnd) break;
-      // 주요 섹션 제목 인식 (더 광범위한 패턴)
-      else if (RegExp(r'^\d+\.').hasMatch(line) || 
-               line.contains('🌟') || line.contains('📊') || line.contains('💡') ||
-               line.contains('내 얼굴의 좋은 점') || line.contains('개선이 필요한 부분') || line.contains('개선 후 기대효과') ||
-               line.contains('좋은 점') || line.contains('개선이 필요') || line.contains('기대효과') ||
-               (line.startsWith('1') && line.contains('얼굴')) ||
-               (line.startsWith('2') && line.contains('개선')) ||
-               (line.startsWith('3') && line.contains('효과'))) {
+      // 주요 섹션 제목 인식 (더 엄격하고 안전한 패턴)
+      else if (_isMainSectionTitle(line)) {
         print('🔍 메인 제목 섹션 추가: $line');
         widgets.add(Padding(
           padding: EdgeInsets.only(bottom: 12, top: widgets.isEmpty ? 0 : 24),
@@ -864,6 +858,38 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
         ),
       ),
     );
+  }
+
+  /// 메인 섹션 제목 여부를 엄격하게 판단하는 헬퍼 함수
+  bool _isMainSectionTitle(String line) {
+    // 1. 숫자로 시작하는 패턴 (1., 2., 3.)
+    if (RegExp(r'^\d+\.').hasMatch(line)) {
+      return true;
+    }
+    
+    // 2. 특정 이모지를 포함하는 완전한 제목 패턴만 인식
+    final mainTitlePatterns = [
+      '🌟', '내 얼굴의 좋은 점', '좋은 점',
+      '📊', '개선이 필요한 부분', '개선이 필요', 
+      '💡', '개선 후 기대효과', '기대효과'
+    ];
+    
+    // 3. 라인이 특정 패턴을 포함하고, 다른 내용(점수, 비율 등)을 포함하지 않는 경우만 제목으로 인식
+    for (final pattern in mainTitlePatterns) {
+      if (line.contains(pattern)) {
+        // 제목에 점수나 비율이 포함되어 있으면 제목이 아님
+        if (line.contains('점') || line.contains('%') || line.contains('°')) {
+          continue;
+        }
+        // 제목에 ':' 이나 '-' 가 많이 포함되어 있으면 본문일 가능성 높음
+        if (line.split(':').length > 2 || line.split('-').length > 3) {
+          continue;
+        }
+        return true;
+      }
+    }
+    
+    return false;
   }
 
   // =============================================================================
@@ -1271,7 +1297,7 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
               final value = isIdeal ? idealValues[groupIndex] : actualValues[groupIndex];
               final type = isIdeal ? '이상값' : '실제값';
               return BarTooltipItem(
-                '$type\n${value.toStringAsFixed(1)}%',
+                '$type\n${value.round()}%',
                 const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -1442,7 +1468,7 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
                   Expanded(
                     flex: 2,
                     child: Text(
-                      '${actual.toStringAsFixed(1)}%',
+                      '${actual.round()}%',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -1474,9 +1500,9 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
     if (difference.abs() <= 2.0) {
       return '✅ 이상적';
     } else if (difference > 0) {
-      return '📈 ${difference.toStringAsFixed(1)}% 높음';
+      return '📈 ${difference.round()}% 높음';
     } else {
-      return '📉 ${difference.abs().toStringAsFixed(1)}% 낮음';
+      return '📉 ${difference.abs().round()}% 낮음';
     }
   }
 
@@ -1661,7 +1687,7 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
           Row(
             children: [
               Text(
-                '${angle.toStringAsFixed(1)}°',
+                '${angle.round()}°',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -1931,14 +1957,14 @@ class _MetricChartPainter extends CustomPainter {
       if (actualHeight > 25) { // 막대가 충분히 클 때만 내부에 표시
         _drawValueText(
           canvas,
-          '${actualValues[i].toStringAsFixed(1)}%',
+          '${actualValues[i].round()}%',
           Offset(centerX, chartHeight - actualHeight / 2 + 20),
           Colors.white,
         );
       } else { // 막대가 낮으면 위에 표시
         _drawValueText(
           canvas,
-          '${actualValues[i].toStringAsFixed(1)}%',
+          '${actualValues[i].round()}%',
           Offset(centerX, chartHeight - actualHeight + 5),
           Colors.indigo.shade700,
         );
@@ -1954,7 +1980,7 @@ class _MetricChartPainter extends CustomPainter {
       // 차이값 표시 (실제값 - 이상값)
       final diff = actualValues[i] - idealValues[i];
       final diffColor = diff > 0 ? Colors.red.shade600 : Colors.green.shade600;
-      final diffText = '${diff > 0 ? '+' : ''}${diff.toStringAsFixed(1)}%';
+      final diffText = '${diff > 0 ? '+' : ''}${diff.round()}%';
       
       _drawValueText(
         canvas,
@@ -1984,7 +2010,7 @@ class _MetricChartPainter extends CustomPainter {
       final value = maxValue * (4 - i) / 4;
       _drawValueText(
         canvas,
-        '${value.toStringAsFixed(0)}%',
+        '${value.round()}%',
         Offset(-10, y),
         Colors.grey.shade600,
       );

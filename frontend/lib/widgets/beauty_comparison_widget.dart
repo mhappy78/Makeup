@@ -223,7 +223,7 @@ class BeautyComparisonWidget extends StatelessWidget {
       
       String displayName = _getDisplayName(key);
       Color changeColor = change > 0 ? Colors.green : (change < 0 ? Colors.red : Colors.grey);
-      String changeText = change > 0 ? '+${change.toStringAsFixed(1)}' : change.toStringAsFixed(1);
+      String changeText = change > 0 ? '+${change.round()}점' : '${change.round()}점';
       
       scoreItems.add(
         Padding(

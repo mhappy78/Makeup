@@ -1528,16 +1528,21 @@ class AppState extends ChangeNotifier {
       setLandmarks(landmarkResponse.landmarks, resetAnalysis: true);
       
       // 6. 애니메이션 완료까지 대기
+      print('🔍 재분석: 애니메이션 완료 대기 중... (_isAutoAnimationMode: $_isAutoAnimationMode, _isAnimationPlaying: $_isAnimationPlaying)');
       while (_isAutoAnimationMode || _isAnimationPlaying) {
         await Future.delayed(const Duration(milliseconds: 100));
       }
+      print('🔍 재분석: 애니메이션 완료');
       
       // 7. 뷰티 점수 애니메이션 완료까지 대기
+      print('🔍 재분석: 뷰티 점수 애니메이션 대기 중... (progress: $_beautyScoreAnimationProgress, showBeautyScore: $_showBeautyScore)');
       while (_beautyScoreAnimationProgress < 1.0 || !_showBeautyScore) {
         await Future.delayed(const Duration(milliseconds: 100));
       }
+      print('🔍 재분석: 뷰티 점수 애니메이션 완료');
       
       // 8. GPT 분석 실행
+      print('🔍 재분석: GPT 분석 시작');
       await _performGptAnalysis();
       // _performGptAnalysis에서 _isReAnalyzing = false 처리
       
