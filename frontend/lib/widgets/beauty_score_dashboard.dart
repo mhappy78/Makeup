@@ -732,13 +732,13 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
   Widget _buildRichAnalysisText(BuildContext context, String text) {
     print('🔍 _buildRichAnalysisText 호출됨');
     print('🔍 입력 텍스트 길이: ${text.length}');
-    print('🔍 입력 텍스트 샘플: ${text.substring(0, text.length > 100 ? 100 : text.length)}');
+    print('🔍 입력 텍스트 전체: $text');
     
     // --- 구분선 이전의 내용만 사용 (1, 2, 3번 분석 부분)
     final parts = text.split('---');
     final analysisOnly = parts[0].trim();
     
-    print('🔍 --- 분리 후 analysisOnly 길이: ${analysisOnly.length}');
+    print('🔍 --- 분리 후 analysisOnly: $analysisOnly');
     
     final lines = analysisOnly.split('\n');
     final List<Widget> widgets = [];
@@ -777,19 +777,17 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
       }
       
       if (reachedEnd) break;
-      // 번호로 시작하는 주요 섹션 (1., 2., 3.)
-      else if (RegExp(r'^\d+\.').hasMatch(line)) {
-        print('🔍 번호 섹션 추가: $line');
+      // 주요 섹션 제목 인식 (더 광범위한 패턴)
+      else if (RegExp(r'^\d+\.').hasMatch(line) || 
+               line.contains('🌟') || line.contains('📊') || line.contains('💡') ||
+               line.contains('내 얼굴의 좋은 점') || line.contains('개선이 필요한 부분') || line.contains('개선 후 기대효과') ||
+               line.contains('좋은 점') || line.contains('개선이 필요') || line.contains('기대효과') ||
+               (line.startsWith('1') && line.contains('얼굴')) ||
+               (line.startsWith('2') && line.contains('개선')) ||
+               (line.startsWith('3') && line.contains('효과'))) {
+        print('🔍 메인 제목 섹션 추가: $line');
         widgets.add(Padding(
-          padding: EdgeInsets.only(bottom: 8, top: widgets.isEmpty ? 0 : 16),
-          child: _buildAnalysisTitle(context, line),
-        ));
-      }
-      // 🌟, 📊, 💡 등의 아이콘이 있는 라인 (번호 섹션)
-      else if (line.contains('🌟') || line.contains('📊') || line.contains('💡')) {
-        print('🔍 아이콘 섹션 추가: $line');
-        widgets.add(Padding(
-          padding: EdgeInsets.only(bottom: 12, top: widgets.isEmpty ? 0 : 24),  // 문단 사이 더 큰 여백
+          padding: EdgeInsets.only(bottom: 12, top: widgets.isEmpty ? 0 : 24),
           child: _buildAnalysisTitle(context, line),
         ));
       }
