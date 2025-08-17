@@ -1123,12 +1123,12 @@ async def get_gpt_initial_beauty_analysis(beauty_analysis: Dict[str, Any]) -> Di
         strengths_list = []
         improvement_list = []
 
-        # GPT 텍스트에서 실천 방법 부분만 추출 (--- 이후 전체 내용)
-        text_parts = analysis_text.split('---')
+        # GPT 텍스트에서 실천 방법 부분만 추출 (첫 번째 --- 이후 모든 내용)
+        first_separator_index = analysis_text.find('---')
         
-        if len(text_parts) >= 2:
-            # --- 이후의 모든 내용을 실천 방법으로 사용
-            practice_section = text_parts[1].strip()
+        if first_separator_index != -1:
+            # 첫 번째 --- 이후의 모든 내용을 실천 방법으로 사용 (모든 --- 포함)
+            practice_section = analysis_text[first_separator_index + 3:].strip()
             
             # "### 구체적 실천 방법" 제거하고 실제 내용만 추출
             practice_lines = practice_section.split('\n')
