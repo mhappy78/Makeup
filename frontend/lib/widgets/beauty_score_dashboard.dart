@@ -820,11 +820,12 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
     // **볼드** 제거
     text = text.replaceAll('**', '');
     
+    // 케어 팁과 동일한 녹색 제목 스타일
     return Text(
       text,
       style: Theme.of(context).textTheme.titleMedium?.copyWith(
         fontWeight: FontWeight.bold,
-        color: Colors.indigo.shade700,
+        color: Colors.green.shade700,  // 케어 팁과 동일한 녹색
         height: 1.4,
         fontSize: 16,
       ),
@@ -834,23 +835,29 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
   Widget _buildAnalysisSubtitle(BuildContext context, String text) {
     text = text.replaceAll('**', '');
     
+    // 케어 팁과 동일한 녹색 제목 스타일
     return Text(
       text,
       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-        fontWeight: FontWeight.normal,
-        color: Colors.grey.shade800,
+        fontWeight: FontWeight.bold,
+        color: Colors.green.shade700,  // 케어 팁과 동일한 녹색
         height: 1.4,
       ),
     );
   }
 
   Widget _buildAnalysisBody(BuildContext context, String text) {
-    return Text(
-      text,
-      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-        height: 1.6,
-        color: Colors.grey.shade800,
-        fontSize: 15,
+    // 케어 팁과 동일한 검은색 본문 스타일 (볼드 제거)
+    return Padding(
+      padding: const EdgeInsets.only(left: 16),  // 케어 팁과 동일한 들여쓰기
+      child: Text(
+        text,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          height: 1.6,
+          color: Colors.grey.shade800,
+          fontSize: 15,
+          fontWeight: FontWeight.normal,  // 볼드 제거
+        ),
       ),
     );
   }
