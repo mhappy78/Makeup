@@ -16,7 +16,7 @@ class LandmarkControlsWidget extends StatefulWidget {
 
 class _LandmarkControlsWidgetState extends State<LandmarkControlsWidget> {
   // 모바일에서 선택된 카테고리 (데스크톱에서는 모두 표시)
-  String? _selectedCategory;
+  String? _selectedCategory = 'lower_jaw'; // 기본값으로 아래턱 선택
 
   @override
   Widget build(BuildContext context) {
@@ -444,9 +444,10 @@ class _LandmarkControlsWidgetState extends State<LandmarkControlsWidget> {
                   icon: const Icon(Icons.download, size: 16),
                   label: const Text('저장', style: TextStyle(fontSize: 11)),
                   style: FilledButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.secondary,
-                    foregroundColor: Theme.of(context).colorScheme.onSecondary,
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.black87,
                     padding: const EdgeInsets.symmetric(vertical: 8),
+                    side: BorderSide(color: Colors.grey.shade400, width: 1),
                   ),
                 ),
               ),
@@ -519,9 +520,10 @@ class _LandmarkControlsWidgetState extends State<LandmarkControlsWidget> {
                   icon: const Icon(Icons.download, size: 18),
                   label: const Text('저장'),
                   style: FilledButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.secondary,
-                    foregroundColor: Theme.of(context).colorScheme.onSecondary,
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.black87,
                     padding: const EdgeInsets.symmetric(vertical: 12),
+                    side: BorderSide(color: Colors.grey.shade400, width: 1),
                   ),
                 ),
               ),

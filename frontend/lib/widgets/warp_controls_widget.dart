@@ -344,7 +344,10 @@ class WarpControlsWidget extends StatelessWidget {
                             style: TextStyle(fontSize: 12),
                           ),
                           style: FilledButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black87,
                             padding: EdgeInsets.symmetric(vertical: 8),
+                            side: BorderSide(color: Colors.grey.shade400, width: 1),
                           ),
                         ),
                       ),
@@ -379,7 +382,10 @@ class WarpControlsWidget extends StatelessWidget {
                         style: TextStyle(fontSize: 16),
                       ),
                       style: FilledButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black87,
                         padding: EdgeInsets.symmetric(vertical: 16),
+                        side: BorderSide(color: Colors.grey.shade400, width: 1),
                       ),
                     ),
                   ),
@@ -393,6 +399,11 @@ class WarpControlsWidget extends StatelessWidget {
                     onPressed: () => _downloadImage(context),
                     icon: const Icon(Icons.download),
                     label: const Text('결과 저장'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black87,
+                      side: BorderSide(color: Colors.grey.shade400, width: 1),
+                    ),
                   ),
                 ),
                 SizedBox(height: isMobile ? 8 : 20),
