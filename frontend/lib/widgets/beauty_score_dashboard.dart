@@ -782,11 +782,11 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
           child: _buildAnalysisTitle(context, line),
         ));
       }
-      // 🌟, 📊, 💡 등의 아이콘이 있는 라인
+      // 🌟, 📊, 💡 등의 아이콘이 있는 라인 (번호 섹션)
       else if (line.contains('🌟') || line.contains('📊') || line.contains('💡')) {
         print('🔍 아이콘 섹션 추가: $line');
         widgets.add(Padding(
-          padding: EdgeInsets.only(bottom: 8, top: widgets.isEmpty ? 0 : 16),
+          padding: EdgeInsets.only(bottom: 12, top: widgets.isEmpty ? 0 : 24),  // 문단 사이 더 큰 여백
           child: _buildAnalysisTitle(context, line),
         ));
       }
@@ -820,12 +820,12 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
     // **볼드** 제거
     text = text.replaceAll('**', '');
     
-    // 케어 팁과 동일한 녹색 제목 스타일
+    // 번호 섹션(1., 2., 3.)은 녹색+볼드 제목 스타일
     return Text(
       text,
       style: Theme.of(context).textTheme.titleMedium?.copyWith(
         fontWeight: FontWeight.bold,
-        color: Colors.green.shade700,  // 케어 팁과 동일한 녹색
+        color: Colors.green.shade700,  // 녹색+볼드
         height: 1.4,
         fontSize: 16,
       ),
@@ -835,13 +835,16 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
   Widget _buildAnalysisSubtitle(BuildContext context, String text) {
     text = text.replaceAll('**', '');
     
-    // 케어 팁과 동일한 녹색 제목 스타일
-    return Text(
-      text,
-      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-        fontWeight: FontWeight.bold,
-        color: Colors.green.shade700,  // 케어 팁과 동일한 녹색
-        height: 1.4,
+    // **볼드** 소제목은 검은색+볼드 제거
+    return Padding(
+      padding: const EdgeInsets.only(left: 16),  // 들여쓰기
+      child: Text(
+        text,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          fontWeight: FontWeight.normal,  // 볼드 제거
+          color: Colors.grey.shade800,    // 검은색
+          height: 1.4,
+        ),
       ),
     );
   }

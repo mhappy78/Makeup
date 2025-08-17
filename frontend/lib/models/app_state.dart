@@ -1575,8 +1575,6 @@ class AppState extends ChangeNotifier {
         _beautyAnalysis['gptAnalysis'] = {
           'analysisText': analysisResult.analysisText,
           'recommendations': analysisResult.recommendations,
-          'strengths': analysisResult.strengths,
-          'improvementAreas': analysisResult.improvementAreas,
           'isInitialAnalysis': true,
         };
         

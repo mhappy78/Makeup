@@ -335,22 +335,16 @@ class BeautyComparisonResult {
 class InitialBeautyAnalysisResult {
   final String analysisText;
   final List<String> recommendations;
-  final List<String> strengths;
-  final List<String> improvementAreas;
 
   InitialBeautyAnalysisResult({
     required this.analysisText,
     required this.recommendations,
-    required this.strengths,
-    required this.improvementAreas,
   });
 
   factory InitialBeautyAnalysisResult.fromJson(Map<String, dynamic> json) {
     return InitialBeautyAnalysisResult(
       analysisText: json['analysis_text'] ?? '',
       recommendations: List<String>.from(json['recommendations'] ?? []),
-      strengths: List<String>.from(json['strengths'] ?? []),
-      improvementAreas: List<String>.from(json['improvement_areas'] ?? []),
     );
   }
 }

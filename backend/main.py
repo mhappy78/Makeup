@@ -96,8 +96,6 @@ class InitialBeautyAnalysisRequest(BaseModel):
 class InitialBeautyAnalysisResponse(BaseModel):
     analysis_text: str  # 상세 분석 텍스트
     recommendations: List[str]  # GPT 추천사항
-    strengths: List[str]  # 강점 분석
-    improvement_areas: List[str]  # 개선 영역
 
     
 @app.get("/")
@@ -384,9 +382,7 @@ async def analyze_initial_beauty_score(request: InitialBeautyAnalysisRequest):
         
         return InitialBeautyAnalysisResponse(
             analysis_text=analysis_result["analysis"],
-            recommendations=analysis_result["recommendations"],
-            strengths=analysis_result["strengths"],
-            improvement_areas=analysis_result["improvement_areas"]
+            recommendations=analysis_result["recommendations"]
         )
         
     except Exception as e:
@@ -1223,9 +1219,7 @@ async def get_gpt_initial_beauty_analysis(beauty_analysis: Dict[str, Any]) -> Di
 
         result = {
             "analysis": analysis_text,
-            "recommendations": recommendations[:4],
-            "strengths": strengths_list[:3],
-            "improvement_areas": improvement_list[:3]
+            "recommendations": recommendations[:4]
         }
         print(f"🔍 Backend GPT 응답: {result}")
         return result
@@ -1240,8 +1234,6 @@ async def get_gpt_initial_beauty_analysis(beauty_analysis: Dict[str, Any]) -> Di
                 "건강한 라이프스타일을 유지하시면 자연스러운 아름다움이 빛날 것입니다.",
                 "정기적인 관리로 꾸준한 개선을 추구해보세요."
             ],
-            "strengths": ["고유한 개성"],
-            "improvement_areas": []
         }
 
 
