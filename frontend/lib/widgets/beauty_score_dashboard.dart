@@ -1170,11 +1170,11 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
         // 화면 크기에 따라 동적으로 childAspectRatio 조정
         double aspectRatio;
         if (constraints.maxWidth > 600) {
-          // 넓은 화면: 카드 높이를 더 낮게 (aspectRatio 증가)
-          aspectRatio = 1.1; // 0.75에서 1.1로 증가
+          // 넓은 화면: 카드 높이를 더 낮게 (aspectRatio 더 증가)
+          aspectRatio = 2.8; // 2.3에서 2.8로 증가
         } else {
-          // 좁은 화면: 높이를 더욱 줄임
-          aspectRatio = 1.9; // 1.7에서 1.9로 증가
+          // 좁은 화면: 높이를 적당히 줄임
+          aspectRatio = 2.2; // 2.8에서 2.2로 감소 (너무 높지 않게)
         }
         
         return GridView.builder(
@@ -1225,7 +1225,7 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
               ],
             ),
             child: Padding(
-              padding: const EdgeInsets.all(8), // 16에서 8로 줄임
+              padding: const EdgeInsets.all(4), // 8에서 4로 줄임
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -1257,7 +1257,7 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6), // 12에서 6으로 줄임
+                  const SizedBox(height: 3), // 6에서 3으로 줄임
                   Text(
                     category['title'] as String,
                     textAlign: TextAlign.center,
@@ -1269,7 +1269,7 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
                       color: isSelected ? Colors.white : Colors.grey.shade800,
                     ),
                   ),
-                  const SizedBox(height: 2), // 4에서 2로 줄임
+                  const SizedBox(height: 1), // 2에서 1로 줄임
                   Text(
                     category['subtitle'] as String,
                     textAlign: TextAlign.center,
