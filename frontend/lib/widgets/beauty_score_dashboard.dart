@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../models/app_state.dart';
+import 'beauty_comparison_widget.dart';
 import 'dart:math' as math;
 
 /// 뷰티 스코어 분석 대시보드 위젯
@@ -163,6 +164,9 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
         // 세부 분석 그리드
         _buildDetailedAnalysis(context, analysis),
         const SizedBox(height: 20),
+        
+        // 뷰티 점수 비교 결과 (재진단 시 표시)
+        const BeautyComparisonWidget(),
         
         // 개선 제안
         _buildRecommendations(context, analysis),
@@ -349,7 +353,8 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
   }
 
   Widget _buildAnalysisInfo(BuildContext context, Map<String, dynamic> analysis) {
-    final timestamp = analysis['analysisTimestamp'] as DateTime?;
+    final timestampStr = analysis['analysisTimestamp'] as String?;
+    final timestamp = timestampStr != null ? DateTime.tryParse(timestampStr) : null;
     
     return Container(
       padding: const EdgeInsets.all(16),

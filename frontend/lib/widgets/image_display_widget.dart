@@ -585,6 +585,12 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
   Future<void> _performWarp(BoxConstraints constraints, AppState appState) async {
     print('_performWarp 호출됨: startPoint=$_startPoint, currentPoint=$_currentPoint, isDragging=$_isDragging, mode=${appState.warpMode.value}');
     
+    // 재진단 중이면 워핑 비활성화
+    if (appState.isReAnalyzing) {
+      print('재진단 중이므로 워핑 비활성화');
+      return;
+    }
+    
     if (_startPoint == null || _currentPoint == null) {
       print('시작점 또는 현재점이 null');
       return;

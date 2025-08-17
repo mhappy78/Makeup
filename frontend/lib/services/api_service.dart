@@ -130,6 +130,26 @@ class ApiService {
       print('Image deletion failed: ${e.message}');
     }
   }
+
+  /// 뷰티 점수 비교 분석
+  Future<BeautyComparisonResult> analyzeBeautyComparison(
+    Map<String, dynamic> beforeAnalysis, 
+    Map<String, dynamic> afterAnalysis
+  ) async {
+    try {
+      final response = await _dio.post(
+        '/analyze-beauty-comparison',
+        data: {
+          'before_analysis': beforeAnalysis,
+          'after_analysis': afterAnalysis,
+        },
+      );
+
+      return BeautyComparisonResult.fromJson(response.data);
+    } on DioException catch (e) {
+      throw ApiException('뷰티 분석 비교 실패: ${e.message}');
+    }
+  }
   
 }
 
@@ -266,6 +286,33 @@ class PresetResponse {
   }
 }
 
+
+/// 뷰티 점수 비교 결과
+class BeautyComparisonResult {
+  final String overallChange;
+  final Map<String, double> scoreChanges;
+  final List<String> recommendations;
+  final String analysisText;
+
+  BeautyComparisonResult({
+    required this.overallChange,
+    required this.scoreChanges,
+    required this.recommendations,
+    required this.analysisText,
+  });
+
+  factory BeautyComparisonResult.fromJson(Map<String, dynamic> json) {
+    return BeautyComparisonResult(
+      overallChange: json['overall_change'] ?? 'similar',
+      scoreChanges: Map<String, double>.from(
+        (json['score_changes'] as Map<String, dynamic>? ?? {})
+            .map((k, v) => MapEntry(k, (v as num).toDouble()))
+      ),
+      recommendations: List<String>.from(json['recommendations'] ?? []),
+      analysisText: json['analysis_text'] ?? '',
+    );
+  }
+}
 
 /// API 예외 클래스
 class ApiException implements Exception {

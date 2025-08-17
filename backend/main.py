@@ -2,7 +2,7 @@ from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict, Any
 import io
 import cv2
 import numpy as np
@@ -13,6 +13,15 @@ import uuid
 import os
 import math
 from datetime import datetime
+import openai
+from dotenv import load_dotenv
+
+# 환경 변수 로드
+load_dotenv()
+
+# OpenAI 클라이언트 초기화
+openai.api_key = os.getenv("OPENAI_API_KEY")
+client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # 앱 초기화
 app = FastAPI(
@@ -70,6 +79,16 @@ class LandmarkResponse(BaseModel):
 class ImageResponse(BaseModel):
     image_id: str
     image_data: str  # base64 encoded
+
+class BeautyComparisonRequest(BaseModel):
+    before_analysis: Dict[str, Any]  # 이전 뷰티 분석 결과
+    after_analysis: Dict[str, Any]   # 현재 뷰티 분석 결과
+
+class BeautyComparisonResponse(BaseModel):
+    overall_change: str  # 전반적 변화 ("improved", "declined", "similar")
+    score_changes: Dict[str, float]  # 각 항목별 점수 변화
+    recommendations: List[str]  # GPT 추천사항
+    analysis_text: str  # 상세 분석 텍스트
 
     
 @app.get("/")
@@ -296,6 +315,54 @@ async def delete_image(image_id: str):
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"이미지 삭제 실패: {str(e)}")
+
+@app.post("/analyze-beauty-comparison")
+async def analyze_beauty_comparison(request: BeautyComparisonRequest):
+    """뷰티 점수 변화 분석 및 GPT 추천"""
+    try:
+        before = request.before_analysis
+        after = request.after_analysis
+        
+        # 점수 변화 계산
+        score_changes = {}
+        if 'overallScore' in before and 'overallScore' in after:
+            score_changes['overall'] = after['overallScore'] - before['overallScore']
+        
+        # 세부 항목별 변화
+        detail_items = ['verticalScore', 'horizontalScore', 'lowerFaceScore', 'symmetry', 'eyeScore', 'noseScore', 'lipScore', 'jawScore']
+        for item in detail_items:
+            if item in before and item in after:
+                # 딕셔너리 타입인 경우 'score' 키에서 값 추출
+                if isinstance(before[item], dict) and isinstance(after[item], dict):
+                    before_score = before[item].get('score', 0)
+                    after_score = after[item].get('score', 0)
+                    score_changes[item] = after_score - before_score
+                else:
+                    # 숫자 타입인 경우 직접 계산
+                    score_changes[item] = after[item] - before[item]
+        
+        # 전반적 변화 판단
+        overall_change = "similar"
+        if score_changes.get('overall', 0) > 2:
+            overall_change = "improved"
+        elif score_changes.get('overall', 0) < -2:
+            overall_change = "declined"
+        
+        # GPT-4o mini를 사용한 분석
+        analysis_result = await get_gpt_beauty_analysis(before, after, score_changes)
+        
+        return BeautyComparisonResponse(
+            overall_change=overall_change,
+            score_changes=score_changes,
+            recommendations=analysis_result["recommendations"],
+            analysis_text=analysis_result["analysis"]
+        )
+        
+    except Exception as e:
+        print(f"뷰티 분석 비교 에러: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"뷰티 분석 비교 실패: {str(e)}")
 
 
 
@@ -684,6 +751,127 @@ def apply_preset_transformation(image: np.ndarray, landmarks: List[Tuple[float, 
                 )
     
     return result_image
+
+
+async def get_gpt_beauty_analysis(before_analysis: Dict[str, Any], after_analysis: Dict[str, Any], score_changes: Dict[str, float]) -> Dict[str, Any]:
+    """GPT-4o mini를 사용한 뷰티 분석 비교"""
+    try:
+        # 시스템 프롬프트 정의
+        system_prompt = """
+당신은 전문적인 뷰티 컨설턴트이자 성형외과 상담 전문가입니다. 
+얼굴 변형 전후의 뷰티 점수를 분석하고, 개선사항과 추천사항을 제공해주세요.
+
+분석 기준:
+- 가로 황금비율 (verticalScore): 얼굴의 가로 비율 균형
+- 세로 대칭성 (horizontalScore): 얼굴의 세로 대칭성
+- 하관 조화 (lowerFaceScore): 하관부 조화로움
+- 전체 대칭성 (symmetry): 좌우 대칭성
+- 눈 (eyeScore): 눈의 형태와 위치
+- 코 (noseScore): 코의 형태와 비율
+- 입술 (lipScore): 입술의 형태와 비율
+- 턱 곡률 (jawScore): 턱선의 각도와 곡률
+
+응답은 반드시 한국어로, 친근하면서도 전문적인 톤으로 작성해주세요.
+"""
+
+        # 점수 변화 요약
+        changes_summary = []
+        for key, change in score_changes.items():
+            if abs(change) > 0.5:  # 0.5점 이상 변화만 포함
+                direction = "상승" if change > 0 else "하락"
+                changes_summary.append(f"{key}: {change:.1f}점 {direction}")
+
+        user_prompt = f"""
+뷰티 시술 전후 분석 결과:
+
+【시술 전 점수】
+- 종합점수: {before_analysis.get('overallScore', 0):.1f}점
+- 가로 황금비율: {before_analysis.get('verticalScore', 0):.1f}점
+- 세로 대칭성: {before_analysis.get('horizontalScore', 0):.1f}점
+- 하관 조화: {before_analysis.get('lowerFaceScore', 0):.1f}점
+- 전체 대칭성: {before_analysis.get('symmetry', 0):.1f}점
+- 눈: {before_analysis.get('eyeScore', 0):.1f}점
+- 코: {before_analysis.get('noseScore', 0):.1f}점
+- 입술: {before_analysis.get('lipScore', 0):.1f}점
+- 턱 곡률: {before_analysis.get('jawScore', 0):.1f}점
+
+【시술 후 점수】
+- 종합점수: {after_analysis.get('overallScore', 0):.1f}점
+- 가로 황금비율: {after_analysis.get('verticalScore', 0):.1f}점
+- 세로 대칭성: {after_analysis.get('horizontalScore', 0):.1f}점
+- 하관 조화: {after_analysis.get('lowerFaceScore', 0):.1f}점
+- 전체 대칭성: {after_analysis.get('symmetry', 0):.1f}점
+- 눈: {after_analysis.get('eyeScore', 0):.1f}점
+- 코: {after_analysis.get('noseScore', 0):.1f}점
+- 입술: {after_analysis.get('lipScore', 0):.1f}점
+- 턱 곡률: {after_analysis.get('jawScore', 0):.1f}점
+
+【주요 변화】
+{', '.join(changes_summary) if changes_summary else '큰 변화 없음'}
+
+다음 형식으로 분석해주세요:
+
+1. 전반적인 변화 요약 (2-3문장)
+2. 항목별 상세 분석 (개선된 부분, 아쉬운 부분)
+3. 추가 개선 추천사항 (3-4개의 구체적인 제안)
+
+친근하고 격려적인 톤으로, 하지만 전문적인 조언을 포함해서 작성해주세요.
+"""
+
+        # GPT-4o mini 호출
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            max_tokens=1000,
+            temperature=0.7
+        )
+
+        analysis_text = response.choices[0].message.content or "분석 중 오류가 발생했습니다."
+
+        # 추천사항 추출 (간단한 파싱)
+        recommendations = []
+        if "추천사항" in analysis_text or "제안" in analysis_text:
+            lines = analysis_text.split('\n')
+            for line in lines:
+                if any(keyword in line for keyword in ["추천", "제안", "권장", "고려"]):
+                    clean_line = line.strip().lstrip('-').lstrip('*').lstrip('•').strip()
+                    if len(clean_line) > 10:  # 의미있는 길이의 추천사항만
+                        recommendations.append(clean_line)
+
+        # 기본 추천사항이 없으면 생성
+        if not recommendations:
+            if score_changes.get('overall', 0) > 0:
+                recommendations = [
+                    "현재 개선이 잘 되고 있습니다. 이 방향으로 계속 진행하시는 것을 추천합니다.",
+                    "다른 부위와의 조화를 고려한 추가적인 미세 조정을 고려해보세요.",
+                    "정기적인 재측정을 통해 변화 과정을 모니터링하세요."
+                ]
+            else:
+                recommendations = [
+                    "현재 설정을 재검토하고 다른 접근 방식을 시도해보세요.",
+                    "전문가와 상담하여 맞춤형 개선 방안을 찾아보시기 바랍니다.",
+                    "단계적인 접근으로 자연스러운 변화를 추구하세요."
+                ]
+
+        return {
+            "analysis": analysis_text,
+            "recommendations": recommendations[:4]  # 최대 4개까지
+        }
+
+    except Exception as e:
+        print(f"GPT 분석 오류: {e}")
+        # 폴백 응답
+        return {
+            "analysis": "시술 전후 분석이 완료되었습니다. 전문적인 분석을 위해 잠시 후 다시 시도해주세요.",
+            "recommendations": [
+                "변화된 부분을 꼼꼼히 관찰해보세요.",
+                "만족스러운 결과라면 현재 상태를 유지하시고, 추가 개선이 필요하다면 단계적으로 접근하세요.",
+                "정기적인 재진단을 통해 지속적인 개선을 추구하세요."
+            ]
+        }
 
 
 if __name__ == "__main__":

@@ -47,7 +47,15 @@ class _HomeScreenState extends State<HomeScreen>
     return Scaffold(
       body: Consumer<AppState>(
         builder: (context, appState, child) {
-          // 컨텍스트 설정 제거 (이제 ImageDisplayWidget 내부에서 직접 처리)
+          // AppState의 탭 인덱스 변경을 TabController에 반영
+          if (_tabController.index != appState.currentTabIndex) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (_tabController.index != appState.currentTabIndex) {
+                _tabController.animateTo(appState.currentTabIndex);
+              }
+            });
+          }
+          
           return Stack(
             children: [
               // 메인 컨텐츠

@@ -79,6 +79,10 @@ class AppState extends ChangeNotifier {
   int _currentTabIndex = 0; // 현재 탭 인덱스 (0: 분석, 1: 수정, 2: 전문가)
   bool _beautyAnalysisCompleted = false; // 뷰티 분석이 완료되었는지 추적
   
+  // 재진단 관련 상태
+  Map<String, dynamic>? _originalBeautyAnalysis; // 최초 뷰티 분석 결과 저장
+  bool _isReAnalyzing = false;
+  
   // 컨텍스트 저장 (오버레이 사용을 위해)
   BuildContext? _context;
   
@@ -151,6 +155,8 @@ class AppState extends ChangeNotifier {
   int get currentProgress => _currentProgress;
   bool get isWarpLoading => _isWarpLoading;
   Map<String, int> get presetCounters => _presetCounters;
+  bool get isReAnalyzing => _isReAnalyzing;
+  Map<String, dynamic>? get originalBeautyAnalysis => _originalBeautyAnalysis;
   Map<String, int> get presetSettings => _presetSettings;
   bool get showLaserEffect => _showLaserEffect;
   String? get currentLaserPreset => _currentLaserPreset;
@@ -263,10 +269,8 @@ class AppState extends ChangeNotifier {
       _beautyScoreAnimationProgress = 0.0;
       _beautyAnalysis.clear();
     } else {
-      // 워핑 후에도 분석 데이터가 있으면 완료 상태 유지
-      if (_beautyAnalysis.isNotEmpty) {
-        _beautyAnalysisCompleted = true;
-      }
+      // 워핑 후에는 뷰티 분석 완료 상태를 설정하지 않음 (재진단 방지)
+      print('워핑 후 랜드마크 설정: 뷰티 분석 완료 상태 건너뜀');
     }
     
     notifyListeners();
@@ -883,6 +887,13 @@ class AppState extends ChangeNotifier {
 
   // 현재 탭 인덱스 설정
   void setCurrentTabIndex(int index) {
+    // 재진단 중일 때 다른 탭으로 전환하면 재진단 취소
+    if (_isReAnalyzing && index != 0) {
+      print('재진단 중 다른 탭으로 전환: 재진단 취소');
+      _isReAnalyzing = false;
+      completeAllAnimations();
+    }
+    
     // 뷰티스코어 탭(0)에서 다른 탭으로 전환 시 애니메이션 즉시 완료
     if (_currentTabIndex == 0 && index != 0 && (_isAnimationPlaying || _isAutoAnimationMode)) {
       completeAllAnimations();
@@ -969,6 +980,13 @@ class AppState extends ChangeNotifier {
   // 뷰티 분석 계산
   void _calculateBeautyAnalysis() {
     if (_landmarks.isEmpty) return;
+    print('_calculateBeautyAnalysis 호출됨: _originalBeautyAnalysis=${_originalBeautyAnalysis != null}, _isReAnalyzing=$_isReAnalyzing');
+    
+    // 워핑 중이거나 재진단 중이 아닌 경우 뷰티 분석 건너뜀
+    if (_originalBeautyAnalysis != null && !_isReAnalyzing && _currentTabIndex != 0) {
+      print('워핑 중 뷰티 분석 건너뜀: 탭=${_currentTabIndex}, 재진단중=${_isReAnalyzing}');
+      return;
+    }
 
     try {
       // 시각화 기반 정밀 점수 계산
@@ -1005,8 +1023,13 @@ class AppState extends ChangeNotifier {
         'nose': noseAnalysis,
         'lips': lipAnalysis,
         'jawline': jawlineAnalysis,
-        'analysisTimestamp': DateTime.now(),
+        'analysisTimestamp': DateTime.now().toIso8601String(),
       };
+
+      // 최초 분석일 경우 원본으로 저장
+      if (_originalBeautyAnalysis == null) {
+        _originalBeautyAnalysis = Map<String, dynamic>.from(_beautyAnalysis);
+      }
     } catch (e) {
       // 오류 발생 시 기본값 설정
       _beautyAnalysis = {
@@ -1456,6 +1479,72 @@ class AppState extends ChangeNotifier {
 
   
   // 상태 리셋
+  // 뷰티 점수 재진단 (프리셋/프리스타일에서 호출)
+  Future<void> startReAnalysis() async {
+    print('startReAnalysis 호출됨: _originalBeautyAnalysis=${_originalBeautyAnalysis != null}, _isReAnalyzing=$_isReAnalyzing, _currentImageId=$_currentImageId');
+    if (_originalBeautyAnalysis == null || _isReAnalyzing || _currentImageId == null) return;
+    
+    _isReAnalyzing = true;
+    notifyListeners();
+
+    try {
+      // 1. 뷰티스코어 탭으로 즉시 이동
+      setCurrentTabIndex(0);
+      
+      // 2. 기존 시각화 정리
+      _showBeautyScore = false;
+      _beautyAnalysis.clear();
+      _landmarks.clear();
+      _showLandmarks = false;
+      for (final regionKey in _regionVisibility.all.keys) {
+        _regionVisibility.setVisible(regionKey, false);
+      }
+      stopAutoAnimation();
+      notifyListeners();
+      
+      // 3. 잠시 대기 (UI 업데이트 보장)
+      await Future.delayed(const Duration(milliseconds: 300));
+      
+      // 4. 변형된 이미지에 대한 새로운 랜드마크 요청
+      final apiService = ApiService();
+      final landmarkResponse = await apiService.getFaceLandmarks(_currentImageId!);
+      
+      // 5. 새로운 랜드마크 설정 (애니메이션 자동 시작됨)
+      setLandmarks(landmarkResponse.landmarks, resetAnalysis: true);
+      
+      // 6. 애니메이션 완료까지 대기
+      while (_isAutoAnimationMode || _isAnimationPlaying) {
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+      
+      // 7. 뷰티 점수 애니메이션 완료까지 대기
+      while (_beautyScoreAnimationProgress < 1.0 || !_showBeautyScore) {
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+      
+      // 8. GPT 분석 요청
+      final comparisonResult = await apiService.analyzeBeautyComparison(
+        _originalBeautyAnalysis!,
+        _beautyAnalysis,
+      );
+      
+      // 9. 비교 결과를 뷰티 분석에 추가
+      _beautyAnalysis['comparison'] = {
+        'overallChange': comparisonResult.overallChange,
+        'scoreChanges': comparisonResult.scoreChanges,
+        'recommendations': comparisonResult.recommendations,
+        'analysisText': comparisonResult.analysisText,
+        'isReAnalysis': true,
+      };
+      
+    } catch (e) {
+      setError('재진단 실패: $e');
+    } finally {
+      _isReAnalyzing = false;
+      notifyListeners();
+    }
+  }
+
   void reset() {
     stopAutoAnimation(); // 애니메이션 중단
     _currentImage = null;
@@ -1468,6 +1557,7 @@ class AppState extends ChangeNotifier {
     _showBeautyScore = false;
     _beautyScoreAnimationProgress = 0.0;
     _beautyAnalysis.clear();
+    _originalBeautyAnalysis = null; // 원본 분석도 초기화
     _animationProgress.clear();
     _currentAnimationIndex = 0;
     _currentTabIndex = 0; // 분석 탭으로 초기화
@@ -1477,6 +1567,7 @@ class AppState extends ChangeNotifier {
     _imageHistory.clear(); // 히스토리 초기화
     _isLoading = false;
     _errorMessage = null;
+    _isReAnalyzing = false;
     notifyListeners();
   }
 }

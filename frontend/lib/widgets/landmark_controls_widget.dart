@@ -91,6 +91,11 @@ class _LandmarkControlsWidgetState extends State<LandmarkControlsWidget> {
                       const SizedBox(height: 16),
                     ],
                     
+                    // 재진단 버튼
+                    _buildReAnalysisButton(context, appState, isMobile),
+                    
+                    const SizedBox(height: 16),
+                    
                     // 컨트롤 버튼들
                     _buildControlButtons(context, appState, isMobile),
                     
@@ -376,6 +381,44 @@ class _LandmarkControlsWidgetState extends State<LandmarkControlsWidget> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildReAnalysisButton(BuildContext context, AppState appState, bool isMobile) {
+    // 원본 분석이 있고 재진단 중이 아닐 때만 표시
+    if (appState.originalBeautyAnalysis == null || appState.isReAnalyzing) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      width: double.infinity,
+      child: FilledButton.icon(
+        onPressed: appState.currentImage != null && !appState.isReAnalyzing
+            ? () => appState.startReAnalysis()
+            : null,
+        icon: appState.isReAnalyzing 
+            ? SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Theme.of(context).colorScheme.onPrimary,
+                ),
+              )
+            : Icon(Icons.analytics, size: isMobile ? 16 : 18),
+        label: Text(
+          appState.isReAnalyzing ? '재진단 중...' : '🔄 뷰티 점수 다시 진단',
+          style: TextStyle(
+            fontSize: isMobile ? 12 : 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        style: FilledButton.styleFrom(
+          backgroundColor: Theme.of(context).colorScheme.tertiary,
+          foregroundColor: Theme.of(context).colorScheme.onTertiary,
+          padding: EdgeInsets.symmetric(vertical: isMobile ? 12 : 16),
+        ),
       ),
     );
   }
