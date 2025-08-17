@@ -77,6 +77,7 @@ class AppState extends ChangeNotifier {
   bool _showBeautyScore = false;
   double _beautyScoreAnimationProgress = 0.0;
   int _currentTabIndex = 0; // 현재 탭 인덱스 (0: 분석, 1: 수정, 2: 전문가)
+  bool _beautyAnalysisCompleted = false; // 뷰티 분석이 완료되었는지 추적
   
   // 컨텍스트 저장 (오버레이 사용을 위해)
   BuildContext? _context;
@@ -177,7 +178,20 @@ class AppState extends ChangeNotifier {
     _showBeautyScore = false; // 새 이미지 시 뷰티 스코어 숨기기
     _beautyScoreAnimationProgress = 0.0;
     _beautyAnalysis.clear();
+    _beautyAnalysisCompleted = false; // 완료 상태 초기화
     _imageHistory.clear(); // 히스토리 초기화
+    
+    // 모든 애니메이션 상태 초기화
+    _isAutoAnimationMode = false;
+    _isAnimationPlaying = false;
+    _currentAnimatingRegion = null;
+    _animationProgress.clear();
+    
+    // 모든 부위 시각화 초기화
+    for (final regionKey in _regionVisibility.all.keys) {
+      _regionVisibility.setVisible(regionKey, false);
+    }
+    
     clearError();
     notifyListeners();
   }
@@ -235,6 +249,13 @@ class AppState extends ChangeNotifier {
   // 랜드마크 설정 및 자동 애니메이션 시작
   void setLandmarks(List<Landmark> landmarks) {
     _landmarks = landmarks;
+    
+    // 새로운 랜드마크 설정 시 완료 상태 초기화
+    _beautyAnalysisCompleted = false;
+    _showBeautyScore = false;
+    _beautyScoreAnimationProgress = 0.0;
+    _beautyAnalysis.clear();
+    
     notifyListeners();
     
     // 분석 탭(index 0)에서만 자동 애니메이션 시작
@@ -816,8 +837,44 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  // 애니메이션을 즉시 완료된 상태로 만들기
+  void completeAllAnimations() {
+    if (_landmarks.isEmpty) return;
+    
+    // 모든 애니메이션을 완료된 상태로 설정
+    _isAutoAnimationMode = false;
+    _isAnimationPlaying = false;
+    _currentAnimatingRegion = null;
+    
+    // 모든 부위의 애니메이션 진행률을 100%로 설정
+    for (final regionKey in _regionVisibility.all.keys) {
+      _animationProgress[regionKey] = 1.0;
+      _regionVisibility.setVisible(regionKey, true);
+    }
+    
+    // 랜드마크 시각화 활성화
+    _showLandmarks = true;
+    
+    // 뷰티 스코어 애니메이션도 완료된 상태로 설정
+    _beautyScoreAnimationProgress = 1.0;
+    _showBeautyScore = true;
+    
+    // 뷰티 분석 계산 실행
+    _calculateBeautyAnalysis();
+    
+    // 완료 상태 표시
+    _beautyAnalysisCompleted = true;
+    
+    notifyListeners();
+  }
+
   // 현재 탭 인덱스 설정
   void setCurrentTabIndex(int index) {
+    // 뷰티스코어 탭(0)에서 다른 탭으로 전환 시 애니메이션 즉시 완료
+    if (_currentTabIndex == 0 && index != 0 && (_isAnimationPlaying || _isAutoAnimationMode)) {
+      completeAllAnimations();
+    }
+    
     _currentTabIndex = index;
     
     // 프리셋 탭(1)이나 프리스타일 탭(2)으로 전환 시 뷰티스코어 시각화 숨김
@@ -826,19 +883,27 @@ class AppState extends ChangeNotifier {
       _isAutoAnimationMode = false;
       _isAnimationPlaying = false;
       _currentAnimatingRegion = null;
-      _beautyScoreAnimationProgress = 0.0;
       _showLandmarks = false; // 랜드마크 시각화 숨기기
-      _beautyAnalysis.clear(); // 뷰티 분석 데이터 클리어
       
       // 모든 부위 시각화 숨기기
       for (final regionKey in _regionVisibility.all.keys) {
         _regionVisibility.setVisible(regionKey, false);
       }
       
-      // 랜드마크 애니메이션 진행률 초기화
-      _animationProgress.clear();
-      
       stopAutoAnimation(); // 진행 중인 애니메이션 중단
+    }
+    
+    // 뷰티스코어 탭(0)으로 돌아올 때 완료된 상태가 있으면 복원
+    if (index == 0 && _beautyAnalysisCompleted) {
+      _showBeautyScore = true;
+      _beautyScoreAnimationProgress = 1.0;
+      _showLandmarks = true;
+      
+      // 모든 부위 시각화 복원
+      for (final regionKey in _regionVisibility.all.keys) {
+        _animationProgress[regionKey] = 1.0;
+        _regionVisibility.setVisible(regionKey, true);
+      }
     }
     
     notifyListeners();

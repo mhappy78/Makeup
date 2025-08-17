@@ -113,6 +113,12 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
               },
               child: GestureDetector(
                   onTapDown: (details) {
+                    // 뷰티스코어 탭에서 애니메이션 중일 때 이미지 클릭 시 애니메이션 즉시 완료
+                    if (appState.currentTabIndex == 0 && (appState.isAnimationPlaying || appState.isAutoAnimationMode)) {
+                      appState.completeAllAnimations();
+                      return;
+                    }
+                    
                     // 확대/축소 모드에서 단일 클릭 처리
                     print('onTapDown 호출됨: 탭=${appState.currentTabIndex}, 모드=${appState.warpMode?.displayName}');
                     if (appState.currentTabIndex == 2 && 
