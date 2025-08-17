@@ -1075,7 +1075,6 @@ async def get_gpt_initial_beauty_analysis(beauty_analysis: Dict[str, Any]) -> Di
 특징적 측정값:
 {chr(10).join(f"- {point}" for point in improvement_points) if improvement_points else "- 전체적으로 이상적인 비율 유지"}
 
-**[1단계: 분석]**
 다음 3개 항목으로 분석해주세요:
 
 1. 🌟 내 얼굴의 좋은 점
@@ -1088,8 +1087,9 @@ async def get_gpt_initial_beauty_analysis(beauty_analysis: Dict[str, Any]) -> Di
 3. 💡 개선 후 기대효과
 개선되면 어떤 매력적인 변화가 있을지 희망적으로 설명해주세요.
 
-**[2단계: 구체적 실천 방법]**
-위 2번에서 언급한 개선 필요 부분을 정확히 참조하여 실천 방법을 제시해주세요.
+---
+
+위 2번에서 언급한 개선 필요 부분을 정확히 참조하여 구체적 실천 방법을 제시해주세요.
 
 각 개선점마다 다음 형식으로:
 🎯 **[2번에서 언급한 구체적 문제]** 개선
@@ -1117,57 +1117,68 @@ async def get_gpt_initial_beauty_analysis(beauty_analysis: Dict[str, Any]) -> Di
         strengths_list = []
         improvement_list = []
 
-        # GPT가 생성한 텍스트에서 2단계 구조로 파싱
+        # GPT 텍스트에서 실천 방법 부분만 추출 (--- 이후 전체 내용)
+        text_parts = analysis_text.split('---')
+        
+        if len(text_parts) >= 2:
+            # --- 이후의 모든 내용을 실천 방법으로 사용
+            practice_section = text_parts[1].strip()
+            
+            # 불필요한 안내 문구 제거
+            practice_lines = practice_section.split('\n')
+            cleaned_lines = []
+            
+            for line in practice_lines:
+                line = line.strip()
+                # 안내 문구나 형식 설명, ### 마크다운 헤더 건너뛰기
+                if any(skip_text in line for skip_text in [
+                    "위 2번에서 언급한", "각 개선점마다", "다음 형식으로", 
+                    "반드시 2번 분석", "정확히 참조", "구체적 실천 방법"
+                ]) or line.startswith('###'):
+                    continue
+                
+                # 실제 실천 방법 내용만 포함
+                if line and (any(icon in line for icon in ['🎯', '💪', '🏥']) or 
+                           line.startswith('-') or line.startswith('•') or line.startswith('*')):
+                    cleaned_lines.append(line)
+            
+            # 실천 방법을 하나의 문자열로 합치기 (Frontend에서 그대로 표시)
+            if cleaned_lines:
+                recommendations.append('\n'.join(cleaned_lines))
+        
+        # 기존 분석 내용 추출 (1, 2, 3번 섹션에서)
         lines = analysis_text.split('\n')
         current_section = None
-        in_practice_section = False
         
         for line in lines:
             line = line.strip()
             
-            # 2단계 실천 방법 섹션 확인
-            if "2단계" in line or "구체적 실천 방법" in line:
-                in_practice_section = True
-                current_section = "recommendations"
-                continue
-            
-            # 1단계 분석 섹션들
-            elif any(keyword in line for keyword in ["🌟", "좋은 점", "강점"]):
+            # 섹션 구분
+            if any(keyword in line for keyword in ["🌟", "좋은 점", "강점"]):
                 current_section = "strengths"
-                in_practice_section = False
                 continue
             elif any(keyword in line for keyword in ["📊", "개선이 필요한", "개선 필요"]):
-                current_section = "improvements" 
-                in_practice_section = False
+                current_section = "improvements"
                 continue
             elif "💡" in line or "기대효과" in line:
                 current_section = "effects"
-                in_practice_section = False
                 continue
+            elif "---" in line:
+                # 실천 방법 섹션 시작하면 분석 파싱 종료
+                break
             
-            # 실천 방법 추출 (2단계에서만)
-            if in_practice_section and line:
-                # 🎯, 💪, 🏥 아이콘이 있는 라인들
-                if any(icon in line for icon in ['🎯', '💪', '🏥']):
-                    clean_line = line.strip()
-                    if len(clean_line) > 15:
-                        recommendations.append(clean_line)
+            # 각 섹션 내용 추출
+            if line and (line.startswith('-') or line.startswith('•') or line.startswith('*') or 
+                        any(char.isdigit() for char in line[:3])):
+                clean_line = line.lstrip('-').lstrip('*').lstrip('•').strip()
+                # 번호 제거 (1., 2., 3. 등)
+                if clean_line and clean_line[0].isdigit() and '.' in clean_line[:5]:
+                    clean_line = clean_line.split('.', 1)[1].strip()
                 
-                # 실천 방법이 여러 줄로 구성된 경우 (들여쓰기된 내용)
-                elif line.startswith('-') or line.startswith('•') or line.startswith('*'):
-                    clean_line = line.lstrip('-').lstrip('*').lstrip('•').strip()
-                    if len(clean_line) > 20:
-                        recommendations.append(clean_line)
-            
-            # 1단계 분석 내용 추출
-            elif not in_practice_section and line:
-                if line.startswith('-') or line.startswith('•') or line.startswith('*'):
-                    clean_line = line.lstrip('-').lstrip('*').lstrip('•').strip()
-                    
-                    if current_section == "strengths" and len(clean_line) > 10:
-                        strengths_list.append(clean_line)
-                    elif current_section == "improvements" and len(clean_line) > 10:
-                        improvement_list.append(clean_line)
+                if current_section == "strengths" and len(clean_line) > 10:
+                    strengths_list.append(clean_line)
+                elif current_section == "improvements" and len(clean_line) > 10:
+                    improvement_list.append(clean_line)
 
         # 기본값 설정
         if not recommendations:

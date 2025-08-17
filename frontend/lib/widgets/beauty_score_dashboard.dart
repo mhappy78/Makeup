@@ -479,6 +479,187 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
            '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
   }
 
+  /// 케어 팁 텍스트를 리치 텍스트로 변환 (제목/본문 스타일링, 컬러 아이콘)
+  Widget _buildRichCareTipText(BuildContext context, String text) {
+    final lines = text.split('\n');
+    final List<Widget> widgets = [];
+    
+    for (String line in lines) {
+      line = line.trim();
+      if (line.isEmpty) continue;
+      
+      // 🎯, 💪, 🏥 등의 아이콘 라인은 제목으로 처리
+      if (line.contains('🎯') || line.contains('💪') || line.contains('🏥')) {
+        widgets.add(Padding(
+          padding: EdgeInsets.only(bottom: 8, top: widgets.isEmpty ? 0 : 12),
+          child: _buildStyledIconText(context, line, isTitle: true),
+        ));
+      }
+      // **볼드** 텍스트는 소제목으로 처리
+      else if (line.contains('**')) {
+        widgets.add(Padding(
+          padding: const EdgeInsets.only(bottom: 4, top: 8),
+          child: _buildStyledIconText(context, line, isSubtitle: true),
+        ));
+      }
+      // 일반 텍스트는 본문으로 처리
+      else {
+        widgets.add(Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: _buildStyledIconText(context, line, isBody: true),
+        ));
+      }
+    }
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: widgets,
+    );
+  }
+
+  /// 아이콘과 텍스트를 스타일링하여 표시 (케어 팁용)
+  Widget _buildStyledIconText(BuildContext context, String text, {
+    bool isTitle = false, 
+    bool isSubtitle = false, 
+    bool isBody = false
+  }) {
+    // **볼드** 텍스트 처리
+    text = text.replaceAll('**', '');
+    
+    TextStyle style;
+    if (isTitle) {
+      // 제목: 볼드 + 색깔
+      style = Theme.of(context).textTheme.titleSmall?.copyWith(
+        fontWeight: FontWeight.bold,
+        color: Colors.indigo.shade700,
+        height: 1.4,
+      ) ?? const TextStyle();
+    } else if (isSubtitle) {
+      // 소제목: 볼드 + 색깔
+      style = Theme.of(context).textTheme.bodyMedium?.copyWith(
+        fontWeight: FontWeight.w600,
+        color: Colors.indigo.shade600,
+        height: 1.4,
+      ) ?? const TextStyle();
+    } else {
+      // 본문: 일반 글씨 + 기본 색깔
+      style = Theme.of(context).textTheme.bodyMedium?.copyWith(
+        color: Colors.grey.shade800,
+        height: 1.5,
+        fontWeight: FontWeight.normal,
+      ) ?? const TextStyle();
+    }
+    
+    return Text(
+      text,
+      style: style,
+    );
+  }
+
+  /// AI 분석 텍스트를 리치 텍스트로 변환 (3번까지만 표시)
+  Widget _buildRichAnalysisText(BuildContext context, String text) {
+    // --- 구분선 이전의 내용만 사용 (1, 2, 3번 분석 부분)
+    final parts = text.split('---');
+    final analysisOnly = parts[0].trim();
+    
+    final lines = analysisOnly.split('\n');
+    final List<Widget> widgets = [];
+    bool reachedEnd = false;
+    
+    for (String line in lines) {
+      line = line.trim();
+      if (line.isEmpty) continue;
+      
+      // 실천 방법 관련 키워드나 ### 마크다운 헤더가 나오면 중단
+      if (line.contains('🎯') || line.contains('💪') || line.contains('🏥') ||
+          line.contains('가로 황금비율 개선') || line.contains('턱선 개선') ||
+          line.contains('실천 방법') || line.contains('개선 방법') ||
+          line.startsWith('###')) {
+        reachedEnd = true;
+        break;
+      }
+      
+      if (reachedEnd) break;
+      
+      // ### 마크다운 헤더는 건너뛰기
+      if (line.startsWith('###')) {
+        continue;
+      }
+      // 번호로 시작하는 주요 섹션 (1., 2., 3.)
+      else if (RegExp(r'^\d+\.').hasMatch(line)) {
+        widgets.add(Padding(
+          padding: EdgeInsets.only(bottom: 8, top: widgets.isEmpty ? 0 : 16),
+          child: _buildAnalysisTitle(context, line),
+        ));
+      }
+      // 🌟, 📊, 💡 등의 아이콘이 있는 라인
+      else if (line.contains('🌟') || line.contains('📊') || line.contains('💡')) {
+        widgets.add(Padding(
+          padding: EdgeInsets.only(bottom: 8, top: widgets.isEmpty ? 0 : 16),
+          child: _buildAnalysisTitle(context, line),
+        ));
+      }
+      // **볼드** 텍스트는 소제목
+      else if (line.contains('**')) {
+        widgets.add(Padding(
+          padding: const EdgeInsets.only(bottom: 6, top: 8),
+          child: _buildAnalysisSubtitle(context, line),
+        ));
+      }
+      // 일반 본문
+      else {
+        widgets.add(Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: _buildAnalysisBody(context, line),
+        ));
+      }
+    }
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: widgets,
+    );
+  }
+
+  Widget _buildAnalysisTitle(BuildContext context, String text) {
+    // **볼드** 제거
+    text = text.replaceAll('**', '');
+    
+    return Text(
+      text,
+      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+        fontWeight: FontWeight.bold,
+        color: Colors.indigo.shade700,
+        height: 1.4,
+        fontSize: 16,
+      ),
+    );
+  }
+
+  Widget _buildAnalysisSubtitle(BuildContext context, String text) {
+    text = text.replaceAll('**', '');
+    
+    return Text(
+      text,
+      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+        fontWeight: FontWeight.normal,
+        color: Colors.grey.shade800,
+        height: 1.4,
+      ),
+    );
+  }
+
+  Widget _buildAnalysisBody(BuildContext context, String text) {
+    return Text(
+      text,
+      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+        height: 1.6,
+        color: Colors.grey.shade800,
+        fontSize: 15,
+      ),
+    );
+  }
+
   // =============================================================================
   // 새로운 인터랙티브 UI 컴포넌트들
   // =============================================================================
@@ -1660,6 +1841,9 @@ extension on _BeautyScoreDashboardState {
     final gptAnalysis = analysis['gptAnalysis'] as Map<String, dynamic>?;
     final hasComparison = analysis.containsKey('comparison');
     
+    // 디버깅: GPT 분석 상태 출력
+    print('🔍 _buildGptAnalysisWidget: gptAnalysis=${gptAnalysis != null}, hasComparison=$hasComparison');
+    
     // 재진단 비교가 있으면 GPT 기초 분석 대신 비교 결과만 표시
     if (hasComparison) {
       return const SizedBox.shrink();
@@ -1667,6 +1851,7 @@ extension on _BeautyScoreDashboardState {
     
     // GPT 분석이 없으면 표시하지 않음
     if (gptAnalysis == null) {
+      print('🔍 GPT 분석이 null이므로 표시하지 않음');
       return const SizedBox.shrink();
     }
 
@@ -1796,14 +1981,7 @@ extension on _BeautyScoreDashboardState {
                       ),
                     ],
                   ),
-                  child: Text(
-                    gptAnalysis['analysisText'] as String,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      height: 1.6,
-                      color: Colors.grey.shade800,
-                      fontSize: 15,
-                    ),
-                  ),
+                  child: _buildRichAnalysisText(context, gptAnalysis['analysisText'] as String),
                 ),
               ],
               
@@ -2201,48 +2379,11 @@ extension on _BeautyScoreDashboardState {
                   ),
                 ],
               ),
-              child: Row(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 번호 아이콘
-                  Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.green.shade600, Colors.teal.shade600],
-                      ),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Center(
-                      child: Text(
-                        '${index + 1}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  
-                  // 케어 팁 텍스트
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          tip,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.grey.shade800,
-                            height: 1.5,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  // 케어 팁 텍스트 (리치 텍스트 적용, 번호 제거)
+                  _buildRichCareTipText(context, tip),
                 ],
               ),
             );
