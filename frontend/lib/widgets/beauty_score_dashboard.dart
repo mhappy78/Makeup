@@ -727,35 +727,56 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
 
   /// AI 분석 텍스트를 리치 텍스트로 변환 (3번까지만 표시)
   Widget _buildRichAnalysisText(BuildContext context, String text) {
+    print('🔍 _buildRichAnalysisText 호출됨');
+    print('🔍 입력 텍스트 길이: ${text.length}');
+    print('🔍 입력 텍스트 샘플: ${text.substring(0, text.length > 100 ? 100 : text.length)}');
+    
     // --- 구분선 이전의 내용만 사용 (1, 2, 3번 분석 부분)
     final parts = text.split('---');
     final analysisOnly = parts[0].trim();
+    
+    print('🔍 --- 분리 후 analysisOnly 길이: ${analysisOnly.length}');
     
     final lines = analysisOnly.split('\n');
     final List<Widget> widgets = [];
     bool reachedEnd = false;
     
-    for (String line in lines) {
-      line = line.trim();
+    print('🔍 총 라인 수: ${lines.length}');
+    
+    for (int i = 0; i < lines.length; i++) {
+      String line = lines[i].trim();
       if (line.isEmpty) continue;
       
-      // 실천 방법 관련 키워드나 ### 마크다운 헤더가 나오면 중단
+      print('🔍 처리 중인 라인 $i: $line');
+      
+      // ### 마크다운 헤더 처리
+      if (line.startsWith('###')) {
+        // 실천 방법 관련 ### 헤더면 중단
+        if (line.contains('실천 방법') || line.contains('개선 방법') || line.contains('구체적 실천')) {
+          print('🔍 실천 방법 ### 헤더 발견, 중단: $line');
+          reachedEnd = true;
+          break;
+        } else {
+          // 분석 섹션의 ### 헤더는 표시 (1. 🌟 내 얼굴의 좋은 점 등)
+          final cleanedLine = line.replaceAll('###', '').trim();
+          print('🔍 분석 ### 헤더 표시: $cleanedLine');
+          widgets.add(_buildRichTextLine(context, cleanedLine, TextType.subTitle));
+          continue;
+        }
+      }
+      
+      // 실천 방법 관련 키워드가 나오면 중단 (### 제외)
       if (line.contains('🎯') || line.contains('💪') || line.contains('🏥') ||
-          line.contains('가로 황금비율 개선') || line.contains('턱선 개선') ||
-          line.contains('실천 방법') || line.contains('개선 방법') ||
-          line.startsWith('###')) {
+          line.contains('가로 황금비율 개선') || line.contains('턱선 개선')) {
+        print('🔍 실천 방법 키워드 발견, 중단: $line');
         reachedEnd = true;
         break;
       }
       
       if (reachedEnd) break;
-      
-      // ### 마크다운 헤더는 건너뛰기
-      if (line.startsWith('###')) {
-        continue;
-      }
       // 번호로 시작하는 주요 섹션 (1., 2., 3.)
       else if (RegExp(r'^\d+\.').hasMatch(line)) {
+        print('🔍 번호 섹션 추가: $line');
         widgets.add(Padding(
           padding: EdgeInsets.only(bottom: 8, top: widgets.isEmpty ? 0 : 16),
           child: _buildAnalysisTitle(context, line),
@@ -763,6 +784,7 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
       }
       // 🌟, 📊, 💡 등의 아이콘이 있는 라인
       else if (line.contains('🌟') || line.contains('📊') || line.contains('💡')) {
+        print('🔍 아이콘 섹션 추가: $line');
         widgets.add(Padding(
           padding: EdgeInsets.only(bottom: 8, top: widgets.isEmpty ? 0 : 16),
           child: _buildAnalysisTitle(context, line),
@@ -770,6 +792,7 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
       }
       // **볼드** 텍스트는 소제목
       else if (line.contains('**')) {
+        print('🔍 볼드 소제목 추가: $line');
         widgets.add(Padding(
           padding: const EdgeInsets.only(bottom: 6, top: 8),
           child: _buildAnalysisSubtitle(context, line),
@@ -777,12 +800,15 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
       }
       // 일반 본문
       else {
+        print('🔍 일반 본문 추가: $line');
         widgets.add(Padding(
           padding: const EdgeInsets.only(bottom: 6),
           child: _buildAnalysisBody(context, line),
         ));
       }
     }
+    
+    print('🔍 최종 위젯 개수: ${widgets.length}');
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2072,95 +2098,103 @@ extension on _BeautyScoreDashboardState {
           );
         }
 
+        print('🔍 GPT 위젯 실제 렌더링 시작');
+        print('🔍 analysisText 존재: ${gptAnalysis['analysisText'] != null}');
+        print('🔍 analysisText 길이: ${(gptAnalysis['analysisText'] as String?)?.length ?? 0}');
+
         return Column(
           children: [
             // 종합 뷰티 점수 카드
             _buildOverallScoreCard(context, analysis),
             const SizedBox(height: 20),
             
-            // AI 전문가 분석
+            // AI 전문가 분석 - 항상 표시
             Container(
               margin: const EdgeInsets.only(bottom: 20),
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Colors.indigo.shade50,
-                Colors.purple.shade50,
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.indigo.shade100),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.indigo.shade100.withOpacity(0.3),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 헤더
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.indigo.shade400, Colors.purple.shade500],
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.psychology,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      '🤖 AI 전문가 맞춤 분석',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.indigo.shade700,
-                      ),
-                    ),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.indigo.shade50,
+                    Colors.purple.shade50,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.indigo.shade100),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.indigo.shade100.withOpacity(0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
-              
-              const SizedBox(height: 16),
-              
-              // GPT 분석 텍스트 (핵심 콘텐츠)
-              if (gptAnalysis['analysisText'] != null && 
-                  (gptAnalysis['analysisText'] as String).isNotEmpty) ...[
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.indigo.shade100),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.shade100,
-                        blurRadius: 5,
-                        offset: const Offset(0, 2),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 헤더 - 항상 표시
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.indigo.shade400, Colors.purple.shade500],
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.psychology,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          '🤖 AI 전문가 맞춤 분석',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.indigo.shade700,
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                  child: _buildRichAnalysisText(context, gptAnalysis['analysisText'] as String),
-                ),
-              ],
-              
-              // 케어팁은 별도 섹션으로 분리됨
-            ],
-          ),
+                  
+                  const SizedBox(height: 16),
+                  
+                  // GPT 분석 텍스트 또는 기본 메시지
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.indigo.shade100),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.shade100,
+                          blurRadius: 5,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: (gptAnalysis['analysisText'] != null && 
+                           (gptAnalysis['analysisText'] as String).isNotEmpty)
+                        ? _buildRichAnalysisText(context, gptAnalysis['analysisText'] as String)
+                        : Text(
+                            'AI 분석을 준비 중입니다...',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Colors.grey.shade600,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                  ),
+                ],
+              ),
             ),
           ],
         );

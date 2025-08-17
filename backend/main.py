@@ -1137,23 +1137,26 @@ async def get_gpt_initial_beauty_analysis(beauty_analysis: Dict[str, Any]) -> Di
             for line in practice_lines:
                 line = line.strip()
                 if not line:
+                    cleaned_lines.append('')  # 빈 줄도 유지
                     continue
                     
-                # 안내 문구나 형식 설명 건너뛰기
+                # 안내 문구나 형식 설명 건너뛰기 (### 제목은 제거)
                 if any(skip_text in line for skip_text in [
                     "위 2번에서 언급한", "각 개선점마다", "다음 형식으로", 
-                    "반드시 2번 분석", "정확히 참조", "구체적 실천 방법"
-                ]) or line.startswith('###'):
+                    "반드시 2번 분석", "정확히 참조"
+                ]) or line.startswith('### 구체적 실천 방법'):
                     continue
                 
-                # 실제 내용만 포함
+                # 실제 내용만 포함 (모든 🎯, 💪, 🏥 내용과 일반 텍스트)
                 cleaned_lines.append(line)
             
-            # 실천 방법을 하나의 문자열로 합치기 (Frontend에서 파싱)
+            # 실천 방법 전체를 하나의 문자열로 합치기 (Frontend에서 그대로 표시)
             if cleaned_lines:
-                recommendations.append('\n'.join(cleaned_lines))
-            
-            print(f"🔍 Backend GPT 응답: {{'analysis': '{analysis_text[:200]}...', 'recommendations': {recommendations[:1] if recommendations else []}}}")
+                full_practice_content = '\n'.join(cleaned_lines).strip()
+                recommendations = [full_practice_content]  # 전체 내용을 하나의 요소로
+                
+            print(f"🔍 Backend recommendations 길이: {len(recommendations[0]) if recommendations else 0}자")
+            print(f"🔍 Backend recommendations 샘플: {recommendations[0][:100] if recommendations else 'None'}...")
         else:
             print(f"🔍 Backend GPT 응답에 --- 구분자 없음: {analysis_text[:200]}...")
         
