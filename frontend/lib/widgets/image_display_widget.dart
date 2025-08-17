@@ -771,9 +771,9 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
       // 변형된 이미지로 현재 이미지와 ID 업데이트 (새로운 이미지 ID 사용)
       appState.updateCurrentImageWithId(imageBytes, warpResponse.imageId);
       
-      // 새로운 이미지 ID로 랜드마크 다시 검출
+      // 새로운 이미지 ID로 랜드마크 다시 검출 (분석 상태는 유지)
       final landmarkResponse = await apiService.getFaceLandmarks(warpResponse.imageId);
-      appState.setLandmarks(landmarkResponse.landmarks);
+      appState.setLandmarks(landmarkResponse.landmarks, resetAnalysis: false);
       
     } catch (e) {
       appState.setError('변형 적용 실패: $e');

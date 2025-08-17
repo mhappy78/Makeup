@@ -6,7 +6,7 @@ import '../models/app_state.dart';
 /// API 서비스 클래스
 class ApiService {
   late final Dio _dio;
-  static const String baseUrl = 'http://localhost:8082';
+  static const String baseUrl = 'http://localhost:8083';
   
   ApiService() {
     _dio = Dio(BaseOptions(

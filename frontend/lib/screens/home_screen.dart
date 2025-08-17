@@ -33,11 +33,6 @@ class _HomeScreenState extends State<HomeScreen>
       
       // 현재 탭 인덱스 업데이트
       appState.setCurrentTabIndex(_tabController.index);
-      
-      // 전문가 탭(index 2)으로 전환할 때 원본 이미지 복원
-      if (_tabController.index == 2) {
-        appState.restoreOriginalImage();
-      }
     });
   }
 

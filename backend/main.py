@@ -688,4 +688,4 @@ def apply_preset_transformation(image: np.ndarray, landmarks: List[Tuple[float, 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8082)
+    uvicorn.run(app, host="0.0.0.0", port=8083)

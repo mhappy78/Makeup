@@ -198,13 +198,13 @@ class AppState extends ChangeNotifier {
   
   // 워핑 결과 이미지로 현재 이미지만 업데이트 (원본은 유지)
   void updateCurrentImage(Uint8List imageData) {
+    _addToHistory(); // 히스토리에 현재 이미지 추가
     _currentImage = imageData;
     notifyListeners();
   }
   
-  // 프리셋 적용용 이미지 업데이트 (히스토리 보존)
-  void updateImageFromPreset(Uint8List imageData, String imageId) {
-    // 현재 이미지를 히스토리에 저장
+  // 히스토리에 현재 이미지 추가
+  void _addToHistory() {
     if (_currentImage != null && _currentImageId != null) {
       _imageHistory.add(ImageHistoryItem(
         imageData: Uint8List.fromList(_currentImage!),
@@ -216,6 +216,11 @@ class AppState extends ChangeNotifier {
         _imageHistory.removeAt(0);
       }
     }
+  }
+  
+  // 프리셋 적용용 이미지 업데이트 (히스토리 보존)
+  void updateImageFromPreset(Uint8List imageData, String imageId) {
+    _addToHistory(); // 히스토리에 현재 이미지 추가
     
     // 새 이미지로 업데이트 (원본은 유지)
     _currentImage = imageData;
@@ -226,6 +231,7 @@ class AppState extends ChangeNotifier {
   
   // 워핑 결과 이미지와 새로운 ID로 현재 이미지 업데이트
   void updateCurrentImageWithId(Uint8List imageData, String newImageId) {
+    _addToHistory(); // 히스토리에 현재 이미지 추가
     _currentImage = imageData;
     _currentImageId = newImageId;
     notifyListeners();
@@ -247,19 +253,26 @@ class AppState extends ChangeNotifier {
   ];
 
   // 랜드마크 설정 및 자동 애니메이션 시작
-  void setLandmarks(List<Landmark> landmarks) {
+  void setLandmarks(List<Landmark> landmarks, {bool resetAnalysis = true}) {
     _landmarks = landmarks;
     
-    // 새로운 랜드마크 설정 시 완료 상태 초기화
-    _beautyAnalysisCompleted = false;
-    _showBeautyScore = false;
-    _beautyScoreAnimationProgress = 0.0;
-    _beautyAnalysis.clear();
+    // resetAnalysis가 true일 때만 완료 상태 초기화 (새 이미지 업로드 시)
+    if (resetAnalysis) {
+      _beautyAnalysisCompleted = false;
+      _showBeautyScore = false;
+      _beautyScoreAnimationProgress = 0.0;
+      _beautyAnalysis.clear();
+    } else {
+      // 워핑 후에도 분석 데이터가 있으면 완료 상태 유지
+      if (_beautyAnalysis.isNotEmpty) {
+        _beautyAnalysisCompleted = true;
+      }
+    }
     
     notifyListeners();
     
     // 분석 탭(index 0)에서만 자동 애니메이션 시작
-    if (landmarks.isNotEmpty && _currentTabIndex == 0) {
+    if (landmarks.isNotEmpty && _currentTabIndex == 0 && resetAnalysis) {
       _startAutoAnimation();
     }
   }
@@ -894,10 +907,11 @@ class AppState extends ChangeNotifier {
     }
     
     // 뷰티스코어 탭(0)으로 돌아올 때 완료된 상태가 있으면 복원
-    if (index == 0 && _beautyAnalysisCompleted) {
+    if (index == 0 && (_beautyAnalysisCompleted || _beautyAnalysis.isNotEmpty)) {
       _showBeautyScore = true;
       _beautyScoreAnimationProgress = 1.0;
       _showLandmarks = true;
+      _beautyAnalysisCompleted = true; // 강제로 완료 상태로 설정
       
       // 모든 부위 시각화 복원
       for (final regionKey in _regionVisibility.all.keys) {
