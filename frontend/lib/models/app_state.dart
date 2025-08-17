@@ -1580,11 +1580,11 @@ class AppState extends ChangeNotifier {
           'isInitialAnalysis': true,
         };
         
-        print('🔍 GPT 분석 완료 - 최신 결과 적용');
+        // print('🔍 GPT 분석 완료 - 최신 결과 적용');
         // print('기초 뷰티스코어 GPT 분석 완료');
         notifyListeners(); // GPT 분석 완료 즉시 UI 업데이트
       } else {
-        print('🔍 GPT 분석 완료 - 중복 응답 무시');
+        // print('🔍 GPT 분석 완료 - 중복 응답 무시');
       }
       
     } catch (e) {

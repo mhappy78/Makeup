@@ -4,6 +4,11 @@ import 'package:fl_chart/fl_chart.dart';
 import '../models/app_state.dart';
 import 'beauty_comparison_widget.dart';
 import 'dart:math' as math;
+import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/gestures.dart';
+
+/// 텍스트 타입 enum
+enum TextType { mainTitle, subTitle, title, subtitle, body }
 
 /// 뷰티 스코어 분석 대시보드 위젯
 class BeautyScoreDashboard extends StatefulWidget {
@@ -479,7 +484,7 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
            '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
   }
 
-  /// 케어 팁 텍스트를 리치 텍스트로 변환 (제목/본문 스타일링, 컬러 아이콘)
+  /// 케어 팁 텍스트를 리치 텍스트로 변환 (제목/본문 스타일링, URL 클릭 기능)
   Widget _buildRichCareTipText(BuildContext context, String text) {
     final lines = text.split('\n');
     final List<Widget> widgets = [];
@@ -488,25 +493,39 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
       line = line.trim();
       if (line.isEmpty) continue;
       
-      // 🎯, 💪, 🏥 등의 아이콘 라인은 제목으로 처리
-      if (line.contains('🎯') || line.contains('💪') || line.contains('🏥')) {
+      // 🎯 **가로 황금비율 개선** 형태의 메인 제목
+      if (line.contains('🎯') && line.contains('**')) {
         widgets.add(Padding(
-          padding: EdgeInsets.only(bottom: 8, top: widgets.isEmpty ? 0 : 12),
-          child: _buildStyledIconText(context, line, isTitle: true),
+          padding: EdgeInsets.only(bottom: 8, top: widgets.isEmpty ? 0 : 16),
+          child: _buildRichTextLine(context, line, TextType.mainTitle),
         ));
       }
-      // **볼드** 텍스트는 소제목으로 처리
+      // 💪 **운동/습관**: 형태의 서브 제목
+      else if ((line.contains('💪') || line.contains('🏥')) && line.contains('**')) {
+        widgets.add(Padding(
+          padding: const EdgeInsets.only(bottom: 6, top: 12),
+          child: _buildRichTextLine(context, line, TextType.subTitle),
+        ));
+      }
+      // 단순히 🎯, 💪, 🏥 아이콘만 있는 라인 (볼드 없음)
+      else if (line.contains('🎯') || line.contains('💪') || line.contains('🏥')) {
+        widgets.add(Padding(
+          padding: EdgeInsets.only(bottom: 6, top: widgets.isEmpty ? 0 : 12),
+          child: _buildRichTextLine(context, line, TextType.title),
+        ));
+      }
+      // **볼드** 텍스트만 있는 소제목
       else if (line.contains('**')) {
         widgets.add(Padding(
           padding: const EdgeInsets.only(bottom: 4, top: 8),
-          child: _buildStyledIconText(context, line, isSubtitle: true),
+          child: _buildRichTextLine(context, line, TextType.subtitle),
         ));
       }
-      // 일반 텍스트는 본문으로 처리
+      // 일반 본문 텍스트
       else {
         widgets.add(Padding(
-          padding: const EdgeInsets.only(bottom: 4),
-          child: _buildStyledIconText(context, line, isBody: true),
+          padding: const EdgeInsets.only(bottom: 4, left: 16),
+          child: _buildRichTextLine(context, line, TextType.body),
         ));
       }
     }
@@ -517,8 +536,134 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
     );
   }
 
+  /// URL 클릭 기능이 있는 리치 텍스트 라인 생성
+  Widget _buildRichTextLine(BuildContext context, String text, TextType type) {
+    // **볼드** 제거
+    text = text.replaceAll('**', '');
+    
+    // URL 패턴 찾기
+    final urlPattern = RegExp(r'\(https?://[^\s\)]+\)');
+    final linkTextPattern = RegExp(r'\[[^\]]+\]');
+    
+    // URL이 있는지 확인
+    if (text.contains('http')) {
+      return _buildTextWithLinks(context, text, type);
+    } else {
+      // URL이 없으면 일반 텍스트
+      return SelectableText(
+        text,
+        style: _getTextStyle(context, type),
+      );
+    }
+  }
+
+  /// URL 링크가 포함된 텍스트 생성
+  Widget _buildTextWithLinks(BuildContext context, String text, TextType type) {
+    final List<TextSpan> spans = [];
+    
+    // [링크텍스트](URL) 패턴 처리
+    final combinedPattern = RegExp(r'\[([^\]]+)\]\((https?://[^\s\)]+)\)');
+    final matches = combinedPattern.allMatches(text);
+    
+    int lastIndex = 0;
+    
+    for (final match in matches) {
+      // 링크 이전 텍스트 추가
+      if (match.start > lastIndex) {
+        final beforeText = text.substring(lastIndex, match.start);
+        if (beforeText.isNotEmpty) {
+          spans.add(TextSpan(
+            text: beforeText,
+            style: _getTextStyle(context, type),
+          ));
+        }
+      }
+      
+      // 링크 텍스트와 URL 추출
+      final linkText = match.group(1) ?? '';
+      final url = match.group(2) ?? '';
+      
+      // 링크 스판 추가
+      spans.add(TextSpan(
+        text: linkText,
+        style: _getTextStyle(context, type).copyWith(
+          color: Colors.blue,
+          decoration: TextDecoration.underline,
+        ),
+        recognizer: TapGestureRecognizer()
+          ..onTap = () => _launchURL(url),
+      ));
+      
+      lastIndex = match.end;
+    }
+    
+    // 마지막 남은 텍스트 추가
+    if (lastIndex < text.length) {
+      final remainingText = text.substring(lastIndex);
+      if (remainingText.isNotEmpty) {
+        spans.add(TextSpan(
+          text: remainingText,
+          style: _getTextStyle(context, type),
+        ));
+      }
+    }
+    
+    return SelectableText.rich(
+      TextSpan(children: spans),
+    );
+  }
+
+  /// URL 실행 함수
+  Future<void> _launchURL(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  /// 텍스트 타입에 따른 스타일 반환
+  TextStyle _getTextStyle(BuildContext context, TextType type) {
+    switch (type) {
+      case TextType.mainTitle:
+        return Theme.of(context).textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.bold,
+          color: Colors.indigo.shade700,
+          height: 1.4,
+          fontSize: 17,
+        ) ?? const TextStyle();
+      case TextType.subTitle:
+        return Theme.of(context).textTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.w600,
+          color: Colors.indigo.shade600,
+          height: 1.4,
+          fontSize: 15,
+        ) ?? const TextStyle();
+      case TextType.title:
+        return Theme.of(context).textTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.bold,
+          color: Colors.indigo.shade700,
+          height: 1.4,
+        ) ?? const TextStyle();
+      case TextType.subtitle:
+        return Theme.of(context).textTheme.bodyMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+          color: Colors.indigo.shade600,
+          height: 1.4,
+        ) ?? const TextStyle();
+      case TextType.body:
+        return Theme.of(context).textTheme.bodyMedium?.copyWith(
+          color: Colors.grey.shade800,
+          height: 1.5,
+          fontWeight: FontWeight.normal,
+          fontSize: 14,
+        ) ?? const TextStyle();
+    }
+  }
+
   /// 아이콘과 텍스트를 스타일링하여 표시 (케어 팁용)
   Widget _buildStyledIconText(BuildContext context, String text, {
+    bool isMainTitle = false,
+    bool isSubTitle = false,
     bool isTitle = false, 
     bool isSubtitle = false, 
     bool isBody = false
@@ -527,15 +672,31 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
     text = text.replaceAll('**', '');
     
     TextStyle style;
-    if (isTitle) {
-      // 제목: 볼드 + 색깔
+    if (isMainTitle) {
+      // 🎯 **가로 황금비율 개선** - 가장 큰 제목
+      style = Theme.of(context).textTheme.titleMedium?.copyWith(
+        fontWeight: FontWeight.bold,
+        color: Colors.indigo.shade700,
+        height: 1.4,
+        fontSize: 17,
+      ) ?? const TextStyle();
+    } else if (isSubTitle) {
+      // 💪 **운동/습관**: - 중간 제목
+      style = Theme.of(context).textTheme.titleSmall?.copyWith(
+        fontWeight: FontWeight.w600,
+        color: Colors.indigo.shade600,
+        height: 1.4,
+        fontSize: 15,
+      ) ?? const TextStyle();
+    } else if (isTitle) {
+      // 단순 아이콘 제목
       style = Theme.of(context).textTheme.titleSmall?.copyWith(
         fontWeight: FontWeight.bold,
         color: Colors.indigo.shade700,
         height: 1.4,
       ) ?? const TextStyle();
     } else if (isSubtitle) {
-      // 소제목: 볼드 + 색깔
+      // **볼드** 소제목
       style = Theme.of(context).textTheme.bodyMedium?.copyWith(
         fontWeight: FontWeight.w600,
         color: Colors.indigo.shade600,
@@ -547,6 +708,7 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
         color: Colors.grey.shade800,
         height: 1.5,
         fontWeight: FontWeight.normal,
+        fontSize: 14,
       ) ?? const TextStyle();
     }
     
@@ -1841,9 +2003,6 @@ extension on _BeautyScoreDashboardState {
     final gptAnalysis = analysis['gptAnalysis'] as Map<String, dynamic>?;
     final hasComparison = analysis.containsKey('comparison');
     
-    // 디버깅: GPT 분석 상태 출력
-    print('🔍 _buildGptAnalysisWidget: gptAnalysis=${gptAnalysis != null}, hasComparison=$hasComparison');
-    
     // 재진단 비교가 있으면 GPT 기초 분석 대신 비교 결과만 표시
     if (hasComparison) {
       return const SizedBox.shrink();
@@ -1851,7 +2010,6 @@ extension on _BeautyScoreDashboardState {
     
     // GPT 분석이 없으면 표시하지 않음
     if (gptAnalysis == null) {
-      print('🔍 GPT 분석이 null이므로 표시하지 않음');
       return const SizedBox.shrink();
     }
 

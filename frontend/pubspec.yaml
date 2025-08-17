@@ -37,6 +37,9 @@ dependencies:
   
   # 차트 라이브러리
   fl_chart: ^0.69.0
+  
+  # URL 런처
+  url_launcher: ^6.2.2
 
 dev_dependencies:
   flutter_test:
