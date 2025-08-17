@@ -272,7 +272,7 @@ class AppState extends ChangeNotifier {
       _beautyAnalysis.clear();
     } else {
       // 워핑 후에는 뷰티 분석 완료 상태를 설정하지 않음 (재진단 방지)
-      print('워핑 후 랜드마크 설정: 뷰티 분석 완료 상태 건너뜀');
+      // print('워핑 후 랜드마크 설정: 뷰티 분석 완료 상태 건너뜀');
     }
     
     notifyListeners();
@@ -521,7 +521,7 @@ class AppState extends ChangeNotifier {
         _imageHistory.removeAt(0);
       }
       
-      print('히스토리 저장: ${_imageHistory.length}개 항목 (ID: $_currentImageId)');
+      // print('히스토리 저장: ${_imageHistory.length}개 항목 (ID: $_currentImageId)');
       notifyListeners();
     }
   }
@@ -533,7 +533,7 @@ class AppState extends ChangeNotifier {
       _currentImage = Uint8List.fromList(historyItem.imageData);
       _currentImageId = historyItem.imageId; // ✅ ID도 함께 되돌리기
       
-      print('뒤로가기: 남은 히스토리 ${_imageHistory.length}개 항목, 복원된 ID: ${historyItem.imageId}');
+      // print('뒤로가기: 남은 히스토리 ${_imageHistory.length}개 항목, 복원된 ID: ${historyItem.imageId}');
       
       // 뒤로가기 후에는 현재 이미지 상태만 업데이트하고 setImage는 호출하지 않음
       notifyListeners();
@@ -553,16 +553,16 @@ class AppState extends ChangeNotifier {
         final uploadResponse = await apiService.uploadImage(_originalImage!, 'restored_original.jpg');
         _currentImageId = uploadResponse.imageId;
         
-        print('원본 복원: 새 ID로 업로드 완료 - ${_currentImageId}');
+        // print('원본 복원: 새 ID로 업로드 완료 - ${_currentImageId}');
         
         notifyListeners();
       } catch (e) {
-        print('원본 복원 실패: $e');
+        // print('원본 복원 실패: $e');
         // 실패해도 Frontend 이미지는 원본으로 복원
         notifyListeners();
       }
     } else {
-      print('원본 복원 실패: 원본 이미지가 없습니다');
+      // print('원본 복원 실패: 원본 이미지가 없습니다');
     }
   }
   
@@ -860,7 +860,7 @@ class AppState extends ChangeNotifier {
   void completeAllAnimations() {
     if (_landmarks.isEmpty) return;
     
-    print('completeAllAnimations 호출됨: _isReAnalyzing=$_isReAnalyzing');
+    // print('completeAllAnimations 호출됨: _isReAnalyzing=$_isReAnalyzing');
     
     // 모든 애니메이션을 완료된 상태로 설정
     _isAutoAnimationMode = false;
@@ -990,11 +990,11 @@ class AppState extends ChangeNotifier {
   // 뷰티 분석 계산
   void _calculateBeautyAnalysis() {
     if (_landmarks.isEmpty) return;
-    print('_calculateBeautyAnalysis 호출됨: _originalBeautyAnalysis=${_originalBeautyAnalysis != null}, _isReAnalyzing=$_isReAnalyzing');
+    // print('_calculateBeautyAnalysis 호출됨: _originalBeautyAnalysis=${_originalBeautyAnalysis != null}, _isReAnalyzing=$_isReAnalyzing');
     
     // 워핑 중이거나 재진단 중이 아닌 경우 뷰티 분석 건너뜀
     if (_originalBeautyAnalysis != null && !_isReAnalyzing && _currentTabIndex != 0) {
-      print('워핑 중 뷰티 분석 건너뜀: 탭=${_currentTabIndex}, 재진단중=${_isReAnalyzing}');
+      // print('워핑 중 뷰티 분석 건너뜀: 탭=${_currentTabIndex}, 재진단중=${_isReAnalyzing}');
       return;
     }
 
@@ -1553,8 +1553,14 @@ class AppState extends ChangeNotifier {
   Future<void> _performInitialGptAnalysis() async {
     if (_beautyAnalysis.isEmpty) return;
     
+    // 이미 GPT 분석 중이면 중복 실행 방지
+    if (_isGptAnalyzing) {
+      print('🔍 GPT 분석이 이미 진행 중입니다. 중복 실행 방지');
+      return;
+    }
+    
     try {
-      print('기초 뷰티스코어 GPT 분석 시작');
+      // print('기초 뷰티스코어 GPT 분석 시작');
       _isGptAnalyzing = true;
       notifyListeners(); // GPT 분석 시작 알림
       
@@ -1563,20 +1569,26 @@ class AppState extends ChangeNotifier {
       // 기초 뷰티스코어에 대한 단일 분석 요청
       final analysisResult = await apiService.analyzeInitialBeautyScore(_beautyAnalysis);
       
-      // GPT 분석 결과를 뷰티 분석에 추가
-      _beautyAnalysis['gptAnalysis'] = {
-        'analysisText': analysisResult.analysisText,
-        'recommendations': analysisResult.recommendations,
-        'strengths': analysisResult.strengths,
-        'improvementAreas': analysisResult.improvementAreas,
-        'isInitialAnalysis': true,
-      };
-      
-      print('기초 뷰티스코어 GPT 분석 완료');
-      notifyListeners(); // GPT 분석 완료 즉시 UI 업데이트
+      // GPT 분석이 여전히 활성 상태인 경우에만 결과 적용 (중복 방지)
+      if (_isGptAnalyzing) {
+        // GPT 분석 결과를 뷰티 분석에 추가
+        _beautyAnalysis['gptAnalysis'] = {
+          'analysisText': analysisResult.analysisText,
+          'recommendations': analysisResult.recommendations,
+          'strengths': analysisResult.strengths,
+          'improvementAreas': analysisResult.improvementAreas,
+          'isInitialAnalysis': true,
+        };
+        
+        print('🔍 GPT 분석 완료 - 최신 결과 적용');
+        // print('기초 뷰티스코어 GPT 분석 완료');
+        notifyListeners(); // GPT 분석 완료 즉시 UI 업데이트
+      } else {
+        print('🔍 GPT 분석 완료 - 중복 응답 무시');
+      }
       
     } catch (e) {
-      print('기초 뷰티스코어 GPT 분석 실패: $e');
+      // print('기초 뷰티스코어 GPT 분석 실패: $e');
       // 실패해도 기본 분석은 유지
     } finally {
       _isGptAnalyzing = false;

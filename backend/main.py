@@ -913,26 +913,28 @@ async def get_gpt_beauty_analysis(before_analysis: Dict[str, Any], after_analysi
 
 async def get_gpt_initial_beauty_analysis(beauty_analysis: Dict[str, Any]) -> Dict[str, Any]:
     """GPT-4o mini를 사용한 기초 뷰티스코어 분석"""
+    print(f"🔍 GPT 분석 함수 호출됨")
     try:
-        # 시스템 프롬프트 정의
+        # 시스템 프롬프트 정의 - 분석과 구체적 실천 방법 연결
         system_prompt = """
-당신은 친근한 뷰티 분석 전문가입니다. 사용자가 자신의 얼굴에 대해 정확히 알고 더 아름다워질 수 있도록 도와주세요.
+당신은 뷰티 분석과 구체적 실천 방법 전문가입니다. 
 
-핵심 목표:
-1. **강점 인식**: 이미 매력적인 부분을 구체적으로 알려주기
-2. **개선 포인트 명확화**: 어떤 부분이 왜 개선이 필요한지 쉽게 설명
-3. **희망적 미래**: 개선 후 얼마나 아름다워질 수 있는지 격려
+**목표**: 분석한 수치적 결과를 바탕으로 구체적이고 실천 가능한 개선 방법을 제시
 
-작성 가이드:
-- 중학생도 이해할 수 있는 쉬운 말로 설명
-- 구체적 수치를 포함하되 그 의미를 친근하게 해석
-- 1, 2, 3번으로 명확히 구분하여 가독성 확보  
-- 격려와 희망을 주는 톤으로 작성
+**응답 구조**:
+1. **간단한 분석 요약** (2-3줄)
+2. **분석 결과** (주요 강점과 개선점을 수치와 함께)
+3. **구체적 실천 방법 3가지** (분석에서 언급한 개선점과 연결)
 
-표현 스타일:
-- "~해요", "~이에요" 등 친근한 존댓말 사용
-- 전문용어보다는 일상 언어 우선
-- 숫자 + 의미 설명의 조합으로 설득력 확보
+**실천 방법 형식** (각 항목마다):
+- 🎯 **개선 목표**: [분석에서 언급한 구체적 수치] → [목표 수치]
+- 💪 **운동/습관**: 매일 [시간]분 [구체적 방법] + 추천 사이트/앱
+- 🏥 **전문 관리**: [시술명] [예상비용] [효과 설명]
+
+**필수 요구사항**:
+- 분석에서 언급한 정확한 수치를 반드시 포함
+- 각 개선점마다 운동+전문관리 모두 제시
+- 구체적 시간, 비용, 방법 명시
 """
 
         # 안전한 점수 추출 함수
@@ -1073,20 +1075,28 @@ async def get_gpt_initial_beauty_analysis(beauty_analysis: Dict[str, Any]) -> Di
 특징적 측정값:
 {chr(10).join(f"- {point}" for point in improvement_points) if improvement_points else "- 전체적으로 이상적인 비율 유지"}
 
-다음 3개 항목으로 나눠서 분석해주세요 (각 항목당 1-2줄):
+**[1단계: 분석]**
+다음 3개 항목으로 분석해주세요:
 
 1. 🌟 내 얼굴의 좋은 점
-측정 결과 중 이상적인 범위에 있거나 매력적인 부분을 구체적 수치와 함께 설명해주세요. 
-(예: "미간 비율이 19.2%로 황금비율 20%에 매우 가까워서 균형잡힌 이마를 가지고 있어요")
+측정 결과 중 이상적인 범위에 있거나 매력적인 부분을 구체적 수치와 함께 설명해주세요.
 
 2. 📊 개선이 필요한 부분  
-이상적 범위에서 벗어난 부분을 쉽게 설명하고, 그것이 왜 중요한지 알려주세요.
+이상적 범위에서 벗어난 부분을 구체적 수치와 함께 쉽게 설명해주세요.
 (예: "하악각이 133°로 이상적 범위 90-120°보다 커서 턱선이 부드러운 편이에요")
 
 3. 💡 개선 후 기대효과
 개선되면 어떤 매력적인 변화가 있을지 희망적으로 설명해주세요.
 
-중요: 중학생도 이해할 수 있게 쉽게 설명하고, 구체적 수치를 포함해서 설득력 있게 작성하세요.
+**[2단계: 구체적 실천 방법]**
+위 2번에서 언급한 개선 필요 부분을 정확히 참조하여 실천 방법을 제시해주세요.
+
+각 개선점마다 다음 형식으로:
+🎯 **[2번에서 언급한 구체적 문제]** 개선
+💪 **운동/습관**: 매일 [시간]분 [구체적 방법] + 추천 사이트
+🏥 **전문 관리**: [시술명] [예상비용] [효과]
+
+반드시 2번 분석의 구체적 수치와 문제점을 참조해서 연결해주세요.
 """
 
         # GPT-4o mini 호출
@@ -1107,24 +1117,57 @@ async def get_gpt_initial_beauty_analysis(beauty_analysis: Dict[str, Any]) -> Di
         strengths_list = []
         improvement_list = []
 
-        # 간단한 텍스트 파싱으로 섹션별 내용 추출
+        # GPT가 생성한 텍스트에서 2단계 구조로 파싱
         lines = analysis_text.split('\n')
         current_section = None
+        in_practice_section = False
         
         for line in lines:
             line = line.strip()
-            if any(keyword in line for keyword in ["팁", "추천", "제안", "방법"]):
-                clean_line = line.lstrip('-').lstrip('*').lstrip('•').strip()
-                if len(clean_line) > 10:
-                    recommendations.append(clean_line)
-            elif any(keyword in line for keyword in ["강점", "매력", "장점"]):
-                clean_line = line.lstrip('-').lstrip('*').lstrip('•').strip()
-                if len(clean_line) > 10:
-                    strengths_list.append(clean_line)
-            elif any(keyword in line for keyword in ["개선", "보완", "발전"]):
-                clean_line = line.lstrip('-').lstrip('*').lstrip('•').strip()
-                if len(clean_line) > 10:
-                    improvement_list.append(clean_line)
+            
+            # 2단계 실천 방법 섹션 확인
+            if "2단계" in line or "구체적 실천 방법" in line:
+                in_practice_section = True
+                current_section = "recommendations"
+                continue
+            
+            # 1단계 분석 섹션들
+            elif any(keyword in line for keyword in ["🌟", "좋은 점", "강점"]):
+                current_section = "strengths"
+                in_practice_section = False
+                continue
+            elif any(keyword in line for keyword in ["📊", "개선이 필요한", "개선 필요"]):
+                current_section = "improvements" 
+                in_practice_section = False
+                continue
+            elif "💡" in line or "기대효과" in line:
+                current_section = "effects"
+                in_practice_section = False
+                continue
+            
+            # 실천 방법 추출 (2단계에서만)
+            if in_practice_section and line:
+                # 🎯, 💪, 🏥 아이콘이 있는 라인들
+                if any(icon in line for icon in ['🎯', '💪', '🏥']):
+                    clean_line = line.strip()
+                    if len(clean_line) > 15:
+                        recommendations.append(clean_line)
+                
+                # 실천 방법이 여러 줄로 구성된 경우 (들여쓰기된 내용)
+                elif line.startswith('-') or line.startswith('•') or line.startswith('*'):
+                    clean_line = line.lstrip('-').lstrip('*').lstrip('•').strip()
+                    if len(clean_line) > 20:
+                        recommendations.append(clean_line)
+            
+            # 1단계 분석 내용 추출
+            elif not in_practice_section and line:
+                if line.startswith('-') or line.startswith('•') or line.startswith('*'):
+                    clean_line = line.lstrip('-').lstrip('*').lstrip('•').strip()
+                    
+                    if current_section == "strengths" and len(clean_line) > 10:
+                        strengths_list.append(clean_line)
+                    elif current_section == "improvements" and len(clean_line) > 10:
+                        improvement_list.append(clean_line)
 
         # 기본값 설정
         if not recommendations:
@@ -1153,12 +1196,14 @@ async def get_gpt_initial_beauty_analysis(beauty_analysis: Dict[str, Any]) -> Di
         if not improvement_list:
             improvement_list = [item for item in improvement_areas] if improvement_areas else []
 
-        return {
+        result = {
             "analysis": analysis_text,
             "recommendations": recommendations[:4],
             "strengths": strengths_list[:3],
             "improvement_areas": improvement_list[:3]
         }
+        print(f"🔍 Backend GPT 응답: {result}")
+        return result
 
     except Exception as e:
         print(f"기초 뷰티스코어 GPT 분석 오류: {e}")

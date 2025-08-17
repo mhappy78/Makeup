@@ -423,10 +423,24 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
   }
 
   List<String> _generateRecommendations(Map<String, dynamic> analysis) {
+    // 먼저 Backend GPT 분석에서 추천사항 확인
+    final gptAnalysis = analysis['gptAnalysis'] as Map<String, dynamic>?;
+    print('🔍 케어 팁 생성 - gptAnalysis: $gptAnalysis');
+    
+    if (gptAnalysis != null && gptAnalysis['recommendations'] != null) {
+      final gptRecommendations = List<String>.from(gptAnalysis['recommendations']);
+      print('🔍 GPT recommendations 발견: $gptRecommendations');
+      if (gptRecommendations.isNotEmpty) {
+        print('🔍 GPT recommendations 사용함 (${gptRecommendations.length}개)');
+        return gptRecommendations.take(3).toList();
+      }
+    }
+    
+    print('🔍 GPT recommendations 없음 - 폴백 케어 팁 사용');
+    
+    // GPT 추천사항이 없을 경우에만 폴백 케어 팁 생성
     final List<String> careTips = [];
     final overallScore = analysis['overallScore']?.toDouble() ?? 75.0;
-    
-    // 실천 가능한 케어 팁 생성 (AI 분석과 다른 내용)
     
     // 기본 케어 팁 1: 수분 관리
     careTips.add('충분한 수분 섭취 (하루 2L 이상)와 보습 크림 사용으로 피부 탄력 유지하기');
@@ -1082,14 +1096,14 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
   /// 턱 각도 분석 위젯 (각도 정보 포함)
   Widget _buildJawAngleAnalysis(BuildContext context, Map<String, dynamic> analysis) {
     // 디버깅: jawScore 데이터 구조 확인
-    print('🔍 jawScore 데이터 구조: ${analysis['jawScore']}');
+    // print('🔍 jawScore 데이터 구조: ${analysis['jawScore']}');
     
     final jawScore = analysis['jawScore']?['score']?.toDouble() ?? 75.0;
     final gonialAngle = analysis['jawScore']?['gonialAngle']?.toDouble();
     final cervicoMentalAngle = analysis['jawScore']?['cervicoMentalAngle']?.toDouble();
     
     // 디버깅: 추출된 값들 확인
-    print('🔍 턱 곡률 값들: jawScore=$jawScore, gonialAngle=$gonialAngle, cervicoMentalAngle=$cervicoMentalAngle');
+    // print('🔍 턱 곡률 값들: jawScore=$jawScore, gonialAngle=$gonialAngle, cervicoMentalAngle=$cervicoMentalAngle');
     
     return Container(
       padding: const EdgeInsets.all(16),

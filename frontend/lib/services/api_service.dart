@@ -6,7 +6,7 @@ import '../models/app_state.dart';
 /// API 서비스 클래스
 class ApiService {
   late final Dio _dio;
-  static const String baseUrl = 'http://localhost:8083';
+  static const String baseUrl = 'http://localhost:8080';
   
   ApiService() {
     _dio = Dio(BaseOptions(
@@ -19,11 +19,11 @@ class ApiService {
     ));
     
     // 로그 인터셉터 추가 (디버그 모드에서만)
-    _dio.interceptors.add(LogInterceptor(
-      requestBody: false, // 이미지 데이터가 클 수 있으므로 비활성화
-      responseBody: false,
-      logPrint: (obj) => print('API: $obj'),
-    ));
+    // _dio.interceptors.add(LogInterceptor(
+    //   requestBody: false, // 이미지 데이터가 클 수 있으므로 비활성화
+    //   responseBody: false,
+    //   logPrint: (obj) => print('API: $obj'),
+    // ));
   }
   
   /// 서버 상태 확인
