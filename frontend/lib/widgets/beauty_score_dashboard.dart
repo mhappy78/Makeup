@@ -521,10 +521,10 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
           child: _buildRichTextLine(context, line, TextType.subtitle),
         ));
       }
-      // 일반 본문 텍스트
+      // 일반 본문 텍스트 (들여쓰기 16px = 스페이스 4번)
       else {
         widgets.add(Padding(
-          padding: const EdgeInsets.only(bottom: 4, left: 16),
+          padding: const EdgeInsets.only(bottom: 6, left: 16),
           child: _buildRichTextLine(context, line, TextType.body),
         ));
       }
@@ -583,11 +583,11 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
       final linkText = match.group(1) ?? '';
       final url = match.group(2) ?? '';
       
-      // 링크 스판 추가
+      // 링크 스판 추가 (연두색)
       spans.add(TextSpan(
         text: linkText,
         style: _getTextStyle(context, type).copyWith(
-          color: Colors.blue,
+          color: Colors.lightGreen.shade600,
           decoration: TextDecoration.underline,
         ),
         recognizer: TapGestureRecognizer()
@@ -621,41 +621,48 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
     }
   }
 
-  /// 텍스트 타입에 따른 스타일 반환
+  /// 텍스트 타입에 따른 스타일 반환 (케어 팁 전용 스타일)
   TextStyle _getTextStyle(BuildContext context, TextType type) {
     switch (type) {
       case TextType.mainTitle:
+        // 🎯 가로 황금비율 개선 - 녹색 제목
         return Theme.of(context).textTheme.titleMedium?.copyWith(
           fontWeight: FontWeight.bold,
-          color: Colors.indigo.shade700,
+          color: Colors.green.shade700,
           height: 1.4,
-          fontSize: 17,
+          fontSize: 16,
         ) ?? const TextStyle();
       case TextType.subTitle:
-        return Theme.of(context).textTheme.titleSmall?.copyWith(
-          fontWeight: FontWeight.w600,
-          color: Colors.indigo.shade600,
+        // 💪 운동/습관, 🏥 전문관리 - 검은색 내용
+        return Theme.of(context).textTheme.bodyMedium?.copyWith(
+          fontWeight: FontWeight.normal,
+          color: Colors.black87,
           height: 1.4,
           fontSize: 15,
         ) ?? const TextStyle();
       case TextType.title:
+        // 일반 제목 - 녹색
         return Theme.of(context).textTheme.titleSmall?.copyWith(
           fontWeight: FontWeight.bold,
-          color: Colors.indigo.shade700,
+          color: Colors.green.shade700,
           height: 1.4,
+          fontSize: 16,
         ) ?? const TextStyle();
       case TextType.subtitle:
+        // 소제목 - 검은색
         return Theme.of(context).textTheme.bodyMedium?.copyWith(
-          fontWeight: FontWeight.w600,
-          color: Colors.indigo.shade600,
+          fontWeight: FontWeight.normal,
+          color: Colors.black87,
           height: 1.4,
+          fontSize: 15,
         ) ?? const TextStyle();
       case TextType.body:
+        // 본문 - 검은색, 볼드 제외
         return Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: Colors.grey.shade800,
-          height: 1.5,
+          height: 1.6,
+          color: Colors.black87,
+          fontSize: 15,
           fontWeight: FontWeight.normal,
-          fontSize: 14,
         ) ?? const TextStyle();
     }
   }
@@ -2003,6 +2010,10 @@ extension on _BeautyScoreDashboardState {
     final gptAnalysis = analysis['gptAnalysis'] as Map<String, dynamic>?;
     final hasComparison = analysis.containsKey('comparison');
     
+    // 디버깅: 전체 analysis 구조 확인
+    print('🔍 Frontend analysis keys: ${analysis.keys.toList()}');
+    print('🔍 Frontend gptAnalysis: ${gptAnalysis != null ? gptAnalysis.keys.toList() : 'null'}');
+    
     // 재진단 비교가 있으면 GPT 기초 분석 대신 비교 결과만 표시
     if (hasComparison) {
       return const SizedBox.shrink();
@@ -2010,11 +2021,15 @@ extension on _BeautyScoreDashboardState {
     
     // GPT 분석이 없으면 표시하지 않음
     if (gptAnalysis == null) {
+      print('🔍 Frontend: GPT 분석이 null이므로 표시하지 않음');
       return const SizedBox.shrink();
     }
 
     return Consumer<AppState>(
       builder: (context, appState, child) {
+        print('🔍 GPT 위젯 렌더링 - isGptAnalyzing: ${appState.isGptAnalyzing}');
+        print('🔍 GPT 위젯 렌더링 - gptAnalysis keys: ${gptAnalysis?.keys.toList()}');
+        
         // GPT 분석 중일 때 로딩 표시
         if (appState.isGptAnalyzing) {
           return Container(
