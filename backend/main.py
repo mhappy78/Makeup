@@ -781,30 +781,37 @@ async def get_gpt_beauty_analysis(before_analysis: Dict[str, Any], after_analysi
                 direction = "상승" if change > 0 else "하락"
                 changes_summary.append(f"{key}: {change:.1f}점 {direction}")
 
+        # 안전한 점수 추출 함수
+        def get_score(analysis, key, default=0):
+            value = analysis.get(key, default)
+            if isinstance(value, dict):
+                return value.get('score', default)
+            return value if isinstance(value, (int, float)) else default
+
         user_prompt = f"""
 뷰티 시술 전후 분석 결과:
 
 【시술 전 점수】
-- 종합점수: {before_analysis.get('overallScore', 0):.1f}점
-- 가로 황금비율: {before_analysis.get('verticalScore', 0):.1f}점
-- 세로 대칭성: {before_analysis.get('horizontalScore', 0):.1f}점
-- 하관 조화: {before_analysis.get('lowerFaceScore', 0):.1f}점
-- 전체 대칭성: {before_analysis.get('symmetry', 0):.1f}점
-- 눈: {before_analysis.get('eyeScore', 0):.1f}점
-- 코: {before_analysis.get('noseScore', 0):.1f}점
-- 입술: {before_analysis.get('lipScore', 0):.1f}점
-- 턱 곡률: {before_analysis.get('jawScore', 0):.1f}점
+- 종합점수: {get_score(before_analysis, 'overallScore'):.1f}점
+- 가로 황금비율: {get_score(before_analysis, 'verticalScore'):.1f}점
+- 세로 대칭성: {get_score(before_analysis, 'horizontalScore'):.1f}점
+- 하관 조화: {get_score(before_analysis, 'lowerFaceScore'):.1f}점
+- 전체 대칭성: {get_score(before_analysis, 'symmetry'):.1f}점
+- 눈: {get_score(before_analysis, 'eyeScore'):.1f}점
+- 코: {get_score(before_analysis, 'noseScore'):.1f}점
+- 입술: {get_score(before_analysis, 'lipScore'):.1f}점
+- 턱 곡률: {get_score(before_analysis, 'jawScore'):.1f}점
 
 【시술 후 점수】
-- 종합점수: {after_analysis.get('overallScore', 0):.1f}점
-- 가로 황금비율: {after_analysis.get('verticalScore', 0):.1f}점
-- 세로 대칭성: {after_analysis.get('horizontalScore', 0):.1f}점
-- 하관 조화: {after_analysis.get('lowerFaceScore', 0):.1f}점
-- 전체 대칭성: {after_analysis.get('symmetry', 0):.1f}점
-- 눈: {after_analysis.get('eyeScore', 0):.1f}점
-- 코: {after_analysis.get('noseScore', 0):.1f}점
-- 입술: {after_analysis.get('lipScore', 0):.1f}점
-- 턱 곡률: {after_analysis.get('jawScore', 0):.1f}점
+- 종합점수: {get_score(after_analysis, 'overallScore'):.1f}점
+- 가로 황금비율: {get_score(after_analysis, 'verticalScore'):.1f}점
+- 세로 대칭성: {get_score(after_analysis, 'horizontalScore'):.1f}점
+- 하관 조화: {get_score(after_analysis, 'lowerFaceScore'):.1f}점
+- 전체 대칭성: {get_score(after_analysis, 'symmetry'):.1f}점
+- 눈: {get_score(after_analysis, 'eyeScore'):.1f}점
+- 코: {get_score(after_analysis, 'noseScore'):.1f}점
+- 입술: {get_score(after_analysis, 'lipScore'):.1f}점
+- 턱 곡률: {get_score(after_analysis, 'jawScore'):.1f}점
 
 【주요 변화】
 {', '.join(changes_summary) if changes_summary else '큰 변화 없음'}

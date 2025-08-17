@@ -858,6 +858,8 @@ class AppState extends ChangeNotifier {
   void completeAllAnimations() {
     if (_landmarks.isEmpty) return;
     
+    print('completeAllAnimations 호출됨: _isReAnalyzing=$_isReAnalyzing');
+    
     // 모든 애니메이션을 완료된 상태로 설정
     _isAutoAnimationMode = false;
     _isAnimationPlaying = false;
@@ -883,6 +885,12 @@ class AppState extends ChangeNotifier {
     _beautyAnalysisCompleted = true;
     
     notifyListeners();
+    
+    // 재진단 중이라면 GPT 분석을 계속 진행
+    if (_isReAnalyzing && _originalBeautyAnalysis != null) {
+      print('재진단 중 애니메이션 강제 완료: GPT 분석 진행');
+      _performGptAnalysis();
+    }
   }
 
   // 현재 탭 인덱스 설정
@@ -1522,13 +1530,32 @@ class AppState extends ChangeNotifier {
         await Future.delayed(const Duration(milliseconds: 100));
       }
       
-      // 8. GPT 분석 요청
+      // 8. GPT 분석 실행
+      await _performGptAnalysis();
+      // _performGptAnalysis에서 _isReAnalyzing = false 처리
+      
+    } catch (e) {
+      setError('재진단 실패: $e');
+      _isReAnalyzing = false;
+      notifyListeners();
+    }
+  }
+
+  // GPT 분석 실행 (재진단 완료 시 호출)
+  Future<void> _performGptAnalysis() async {
+    if (_originalBeautyAnalysis == null || _beautyAnalysis.isEmpty) return;
+    
+    try {
+      print('GPT 분석 시작');
+      final apiService = ApiService();
+      
+      // GPT 분석 요청
       final comparisonResult = await apiService.analyzeBeautyComparison(
         _originalBeautyAnalysis!,
         _beautyAnalysis,
       );
       
-      // 9. 비교 결과를 뷰티 분석에 추가
+      // 비교 결과를 뷰티 분석에 추가
       _beautyAnalysis['comparison'] = {
         'overallChange': comparisonResult.overallChange,
         'scoreChanges': comparisonResult.scoreChanges,
@@ -1537,8 +1564,11 @@ class AppState extends ChangeNotifier {
         'isReAnalysis': true,
       };
       
+      print('GPT 분석 완료');
+      
     } catch (e) {
-      setError('재진단 실패: $e');
+      print('GPT 분석 실패: $e');
+      setError('재진단 GPT 분석 실패: $e');
     } finally {
       _isReAnalyzing = false;
       notifyListeners();
