@@ -760,10 +760,21 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
           reachedEnd = true;
           break;
         } else {
-          // 분석 섹션의 ### 헤더는 표시 (1. 🌟 내 얼굴의 좋은 점 등)
+          // 분석 섹션의 ### 헤더는 마크다운 제거 후 메인 제목 체크
           final cleanedLine = line.replaceAll('###', '').trim();
-          print('🔍 분석 ### 헤더 표시: $cleanedLine');
-          widgets.add(_buildRichTextLine(context, cleanedLine, TextType.subTitle));
+          print('🔍 분석 ### 헤더 발견: $cleanedLine');
+          
+          // 메인 섹션 제목인지 체크
+          if (_isMainSectionTitle(cleanedLine)) {
+            print('🔍 메인 제목으로 처리: $cleanedLine');
+            widgets.add(Padding(
+              padding: EdgeInsets.only(bottom: 12, top: widgets.isEmpty ? 0 : 24),
+              child: _buildAnalysisTitle(context, cleanedLine),
+            ));
+          } else {
+            print('🔍 서브 제목으로 처리: $cleanedLine');
+            widgets.add(_buildRichTextLine(context, cleanedLine, TextType.subTitle));
+          }
           continue;
         }
       }
@@ -1162,8 +1173,8 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
           // 넓은 화면: 더 높은 카드 필요
           aspectRatio = 0.75;
         } else {
-          // 좁은 화면: 기본 비율
-          aspectRatio = 0.85;
+          // 좁은 화면: 높이를 반으로 줄임 (높은 aspectRatio로 설정)
+          aspectRatio = 1.7;
         }
         
         return GridView.builder(
@@ -1875,12 +1886,22 @@ class _RadarChartPainter extends CustomPainter {
       );
 
       textPainter.layout();
+      
+      // 라벨별 위치 조정
+      double offsetX = point.dx - textPainter.width / 2;
+      double offsetY = point.dy - textPainter.height / 2;
+      
+      if (labels[i] == '세로 대칭성') {
+        // 세로 대칭성을 더 오른쪽으로 이동
+        offsetX += 25;
+      } else if (labels[i] == '턱 곡률') {
+        // 턱 곡률을 왼쪽으로 이동
+        offsetX -= 15;
+      }
+      
       textPainter.paint(
         canvas,
-        Offset(
-          point.dx - textPainter.width / 2,
-          point.dy - textPainter.height / 2,
-        ),
+        Offset(offsetX, offsetY),
       );
     }
   }

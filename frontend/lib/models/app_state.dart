@@ -277,8 +277,8 @@ class AppState extends ChangeNotifier {
     
     notifyListeners();
     
-    // 분석 탭(index 0)에서만 자동 애니메이션 시작
-    if (landmarks.isNotEmpty && _currentTabIndex == 0 && resetAnalysis) {
+    // 분석 탭(index 0)에서만 자동 애니메이션 시작, 또는 재분석 중일 때도 시작
+    if (landmarks.isNotEmpty && (_currentTabIndex == 0 || _isReAnalyzing) && resetAnalysis) {
       _startAutoAnimation();
     }
   }
@@ -1041,9 +1041,13 @@ class AppState extends ChangeNotifier {
         _originalBeautyAnalysis = Map<String, dynamic>.from(_beautyAnalysis);
       }
       
-      // 기초 뷰티스코어 분석에 GPT 분석 추가 (재진단이 아닌 경우에만)
+      // 기초 뷰티스코어 분석에 GPT 분석 추가
       if (!_isReAnalyzing) {
+        // 초기 분석: 기초 뷰티스코어 GPT 분석
         _performInitialGptAnalysis();
+      } else {
+        // 재분석: 비교 GPT 분석
+        _performGptAnalysis();
       }
     } catch (e) {
       // 오류 발생 시 기본값 설정
@@ -1524,27 +1528,9 @@ class AppState extends ChangeNotifier {
       final apiService = ApiService();
       final landmarkResponse = await apiService.getFaceLandmarks(_currentImageId!);
       
-      // 5. 새로운 랜드마크 설정 (애니메이션 자동 시작됨)
+      // 5. 새로운 랜드마크 설정 (뷰티 분석 및 GPT 분석 자동 시작됨)
       setLandmarks(landmarkResponse.landmarks, resetAnalysis: true);
-      
-      // 6. 애니메이션 완료까지 대기
-      print('🔍 재분석: 애니메이션 완료 대기 중... (_isAutoAnimationMode: $_isAutoAnimationMode, _isAnimationPlaying: $_isAnimationPlaying)');
-      while (_isAutoAnimationMode || _isAnimationPlaying) {
-        await Future.delayed(const Duration(milliseconds: 100));
-      }
-      print('🔍 재분석: 애니메이션 완료');
-      
-      // 7. 뷰티 점수 애니메이션 완료까지 대기
-      print('🔍 재분석: 뷰티 점수 애니메이션 대기 중... (progress: $_beautyScoreAnimationProgress, showBeautyScore: $_showBeautyScore)');
-      while (_beautyScoreAnimationProgress < 1.0 || !_showBeautyScore) {
-        await Future.delayed(const Duration(milliseconds: 100));
-      }
-      print('🔍 재분석: 뷰티 점수 애니메이션 완료');
-      
-      // 8. GPT 분석 실행
-      print('🔍 재분석: GPT 분석 시작');
-      await _performGptAnalysis();
-      // _performGptAnalysis에서 _isReAnalyzing = false 처리
+      print('🔍 재분석: 랜드마크 설정 완료, 뷰티 분석 및 GPT 분석이 자동으로 시작됩니다.');
       
     } catch (e) {
       setError('재진단 실패: $e');
