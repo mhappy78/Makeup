@@ -1170,24 +1170,24 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
         // 화면 크기에 따라 동적으로 childAspectRatio 조정
         double aspectRatio;
         if (constraints.maxWidth > 600) {
-          // 넓은 화면: 더 높은 카드 필요
-          aspectRatio = 0.75;
+          // 넓은 화면: 카드 높이를 더 낮게 (aspectRatio 증가)
+          aspectRatio = 1.1; // 0.75에서 1.1로 증가
         } else {
-          // 좁은 화면: 높이를 반으로 줄임 (높은 aspectRatio로 설정)
-          aspectRatio = 1.7;
+          // 좁은 화면: 높이를 더욱 줄임
+          aspectRatio = 1.9; // 1.7에서 1.9로 증가
         }
         
         return GridView.builder(
           shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: aspectRatio,
-          ),
-          itemCount: categories.length,
-          itemBuilder: (context, index) {
+          physics: const NeverScrollableScrollPhysics(), // 스크롤 비활성화
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: aspectRatio,
+            ),
+            itemCount: categories.length,
+            itemBuilder: (context, index) {
         final category = categories[index];
         final isSelected = _selectedCategory == category['id'];
         final score = category['score'] as double;
@@ -1225,7 +1225,7 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
               ],
             ),
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(8), // 16에서 8로 줄임
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -1234,11 +1234,11 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
                     alignment: Alignment.center,
                     children: [
                       SizedBox(
-                        width: 60,
-                        height: 60,
+                        width: 45, // 60에서 45로 줄임
+                        height: 45, // 60에서 45로 줄임
                         child: CircularProgressIndicator(
                           value: score / 100,
-                          strokeWidth: 6,
+                          strokeWidth: 4, // 6에서 4로 줄임
                           backgroundColor: isSelected 
                               ? Colors.white.withOpacity(0.3)
                               : Colors.grey.shade200,
@@ -1250,33 +1250,33 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
                       Text(
                         score.round().toString(),
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 14, // 16에서 14로 줄임
                           fontWeight: FontWeight.bold,
                           color: isSelected ? Colors.white : gradient[0],
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 6), // 12에서 6으로 줄임
                   Text(
                     category['title'] as String,
                     textAlign: TextAlign.center,
-                    maxLines: 2,
+                    maxLines: 1, // 2에서 1로 줄임
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 11, // 13에서 11로 줄임
                       fontWeight: FontWeight.bold,
                       color: isSelected ? Colors.white : Colors.grey.shade800,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2), // 4에서 2로 줄임
                   Text(
                     category['subtitle'] as String,
                     textAlign: TextAlign.center,
-                    maxLines: 2,
+                    maxLines: 1, // 2에서 1로 줄임
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 9, // 11에서 9로 줄임
                       color: isSelected 
                           ? Colors.white.withOpacity(0.9) 
                           : Colors.grey.shade600,
@@ -1288,7 +1288,7 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
           ),
         );
       },
-    );
+        );
       },
     );
   }

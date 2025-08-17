@@ -104,9 +104,9 @@ class AppState extends ChangeNotifier {
   };
   
   Map<String, int> _presetSettings = {
-    'lower_jaw': 100,    // 100~500샷
-    'middle_jaw': 100,
-    'cheek': 100,
+    'lower_jaw': 300,    // 100~500샷 (기본값 300)
+    'middle_jaw': 300,
+    'cheek': 300,
     'front_protusion': 3,  // 1~5%
     'back_slit': 3,        // 1~5%
   };

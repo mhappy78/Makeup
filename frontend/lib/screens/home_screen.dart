@@ -211,7 +211,7 @@ class _HomeScreenState extends State<HomeScreen>
               
               // 컨트롤 패널
               SizedBox(
-                width: 350,
+                width: 500,
                 child: Container(
                   margin: const EdgeInsets.only(top: 4, right: 16, bottom: 16), // 상단 마진 최소화
                   child: Column(
