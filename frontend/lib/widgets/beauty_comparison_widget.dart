@@ -169,49 +169,6 @@ class BeautyComparisonWidget extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                 ],
-                
-                // 실천 가능한 케어 팁
-                if (comparison['recommendations'] != null && (comparison['recommendations'] as List<String>).isNotEmpty) ...[
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.green.shade50,
-                          Colors.blue.shade50,
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.green.shade200),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.lightbulb,
-                              size: 20,
-                              color: Colors.green.shade700,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '💡 실천 가능한 케어 팁',
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green.shade700,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        _buildRichCareTipText(context, (comparison['recommendations'] as List<String>)[0]),
-                      ],
-                    ),
-                  ),
-                ],
               ],
             ),
           ),

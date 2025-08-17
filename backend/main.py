@@ -860,6 +860,18 @@ async def get_gpt_beauty_analysis(before_analysis: Dict[str, Any], after_analysi
 **🔸 아쉬운 점:**
 - [항목명]: [부족한 부분과 의미]
 
+---
+
+위 분석에서 "아쉬운 점"에 언급된 항목들에 대해서만 구체적인 개선 방법을 제시해주세요:
+
+🎯 **[아쉬운 항목명]** 개선
+💪 **운동/습관**: 매일 [시간]분 [구체적 방법]
+추천 사이트: [실제 사용 가능한 사이트명](https://www.실제URL.com)
+
+🏥 **전문 관리**: [시술명] (예상비용: [금액])
+효과: [구체적 효과 설명]
+추천 병원: [실제 병원명](https://www.실제병원URL.com)
+
 친근하고 전문적인 톤으로 작성해주세요.
 """
 
@@ -876,11 +888,29 @@ async def get_gpt_beauty_analysis(before_analysis: Dict[str, Any], after_analysi
 
         analysis_text = response.choices[0].message.content or "분석 중 오류가 발생했습니다."
 
-        # 재진단에서는 실천 가능한 케어 팁을 제공하지 않음
+        # 분석 텍스트와 실천 방법 분리
         recommendations = []
+        clean_analysis_text = analysis_text
+        
+        first_separator_index = analysis_text.find('---')
+        
+        if first_separator_index != -1:
+            # --- 이전 부분만 분석 텍스트로 사용
+            clean_analysis_text = analysis_text[:first_separator_index].strip()
+            
+            # --- 이후 부분을 실천 방법으로 사용
+            practice_section = analysis_text[first_separator_index + 3:].strip()
+            
+            # 실제 내용이 있으면 전체를 하나의 추천사항으로 추가
+            if practice_section and len(practice_section) > 10:
+                recommendations = [practice_section]
+            
+            print(f"🔍 재진단 분석 텍스트 길이: {len(clean_analysis_text)}자")
+            print(f"🔍 재진단 recommendations 길이: {len(recommendations[0]) if recommendations else 0}자")
+            print(f"🔍 재진단 recommendations 샘플: {recommendations[0][:100] if recommendations else 'None'}...")
 
         return {
-            "analysis": analysis_text,
+            "analysis": clean_analysis_text,
             "recommendations": recommendations
         }
 

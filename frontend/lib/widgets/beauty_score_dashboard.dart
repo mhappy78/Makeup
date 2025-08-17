@@ -172,7 +172,10 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
         _buildInteractiveDetailedAnalysis(context, analysis),
         const SizedBox(height: 20),
         
-        // 실천 가능한 케어 팁 (세부 분석 다음에 위치)
+        // 재분석 실천 가능한 케어 팁 (세부 분석 바로 아래)
+        _buildReAnalysisCareTips(context, analysis),
+        
+        // 초기 분석 실천 가능한 케어 팁 (세부 분석 다음에 위치)
         _buildActionableCareTips(context, analysis),
         const SizedBox(height: 20),
         
@@ -2625,6 +2628,102 @@ extension on _BeautyScoreDashboardState {
                 Expanded(
                   child: Text(
                     '꾸준한 관리가 자연스러운 아름다움의 비결이에요',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.green.shade700,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 재분석 실천 가능한 케어 팁 (세부 분석 바로 아래)
+  Widget _buildReAnalysisCareTips(BuildContext context, Map<String, dynamic> analysis) {
+    final comparison = analysis['comparison'] as Map<String, dynamic>?;
+    final recommendations = comparison?['recommendations'] as List<String>? ?? [];
+    
+    // 재분석 추천사항이 없거나 재분석이 아니면 표시하지 않음
+    if (recommendations.isEmpty || comparison?['isReAnalysis'] != true) {
+      return const SizedBox.shrink();
+    }
+    
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.green.shade50, Colors.blue.shade50],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.green.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade100,
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 헤더
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.lightbulb,
+                  color: Colors.green.shade700,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                '💡 맞춤형 케어 팁',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green.shade700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          // 케어 팁 내용
+          _buildRichCareTipText(context, recommendations[0]),
+          
+          // 푸터 메시지
+          Container(
+            margin: const EdgeInsets.only(top: 16),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.green.shade100.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.psychology,
+                  color: Colors.green.shade600,
+                  size: 16,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '변화된 결과를 바탕으로 한 맞춤형 관리법이에요',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Colors.green.shade700,
                       fontStyle: FontStyle.italic,
