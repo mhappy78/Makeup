@@ -423,48 +423,41 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
   }
 
   List<String> _generateRecommendations(Map<String, dynamic> analysis) {
-    final List<String> recommendations = [];
+    final List<String> careTips = [];
     final overallScore = analysis['overallScore']?.toDouble() ?? 75.0;
     
-    // 세로 점수 관련 제안
-    final verticalScore = analysis['verticalScore']?['score']?.toDouble() ?? 75.0;
-    if (verticalScore < 80) {
-      recommendations.add('세로 비율 개선을 위해 하이라이터와 쉐딩으로 얼굴 윤곽을 보정해보세요.');
+    // 실천 가능한 케어 팁 생성 (AI 분석과 다른 내용)
+    
+    // 기본 케어 팁 1: 수분 관리
+    careTips.add('충분한 수분 섭취 (하루 2L 이상)와 보습 크림 사용으로 피부 탄력 유지하기');
+    
+    // 점수에 따른 맞춤 케어 팁 2
+    if (overallScore >= 85) {
+      careTips.add('현재 상태 유지를 위한 정기적인 페이셜 마사지와 자외선 차단제 필수 사용');
+    } else if (overallScore >= 70) {
+      careTips.add('안면 근육 운동(입술 운동, 볼 마사지)으로 혈액 순환 개선하기');
+    } else {
+      careTips.add('균형 잡힌 식단과 충분한 수면(7-8시간)으로 피부 재생 도움');
     }
     
-    // 가로 점수 관련 제안
-    final horizontalScore = analysis['horizontalScore']?['score']?.toDouble() ?? 75.0;
-    if (horizontalScore < 80) {
-      recommendations.add('가로 비율 밸런스를 위해 눈썹 모양과 아이라인으로 시선을 조정해보세요.');
+    // 케어 팁 3: 생활습관 개선
+    final verticalPercentages = analysis['verticalScore']?['percentages'] as List<double>?;
+    final gonialAngle = analysis['jawScore']?['gonialAngle']?.toDouble();
+    
+    if (gonialAngle != null && gonialAngle > 120) {
+      careTips.add('턱 마사지와 목 스트레칭으로 턱선 정리하고 올바른 자세 유지하기');
+    } else if (verticalPercentages != null) {
+      bool hasImbalance = verticalPercentages.any((pct) => (pct - 20.0).abs() > 3.0);
+      if (hasImbalance) {
+        careTips.add('얼굴 요가와 림프 마사지로 얼굴 근육 균형 개선하기');
+      } else {
+        careTips.add('주 2-3회 얼굴 팩과 정기적인 각질 제거로 피부 컨디션 관리하기');
+      }
+    } else {
+      careTips.add('스트레스 관리와 금연, 금주로 피부 건강 전반적으로 개선하기');
     }
     
-    // 하관 점수 관련 제안
-    final lowerFaceScore = analysis['lowerFaceScore']?['score']?.toDouble() ?? 75.0;
-    if (lowerFaceScore < 80) {
-      recommendations.add('하관 라인 개선을 위해 립라이너와 턱선 컨투어링을 활용해보세요.');
-    }
-    
-    // 대칭성 관련 제안
-    final symmetry = analysis['symmetry']?.toDouble() ?? 75.0;
-    if (symmetry < 75) {
-      recommendations.add('컨투어링으로 얼굴 대칭감을 보완할 수 있어요.');
-    }
-    
-    // 전체적인 제안
-    if (overallScore < 70) {
-      recommendations.add('전체적인 얼굴 밸런스 개선을 위한 메이크업 테크닉을 연습해보세요.');
-    }
-    
-    // 일반적인 제안들
-    if (recommendations.length < 4) {
-      recommendations.addAll([
-        '수분 관리로 피부 탄력과 광택을 개선해보세요.',
-        '자신의 얼굴형에 맞는 헤어스타일로 전체적인 밸런스를 맞춰보세요.',
-        '정기적인 페이셜 마사지로 얼굴 라인을 더욱 선명하게 만들어보세요.',
-      ]);
-    }
-    
-    return recommendations.take(4).toList();
+    return careTips.take(3).toList(); // 정확히 3개 반환
   }
 
   String _formatTimestamp(DateTime timestamp) {

@@ -916,27 +916,23 @@ async def get_gpt_initial_beauty_analysis(beauty_analysis: Dict[str, Any]) -> Di
     try:
         # 시스템 프롬프트 정의
         system_prompt = """
-당신은 뷰티 분석 전문가입니다. 얼굴 측정 데이터를 바탕으로 정확하고 전문적인 분석을 제공해야 합니다.
+당신은 친근한 뷰티 분석 전문가입니다. 사용자가 자신의 얼굴에 대해 정확히 알고 더 아름다워질 수 있도록 도와주세요.
 
-필수 준수사항:
-1. **구체적 수치 활용**: 제공된 정확한 퍼센트와 각도 수치를 반드시 분석에 포함
-2. **전문 용어 사용**: 뷰티/성형/피부관리 분야의 정확한 전문 용어 사용
-3. **과학적 근거**: 황금비율, 얼굴 해부학적 기준에 기반한 분석
-4. **구체적 지침**: 추상적 표현보다는 실행 가능한 구체적 조언
+핵심 목표:
+1. **강점 인식**: 이미 매력적인 부분을 구체적으로 알려주기
+2. **개선 포인트 명확화**: 어떤 부분이 왜 개선이 필요한지 쉽게 설명
+3. **희망적 미래**: 개선 후 얼마나 아름다워질 수 있는지 격려
 
-금지사항:
-- "기본기", "뜬구름잡는", "두리뭉실한" 등 비전문적 표현 금지
-- "고유한 매력", "특별한 아름다움" 등 진부한 표현 금지
-- 구체적 수치 없는 추상적 설명 금지
+작성 가이드:
+- 중학생도 이해할 수 있는 쉬운 말로 설명
+- 구체적 수치를 포함하되 그 의미를 친근하게 해석
+- 1, 2, 3번으로 명확히 구분하여 가독성 확보  
+- 격려와 희망을 주는 톤으로 작성
 
-분석 기준:
-- 가로 황금비율: 5구간 균등분할 (이상적 20% 각 구간)
-- 세로 대칭성: 상하 2구간 분할 (이상적 50:50 비율)
-- 하관 조화: 인중-턱 2구간 분할 (이상적 33:67 비율)
-- 전체 대칭성: 좌우 대칭도 측정
-- 턱 곡률: 하악각(90-120°), 턱목각(105-115°) 측정
-
-응답은 전문적이고 구체적으로, 측정 수치를 반드시 포함하여 작성하세요.
+표현 스타일:
+- "~해요", "~이에요" 등 친근한 존댓말 사용
+- 전문용어보다는 일상 언어 우선
+- 숫자 + 의미 설명의 조합으로 설득력 확보
 """
 
         # 안전한 점수 추출 함수
@@ -1036,39 +1032,61 @@ async def get_gpt_initial_beauty_analysis(beauty_analysis: Dict[str, Any]) -> Di
                 analysis_text += f" (하악각 {gonial:.1f}°, 턱목각 {cervico:.1f}°)"
             detailed_analysis.append(analysis_text)
         
+        # 개선 포인트만 추출 (이상적 범위에서 벗어난 특징적인 부분)
+        improvement_points = []
+        
+        # 가로 황금비율 체크 (20%에서 3% 이상 벗어난 경우)
+        if 'percentages' in vertical_info and vertical_info['percentages']:
+            percentages = vertical_info['percentages']
+            sections = ['왼쪽바깥', '왼쪽눈', '미간', '오른쪽눈', '오른쪽바깥']
+            for i, pct in enumerate(percentages[:5]):
+                diff = abs(pct - 20.0)
+                if diff > 3.0:
+                    improvement_points.append(f"{sections[i]} {pct:.1f}% (이상 20%)")
+        
+        # 세로 대칭성 체크 (50:50에서 3% 이상 벗어난 경우)
+        if 'upperPercentage' in horizontal_info and 'lowerPercentage' in horizontal_info:
+            upper = horizontal_info['upperPercentage']
+            lower = horizontal_info['lowerPercentage']
+            if abs(upper - 50.0) > 3.0:
+                improvement_points.append(f"상안면 {upper:.1f}% (이상 50%)")
+        
+        # 하관 조화 체크 (33:67에서 벗어난 경우)
+        if 'upperPercentage' in lowerface_info and 'lowerPercentage' in lowerface_info:
+            upper = lowerface_info['upperPercentage']
+            lower = lowerface_info['lowerPercentage']
+            if abs(upper - 33.0) > 3.0:
+                improvement_points.append(f"인중 {upper:.1f}% (이상 33%)")
+        
+        # 턱 곡률 체크 (90-120도 범위 벗어난 경우)
+        if 'gonialAngle' in jaw_info:
+            gonial = jaw_info['gonialAngle']
+            if gonial < 90 or gonial > 120:
+                improvement_points.append(f"하악각 {gonial:.1f}° (이상 90-120°)")
+
         user_prompt = f"""
-얼굴 비율 정밀 측정 결과:
+측정 결과: 종합 {main_scores['overall']:.1f}점
 
-【종합 뷰티 점수】 {main_scores['overall']:.1f}점
+강점 항목: {', '.join(strengths) if strengths else '균형 잡힌 전체적 비율'}
+개선 항목: {', '.join(improvement_areas) if improvement_areas else '없음'}
 
-【정량적 측정 데이터】
-{chr(10).join(detailed_analysis) if detailed_analysis else '- 전체적인 얼굴 조화도 분석 완료'}
+특징적 측정값:
+{chr(10).join(f"- {point}" for point in improvement_points) if improvement_points else "- 전체적으로 이상적인 비율 유지"}
 
-【우수 영역 (80점 이상)】
-{', '.join(strengths) if strengths else '균형잡힌 전체 비율'}
+다음 3개 항목으로 나눠서 분석해주세요 (각 항목당 1-2줄):
 
-【개선 가능 영역 (70점 미만)】
-{', '.join(improvement_areas) if improvement_areas else '대부분 이상적 수준'}
+1. 🌟 내 얼굴의 좋은 점
+측정 결과 중 이상적인 범위에 있거나 매력적인 부분을 구체적 수치와 함께 설명해주세요. 
+(예: "미간 비율이 19.2%로 황금비율 20%에 매우 가까워서 균형잡힌 이마를 가지고 있어요")
 
-다음 형식으로 전문적 분석을 제공하세요:
+2. 📊 개선이 필요한 부분  
+이상적 범위에서 벗어난 부분을 쉽게 설명하고, 그것이 왜 중요한지 알려주세요.
+(예: "하악각이 133°로 이상적 범위 90-120°보다 커서 턱선이 부드러운 편이에요")
 
-1. **정밀 비율 분석** (3-4문장)
-   - 측정된 구체적 퍼센트 수치를 활용한 분석
-   - 황금비율(1:1.618) 및 이상적 얼굴 비율과의 비교
-   - V라인, 턱선, 이마-눈-코-입 비율 등 해부학적 기준 언급
-   
-2. **얼굴형 특성 및 윤곽 분석** (2-3문장)
-   - 측정 결과에 기반한 구체적 얼굴형 분류 (오벌, 하트형, 스퀘어 등)
-   - 높은 점수 영역의 mm단위 또는 각도 수치 활용
-   - 리프팅 효과, 윤곽 라인, 대칭성 등 전문 용어 사용
-   
-3. **맞춤형 뷰티 솔루션** (구체적 지침)
-   - 측정 데이터 기반 컨투어링, 하이라이팅 포인트 제시
-   - 시술/관리 추천 시 구체적 부위와 방법 명시
-   - 헤어라인, 아이브로우, 립라인 등 세부 가이드라인
+3. 💡 개선 후 기대효과
+개선되면 어떤 매력적인 변화가 있을지 희망적으로 설명해주세요.
 
-**분석 기준**: 제공된 모든 수치를 반드시 활용하여 과학적이고 전문적인 분석을 제공하세요.
-측정값이 이상적 범위에서 벗어난 경우도 정확한 수치와 함께 개선 방향을 제시하세요.
+중요: 중학생도 이해할 수 있게 쉽게 설명하고, 구체적 수치를 포함해서 설득력 있게 작성하세요.
 """
 
         # GPT-4o mini 호출

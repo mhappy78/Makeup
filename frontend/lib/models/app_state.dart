@@ -1029,10 +1029,10 @@ class AppState extends ChangeNotifier {
         'horizontalScore': horizontalAnalysis, 
         'lowerFaceScore': lowerFaceAnalysis,
         'symmetry': facialSymmetry,
-        'eyes': eyeAnalysis,
-        'nose': noseAnalysis,
-        'lips': lipAnalysis,
-        'jawline': jawlineAnalysis,
+        'eyeScore': eyeAnalysis,
+        'noseScore': noseAnalysis,
+        'lipScore': lipAnalysis,
+        'jawScore': jawlineAnalysis,
         'analysisTimestamp': DateTime.now().toIso8601String(),
       };
 
