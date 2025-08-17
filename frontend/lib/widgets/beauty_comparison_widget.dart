@@ -16,7 +16,7 @@ class BeautyComparisonWidget extends StatelessWidget {
         if (appState.isGptAnalyzing) {
           return Container(
             margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -33,6 +33,7 @@ class BeautyComparisonWidget extends StatelessWidget {
               ),
             ),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -48,11 +49,15 @@ class BeautyComparisonWidget extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    Text(
-                      '🤖 AI 전문가가 재진단 결과를 분석 중입니다...',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: Theme.of(context).colorScheme.primary,
+                    Flexible(
+                      child: Text(
+                        '🤖 AI 전문가가 재진단 결과를 분석 중입니다...',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 2,
                       ),
                     ),
                   ],
@@ -61,9 +66,11 @@ class BeautyComparisonWidget extends StatelessWidget {
                 Text(
                   '변화된 뷰티 점수를 바탕으로 맞춤형 분석과 추천사항을 준비하고 있어요.',
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Colors.grey.shade600,
                   ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 3,
                 ),
               ],
             ),
