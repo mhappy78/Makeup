@@ -1040,6 +1040,11 @@ class AppState extends ChangeNotifier {
       if (_originalBeautyAnalysis == null) {
         _originalBeautyAnalysis = Map<String, dynamic>.from(_beautyAnalysis);
       }
+      
+      // 기초 뷰티스코어 분석에 GPT 분석 추가 (재진단이 아닌 경우에만)
+      if (!_isReAnalyzing) {
+        _performInitialGptAnalysis();
+      }
     } catch (e) {
       // 오류 발생 시 기본값 설정
       _beautyAnalysis = {
@@ -1544,6 +1549,41 @@ class AppState extends ChangeNotifier {
   }
 
   // GPT 분석 실행 (재진단 완료 시 호출)
+  // 기초 뷰티스코어에 대한 GPT 분석 수행
+  Future<void> _performInitialGptAnalysis() async {
+    if (_beautyAnalysis.isEmpty) return;
+    
+    try {
+      print('기초 뷰티스코어 GPT 분석 시작');
+      _isGptAnalyzing = true;
+      notifyListeners(); // GPT 분석 시작 알림
+      
+      final apiService = ApiService();
+      
+      // 기초 뷰티스코어에 대한 단일 분석 요청
+      final analysisResult = await apiService.analyzeInitialBeautyScore(_beautyAnalysis);
+      
+      // GPT 분석 결과를 뷰티 분석에 추가
+      _beautyAnalysis['gptAnalysis'] = {
+        'analysisText': analysisResult.analysisText,
+        'recommendations': analysisResult.recommendations,
+        'strengths': analysisResult.strengths,
+        'improvementAreas': analysisResult.improvementAreas,
+        'isInitialAnalysis': true,
+      };
+      
+      print('기초 뷰티스코어 GPT 분석 완료');
+      notifyListeners(); // GPT 분석 완료 즉시 UI 업데이트
+      
+    } catch (e) {
+      print('기초 뷰티스코어 GPT 분석 실패: $e');
+      // 실패해도 기본 분석은 유지
+    } finally {
+      _isGptAnalyzing = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> _performGptAnalysis() async {
     if (_originalBeautyAnalysis == null || _beautyAnalysis.isEmpty) return;
     

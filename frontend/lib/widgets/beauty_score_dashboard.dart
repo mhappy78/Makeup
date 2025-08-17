@@ -157,23 +157,22 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 종합 점수 카드
-        _buildOverallScoreCard(context, analysis),
-        const SizedBox(height: 20),
+        // 종합 뷰티 분석 (중복 내용 통합)
+        _buildGptAnalysisWidget(context, analysis),
         
-        // 세부 분석 그리드
-        _buildDetailedAnalysis(context, analysis),
-        const SizedBox(height: 20),
-        
-        // 뷰티 점수 비교 결과 (재진단 시 표시)
+        // 비교 결과 (재진단 시 표시)
         const BeautyComparisonWidget(),
         
-        // 개선 제안
-        _buildRecommendations(context, analysis),
+        // 인터랙티브 세부 분석
+        _buildInteractiveDetailedAnalysis(context, analysis),
         const SizedBox(height: 20),
         
-        // 분석 날짜 및 정보
-        _buildAnalysisInfo(context, analysis),
+        // 실천 가능한 케어 팁 (세부 분석 다음에 위치)
+        _buildActionableCareTips(context, analysis),
+        const SizedBox(height: 20),
+        
+        // 진행 상황 추적
+        _buildProgressTracking(context, analysis),
       ],
     );
   }
@@ -547,7 +546,7 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
               children: [
                 _buildMetricChart(
                   context,
-                  '📐 얼굴 가로 비율',
+                  '🎭 가로 황금비율',
                   analysis['verticalScore']?['percentages']?.cast<double>() ?? [20.0, 20.0, 20.0, 20.0, 20.0],
                   ['왼쪽바깥', '왼쪽눈', '미간', '오른쪽눈', '오른쪽바깥'],
                   List.filled(5, 20.0), // 평균값
@@ -556,12 +555,12 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
                 const SizedBox(height: 24),
                 _buildMetricChart(
                   context,
-                  '📏 얼굴 세로 밸런스',
+                  '⚖️ 세로 대칭성',
                   [
                     analysis['horizontalScore']?['upperPercentage']?.toDouble() ?? 50.0,
                     analysis['horizontalScore']?['lowerPercentage']?.toDouble() ?? 50.0,
                   ],
-                  ['눈~코', '인중~턱'],
+                  ['눈~코', '코~턱'],
                   [50.0, 50.0], // 평균값
                   analysis['horizontalScore']?['score']?.toDouble() ?? 75.0,
                 ),
@@ -573,10 +572,12 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
                     analysis['lowerFaceScore']?['upperPercentage']?.toDouble() ?? 33.0,
                     analysis['lowerFaceScore']?['lowerPercentage']?.toDouble() ?? 67.0,
                   ],
-                  ['인중', '입술~턱'],
+                  ['인중', '입~턱'],
                   [33.0, 67.0], // 평균값
                   analysis['lowerFaceScore']?['score']?.toDouble() ?? 75.0,
                 ),
+                const SizedBox(height: 24),
+                _buildJawAngleAnalysis(context, analysis),
               ],
             ),
           ),
@@ -611,12 +612,28 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade800,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _getMetricDescription(title),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               Container(
@@ -636,7 +653,7 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           SizedBox(
             height: 200,
             child: _buildFlChart(actualValues, idealValues, labels),
@@ -649,6 +666,8 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
               _buildLegendItem('실제값', Colors.indigo.shade400),
             ],
           ),
+          const SizedBox(height: 12),
+          _buildMetricDetailAnalysis(title, actualValues, labels, idealValues),
         ],
       ),
     );
@@ -715,17 +734,29 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
       },
     ];
 
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 0.9, // 높이를 더 크게 하여 오버플로우 방지
-      ),
-      itemCount: categories.length,
-      itemBuilder: (context, index) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // 화면 크기에 따라 동적으로 childAspectRatio 조정
+        double aspectRatio;
+        if (constraints.maxWidth > 600) {
+          // 넓은 화면: 더 높은 카드 필요
+          aspectRatio = 0.75;
+        } else {
+          // 좁은 화면: 기본 비율
+          aspectRatio = 0.85;
+        }
+        
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: aspectRatio,
+          ),
+          itemCount: categories.length,
+          itemBuilder: (context, index) {
         final category = categories[index];
         final isSelected = _selectedCategory == category['id'];
         final score = category['score'] as double;
@@ -799,8 +830,10 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
                   Text(
                     category['title'] as String,
                     textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 13,
                       fontWeight: FontWeight.bold,
                       color: isSelected ? Colors.white : Colors.grey.shade800,
                     ),
@@ -809,8 +842,10 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
                   Text(
                     category['subtitle'] as String,
                     textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       color: isSelected 
                           ? Colors.white.withOpacity(0.9) 
                           : Colors.grey.shade600,
@@ -821,6 +856,8 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
             ),
           ),
         );
+      },
+    );
       },
     );
   }
@@ -944,6 +981,345 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
         ),
       ),
     );
+  }
+
+  /// 각 메트릭의 의미를 설명하는 메서드
+  String _getMetricDescription(String title) {
+    switch (title) {
+      case '🎭 가로 황금비율':
+        return '얼굴을 가로로 5등분했을 때의 균형도를 분석합니다. 이상적인 비율은 각 구간이 20%씩 균등한 상태입니다.';
+      case '⚖️ 세로 대칭성':
+        return '얼굴을 세로로 2등분(눈~코, 코~턱)했을 때의 균형도를 측정합니다. 이상적인 비율은 50:50입니다.';
+      case '🎭 하관 조화도':
+        return '하관(인중~턱) 영역의 조화를 분석합니다. 인중 33%, 입술~턱 67%가 이상적인 황금비율입니다.';
+      default:
+        return '얼굴의 전반적인 비율과 균형도를 측정합니다.';
+    }
+  }
+
+  /// 메트릭별 상세 분석 정보를 제공하는 위젯
+  Widget _buildMetricDetailAnalysis(String title, List<double> actualValues, List<String> labels, List<double> idealValues) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.blue.shade200, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.analytics, size: 16, color: Colors.blue.shade600),
+              const SizedBox(width: 6),
+              Text(
+                '상세 분석',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.blue.shade700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...List.generate(actualValues.length, (index) {
+            final actual = actualValues[index];
+            final ideal = idealValues[index];
+            final label = labels[index];
+            final difference = actual - ideal;
+            final isGood = difference.abs() <= 2.0; // 2% 이내면 좋은 수치
+            
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      '${actual.toStringAsFixed(1)}%',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: isGood ? Colors.green.shade600 : Colors.orange.shade600,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      _getAnalysisText(difference, title, label),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  /// 분석 결과에 따른 설명 텍스트
+  String _getAnalysisText(double difference, String title, String label) {
+    if (difference.abs() <= 2.0) {
+      return '✅ 이상적';
+    } else if (difference > 0) {
+      return '📈 ${difference.toStringAsFixed(1)}% 높음';
+    } else {
+      return '📉 ${difference.abs().toStringAsFixed(1)}% 낮음';
+    }
+  }
+
+  /// 턱 각도 분석 위젯 (각도 정보 포함)
+  Widget _buildJawAngleAnalysis(BuildContext context, Map<String, dynamic> analysis) {
+    // 디버깅: jawScore 데이터 구조 확인
+    print('🔍 jawScore 데이터 구조: ${analysis['jawScore']}');
+    
+    final jawScore = analysis['jawScore']?['score']?.toDouble() ?? 75.0;
+    final gonialAngle = analysis['jawScore']?['gonialAngle']?.toDouble();
+    final cervicoMentalAngle = analysis['jawScore']?['cervicoMentalAngle']?.toDouble();
+    
+    // 디버깅: 추출된 값들 확인
+    print('🔍 턱 곡률 값들: jawScore=$jawScore, gonialAngle=$gonialAngle, cervicoMentalAngle=$cervicoMentalAngle');
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.grey.shade50, Colors.white],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '📐 턱 곡률 분석',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '하악각과 턱목각을 측정하여 얼굴 라인의 리프팅 효과와 곡률을 분석합니다.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _getScoreColor(jawScore).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '${jawScore.round()}점',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: _getScoreColor(jawScore),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          if (gonialAngle != null && cervicoMentalAngle != null) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: _buildAngleCard(
+                    '하악각 (Gonial Angle)',
+                    gonialAngle,
+                    90.0, 
+                    120.0,
+                    '턱선의 각진 정도를 나타냅니다.\n90-120°가 이상적 범위입니다.',
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildAngleCard(
+                    '턱목각 (Cervico-Mental)',
+                    cervicoMentalAngle,
+                    105.0,
+                    115.0,
+                    '턱과 목의 경계선 각도입니다.\n105-115°가 이상적 범위입니다.',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.amber.shade200, width: 1),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.lightbulb_outline, size: 16, color: Colors.amber.shade600),
+                      const SizedBox(width: 6),
+                      Text(
+                        '턱 곡률 해석',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.amber.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _getJawAnalysisText(gonialAngle, cervicoMentalAngle),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade700,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '턱 각도 측정 데이터를 불러오는 중입니다...',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// 각도 카드 위젯
+  Widget _buildAngleCard(String title, double angle, double minIdeal, double maxIdeal, String description) {
+    final isIdeal = angle >= minIdeal && angle <= maxIdeal;
+    final color = isIdeal ? Colors.green : Colors.orange;
+    
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.shade200, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: color.shade700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Text(
+                '${angle.toStringAsFixed(1)}°',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: color.shade800,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                isIdeal ? Icons.check_circle : Icons.info,
+                size: 16,
+                color: color.shade600,
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            description,
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey.shade600,
+              height: 1.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 턱 분석 텍스트 생성
+  String _getJawAnalysisText(double gonialAngle, double cervicoMentalAngle) {
+    String gonialText = '';
+    String cervicoText = '';
+    
+    if (gonialAngle <= 90) {
+      gonialText = '매우 각진 턱선으로 강인한 인상을 줍니다.';
+    } else if (gonialAngle <= 120) {
+      gonialText = '이상적인 턱선 각도로 균형잡힌 얼굴형입니다.';
+    } else if (gonialAngle <= 140) {
+      gonialText = '부드러운 턱선으로 온화한 인상을 줍니다.';
+    } else {
+      gonialText = '매우 둥근 턱선으로 부드러운 인상이 강합니다.';
+    }
+    
+    if (cervicoMentalAngle >= 105 && cervicoMentalAngle <= 115) {
+      cervicoText = '턱과 목의 경계가 뚜렷하여 리프팅 효과가 뛰어납니다.';
+    } else if (cervicoMentalAngle < 105) {
+      cervicoText = '턱목 각도가 예각으로 갸름한 얼굴형 특징을 보입니다.';
+    } else {
+      cervicoText = '턱목 경계가 부드러워 자연스러운 곡선을 형성합니다.';
+    }
+    
+    return '$gonialText $cervicoText';
   }
 
   Color _getScoreColor(double score) {
@@ -1269,4 +1645,748 @@ class _MetricChartPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+extension on _BeautyScoreDashboardState {
+  /// GPT 기초 뷰티스코어 분석 결과 위젯
+  Widget _buildGptAnalysisWidget(BuildContext context, Map<String, dynamic> analysis) {
+    final gptAnalysis = analysis['gptAnalysis'] as Map<String, dynamic>?;
+    final hasComparison = analysis.containsKey('comparison');
+    
+    // 재진단 비교가 있으면 GPT 기초 분석 대신 비교 결과만 표시
+    if (hasComparison) {
+      return const SizedBox.shrink();
+    }
+    
+    // GPT 분석이 없으면 표시하지 않음
+    if (gptAnalysis == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Consumer<AppState>(
+      builder: (context, appState, child) {
+        // GPT 분석 중일 때 로딩 표시
+        if (appState.isGptAnalyzing) {
+          return Container(
+            margin: const EdgeInsets.only(bottom: 20),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.indigo.shade50,
+                  Colors.purple.shade50,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.indigo.shade100),
+            ),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.indigo.shade600),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    '🤖 AI 전문가가 맞춤형 뷰티 분석을 진행 중입니다...',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.indigo.shade700,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Column(
+          children: [
+            // 종합 뷰티 점수 카드
+            _buildOverallScoreCard(context, analysis),
+            const SizedBox(height: 20),
+            
+            // AI 전문가 분석
+            Container(
+              margin: const EdgeInsets.only(bottom: 20),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Colors.indigo.shade50,
+                Colors.purple.shade50,
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.indigo.shade100),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.indigo.shade100.withOpacity(0.3),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 헤더
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.indigo.shade400, Colors.purple.shade500],
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.psychology,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      '🤖 AI 전문가 맞춤 분석',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.indigo.shade700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // GPT 분석 텍스트 (핵심 콘텐츠)
+              if (gptAnalysis['analysisText'] != null && 
+                  (gptAnalysis['analysisText'] as String).isNotEmpty) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.indigo.shade100),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.shade100,
+                        blurRadius: 5,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    gptAnalysis['analysisText'] as String,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      height: 1.6,
+                      color: Colors.grey.shade800,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+              ],
+              
+              // 케어팁은 별도 섹션으로 분리됨
+            ],
+          ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+
+  // 🎯 새로운 UI/UX 개선 컴포넌트들
+
+  /// 1단계: 개인화된 환영 메시지 - 감정적 연결
+  Widget _buildPersonalizedWelcome(BuildContext context, Map<String, dynamic> analysis) {
+    final score = analysis['overallScore']?.toDouble() ?? 75.0;
+    final gptAnalysis = analysis['gptAnalysis'] as Map<String, dynamic>?;
+    
+    // 점수에 따른 개인화된 메시지
+    String welcomeMessage;
+    String motivationalText;
+    IconData welcomeIcon;
+    List<Color> gradientColors;
+    
+    if (score >= 85) {
+      welcomeMessage = "✨ 놀라운 결과예요!";
+      motivationalText = "당신은 이미 완벽에 가까운 조화로운 아름다움을 가지고 계시네요";
+      welcomeIcon = Icons.auto_awesome;
+      gradientColors = [Colors.amber.shade100, Colors.orange.shade100];
+    } else if (score >= 75) {
+      welcomeMessage = "🌟 멋진 분석 결과!";
+      motivationalText = "균형잡힌 아름다운 특징들이 돋보이는 결과입니다";
+      welcomeIcon = Icons.favorite;
+      gradientColors = [Colors.pink.shade100, Colors.purple.shade100];
+    } else if (score >= 65) {
+      welcomeMessage = "💫 좋은 기본기!";
+      motivationalText = "고유한 매력을 가진 특별한 아름다움을 발견했어요";
+      welcomeIcon = Icons.star;
+      gradientColors = [Colors.blue.shade100, Colors.indigo.shade100];
+    } else {
+      welcomeMessage = "🎯 성장 가능성!";
+      motivationalText = "모든 사람은 고유한 아름다움을 가지고 있어요. 함께 발견해볼까요?";
+      welcomeIcon = Icons.trending_up;
+      gradientColors = [Colors.green.shade100, Colors.teal.shade100];
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: gradientColors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: gradientColors[0].withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.9),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(
+              welcomeIcon,
+              size: 28,
+              color: gradientColors[1].withOpacity(0.8),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  welcomeMessage,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  motivationalText,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey.shade700,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 2단계: 스토리텔링 방식의 종합 점수 카드
+  Widget _buildStorytellingScoreCard(BuildContext context, Map<String, dynamic> analysis) {
+    final score = analysis['overallScore']?.toDouble() ?? 75.0;
+    
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.white,
+            Colors.purple.shade50.withOpacity(0.3),
+          ],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.purple.shade100, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.purple.shade100.withOpacity(0.5),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // 헤더 섹션
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.purple.shade600, Colors.indigo.shade600],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(24),
+                topRight: Radius.circular(24),
+              ),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  '🎯 종합 뷰티 분석',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'AI 기반 전문 얼굴 분석 결과',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.white.withOpacity(0.9),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // 점수 섹션
+          Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              children: [
+                // 중앙 원형 점수 표시
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    SizedBox(
+                      width: 150,
+                      height: 150,
+                      child: CircularProgressIndicator(
+                        value: score / 100,
+                        strokeWidth: 8,
+                        backgroundColor: Colors.grey.shade200,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          _getScoreColor(score),
+                        ),
+                      ),
+                    ),
+                    Column(
+                      children: [
+                        Text(
+                          '${score.round()}',
+                          style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: _getScoreColor(score),
+                          ),
+                        ),
+                        Text(
+                          '점',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            color: _getScoreColor(score),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 24),
+                
+                // 점수 설명
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: _getScoreColor(score).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: _getScoreColor(score).withOpacity(0.3),
+                    ),
+                  ),
+                  child: Text(
+                    _getDetailedScoreDescription(score),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: _getScoreColor(score).withOpacity(0.8),
+                      fontWeight: FontWeight.w600,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 5단계: 인터랙티브 세부 분석 (Expandable)
+  Widget _buildInteractiveDetailedAnalysis(BuildContext context, Map<String, dynamic> analysis) {
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade200),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.shade100,
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.indigo.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.analytics,
+                  color: Colors.indigo.shade600,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                '📊 세부 분석 보기',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          subtitle: Text(
+            '각 항목별 상세 점수와 분석 결과를 확인하세요',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Colors.grey.shade600,
+            ),
+          ),
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: _buildDetailedAnalysis(context, analysis),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 6단계: 실천 가능한 케어 팁 (세부 분석 다음에 위치)
+  Widget _buildActionableCareTips(BuildContext context, Map<String, dynamic> analysis) {
+    final gptAnalysis = analysis['gptAnalysis'] as Map<String, dynamic>?;
+    final recommendations = gptAnalysis?['recommendations'] as List<String>? ?? [];
+    
+    // GPT 추천사항이 없으면 표시하지 않음
+    if (recommendations.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.green.shade50, Colors.teal.shade50],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.green.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.green.shade100.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 헤더
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.green.shade600, Colors.teal.shade600],
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.spa,
+                  color: Colors.white,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '🌿 실천 가능한 케어 팁',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green.shade700,
+                      ),
+                    ),
+                    Text(
+                      'AI가 추천하는 일상 뷰티 관리법',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.green.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 18),
+          
+          // 케어 팁 목록
+          ...recommendations.asMap().entries.map((entry) {
+            final index = entry.key;
+            final tip = entry.value;
+            
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.green.shade100),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.shade100,
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 번호 아이콘
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.green.shade600, Colors.teal.shade600],
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${index + 1}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  
+                  // 케어 팁 텍스트
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          tip,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Colors.grey.shade800,
+                            height: 1.5,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+          
+          // 푸터 메시지
+          Container(
+            margin: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.green.shade100.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.favorite,
+                  color: Colors.green.shade600,
+                  size: 16,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '꾸준한 관리가 자연스러운 아름다움의 비결이에요',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.green.shade700,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 7단계: 진행 상황 추적
+  Widget _buildProgressTracking(BuildContext context, Map<String, dynamic> analysis) {
+    final timestamp = analysis['analysisTimestamp'] as String?;
+    final hasComparison = analysis.containsKey('comparison');
+    
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.timeline,
+                color: Colors.grey.shade600,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '📈 분석 히스토리',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(
+                Icons.access_time,
+                size: 16,
+                color: Colors.grey.shade500,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                timestamp != null 
+                    ? '분석 완료: ${_formatTimestamp(timestamp)}'
+                    : '최초 분석 완료',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ],
+          ),
+          if (hasComparison) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(
+                  Icons.compare_arrows,
+                  size: 16,
+                  color: Colors.green.shade600,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '재진단 비교 분석 완료',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.green.shade600,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // 헬퍼 함수들
+  Color _getScoreColor(double score) {
+    if (score >= 85) return Colors.amber.shade600;
+    if (score >= 75) return Colors.green.shade600;
+    if (score >= 65) return Colors.blue.shade600;
+    return Colors.orange.shade600;
+  }
+
+  String _getDetailedScoreDescription(double score) {
+    if (score >= 85) {
+      return "뛰어난 얼굴 조화도를 보여주는 결과입니다\n자연스럽고 균형잡힌 아름다움이 돋보여요";
+    } else if (score >= 75) {
+      return "매우 좋은 얼굴 균형을 가지고 계시네요\n조화로운 비율이 인상적입니다";
+    } else if (score >= 65) {
+      return "좋은 기본기를 가진 매력적인 얼굴입니다\n고유한 특색이 있는 아름다움이에요";
+    } else {
+      return "모든 사람은 고유한 아름다움을 가지고 있어요\n당신만의 특별한 매력을 발견해보세요";
+    }
+  }
+
+  String _formatTimestamp(String timestamp) {
+    try {
+      final dateTime = DateTime.parse(timestamp);
+      final now = DateTime.now();
+      final difference = now.difference(dateTime);
+      
+      if (difference.inMinutes < 1) {
+        return '방금 전';
+      } else if (difference.inHours < 1) {
+        return '${difference.inMinutes}분 전';
+      } else if (difference.inDays < 1) {
+        return '${difference.inHours}시간 전';
+      } else {
+        return '${difference.inDays}일 전';
+      }
+    } catch (e) {
+      return '방금 전';
+    }
+  }
 }

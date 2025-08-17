@@ -90,6 +90,15 @@ class BeautyComparisonResponse(BaseModel):
     recommendations: List[str]  # GPT 추천사항
     analysis_text: str  # 상세 분석 텍스트
 
+class InitialBeautyAnalysisRequest(BaseModel):
+    beauty_analysis: Dict[str, Any]  # 뷰티 분석 결과
+
+class InitialBeautyAnalysisResponse(BaseModel):
+    analysis_text: str  # 상세 분석 텍스트
+    recommendations: List[str]  # GPT 추천사항
+    strengths: List[str]  # 강점 분석
+    improvement_areas: List[str]  # 개선 영역
+
     
 @app.get("/")
 async def root():
@@ -364,6 +373,27 @@ async def analyze_beauty_comparison(request: BeautyComparisonRequest):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"뷰티 분석 비교 실패: {str(e)}")
 
+@app.post("/analyze-initial-beauty-score")
+async def analyze_initial_beauty_score(request: InitialBeautyAnalysisRequest):
+    """기초 뷰티스코어 GPT 분석"""
+    try:
+        beauty_analysis = request.beauty_analysis
+        
+        # GPT-4o mini를 사용한 기초 뷰티스코어 분석
+        analysis_result = await get_gpt_initial_beauty_analysis(beauty_analysis)
+        
+        return InitialBeautyAnalysisResponse(
+            analysis_text=analysis_result["analysis"],
+            recommendations=analysis_result["recommendations"],
+            strengths=analysis_result["strengths"],
+            improvement_areas=analysis_result["improvement_areas"]
+        )
+        
+    except Exception as e:
+        print(f"기초 뷰티스코어 GPT 분석 에러: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"기초 뷰티스코어 GPT 분석 실패: {str(e)}")
 
 
 def apply_warp(image: np.ndarray, start_x: float, start_y: float, 
@@ -878,6 +908,252 @@ async def get_gpt_beauty_analysis(before_analysis: Dict[str, Any], after_analysi
                 "만족스러운 결과라면 현재 상태를 유지하시고, 추가 개선이 필요하다면 단계적으로 접근하세요.",
                 "정기적인 재진단을 통해 지속적인 개선을 추구하세요."
             ]
+        }
+
+
+async def get_gpt_initial_beauty_analysis(beauty_analysis: Dict[str, Any]) -> Dict[str, Any]:
+    """GPT-4o mini를 사용한 기초 뷰티스코어 분석"""
+    try:
+        # 시스템 프롬프트 정의
+        system_prompt = """
+당신은 뷰티 분석 전문가입니다. 얼굴 측정 데이터를 바탕으로 정확하고 전문적인 분석을 제공해야 합니다.
+
+필수 준수사항:
+1. **구체적 수치 활용**: 제공된 정확한 퍼센트와 각도 수치를 반드시 분석에 포함
+2. **전문 용어 사용**: 뷰티/성형/피부관리 분야의 정확한 전문 용어 사용
+3. **과학적 근거**: 황금비율, 얼굴 해부학적 기준에 기반한 분석
+4. **구체적 지침**: 추상적 표현보다는 실행 가능한 구체적 조언
+
+금지사항:
+- "기본기", "뜬구름잡는", "두리뭉실한" 등 비전문적 표현 금지
+- "고유한 매력", "특별한 아름다움" 등 진부한 표현 금지
+- 구체적 수치 없는 추상적 설명 금지
+
+분석 기준:
+- 가로 황금비율: 5구간 균등분할 (이상적 20% 각 구간)
+- 세로 대칭성: 상하 2구간 분할 (이상적 50:50 비율)
+- 하관 조화: 인중-턱 2구간 분할 (이상적 33:67 비율)
+- 전체 대칭성: 좌우 대칭도 측정
+- 턱 곡률: 하악각(90-120°), 턱목각(105-115°) 측정
+
+응답은 전문적이고 구체적으로, 측정 수치를 반드시 포함하여 작성하세요.
+"""
+
+        # 안전한 점수 추출 함수
+        def get_score(analysis, key, default=0):
+            value = analysis.get(key, default)
+            if isinstance(value, dict):
+                return value.get('score', default)
+            return value if isinstance(value, (int, float)) else default
+
+        # 실제 측정된 주요 얼굴 비율 분석만 포함 (눈/코/입술 제외)
+        main_scores = {
+            'overall': get_score(beauty_analysis, 'overallScore'),
+            'vertical': get_score(beauty_analysis, 'verticalScore'),
+            'horizontal': get_score(beauty_analysis, 'horizontalScore'),
+            'lowerFace': get_score(beauty_analysis, 'lowerFaceScore'),
+            'symmetry': get_score(beauty_analysis, 'symmetry'),
+            'jaw': get_score(beauty_analysis, 'jawScore'),
+        }
+
+        # 강점 항목 (80점 이상)
+        strengths = []
+        # 개선 영역 (70점 미만)
+        improvement_areas = []
+        
+        score_names = {
+            'vertical': '가로 황금비율',
+            'horizontal': '세로 대칭성', 
+            'lowerFace': '하관 조화',
+            'symmetry': '전체 대칭성',
+            'jaw': '턱 곡률'
+        }
+        
+        for key, score in main_scores.items():
+            if key == 'overall':
+                continue
+            name = score_names.get(key, key)
+            if score >= 80:
+                strengths.append(f"{name} ({score:.1f}점)")
+            elif score < 70:
+                improvement_areas.append(f"{name} ({score:.1f}점)")
+
+        # 상세 분석 정보 추출
+        def get_detailed_info(key):
+            value = beauty_analysis.get(key, {})
+            if isinstance(value, dict):
+                return value
+            return {}
+
+        vertical_info = get_detailed_info('verticalScore')
+        horizontal_info = get_detailed_info('horizontalScore') 
+        lowerface_info = get_detailed_info('lowerFaceScore')
+        jaw_info = get_detailed_info('jawScore')
+
+        # 상세 점수와 비율 정보 구성
+        detailed_analysis = []
+        
+        # 가로 황금비율 (5구간 퍼센트)
+        if main_scores['vertical'] >= 10:
+            analysis_text = f"가로 황금비율: {main_scores['vertical']:.1f}점"
+            if 'percentages' in vertical_info and vertical_info['percentages']:
+                percentages = vertical_info['percentages']
+                sections = ['왼쪽바깥', '왼쪽눈', '미간', '오른쪽눈', '오른쪽바깥']
+                percent_details = []
+                for i, pct in enumerate(percentages[:5]):
+                    percent_details.append(f"{sections[i]} {pct:.1f}%")
+                analysis_text += f" (구간별: {', '.join(percent_details)})"
+            detailed_analysis.append(analysis_text)
+        
+        # 세로 대칭성 (2구간 퍼센트)
+        if main_scores['horizontal'] >= 10:
+            analysis_text = f"세로 대칭성: {main_scores['horizontal']:.1f}점"
+            if 'upperPercentage' in horizontal_info and 'lowerPercentage' in horizontal_info:
+                upper = horizontal_info['upperPercentage']
+                lower = horizontal_info['lowerPercentage']
+                analysis_text += f" (눈~코 {upper:.1f}%, 코~턱 {lower:.1f}%)"
+            detailed_analysis.append(analysis_text)
+        
+        # 하관 조화 (2구간 퍼센트)
+        if main_scores['lowerFace'] >= 10:
+            analysis_text = f"하관 조화: {main_scores['lowerFace']:.1f}점"
+            if 'upperPercentage' in lowerface_info and 'lowerPercentage' in lowerface_info:
+                upper = lowerface_info['upperPercentage']
+                lower = lowerface_info['lowerPercentage']
+                analysis_text += f" (인중 {upper:.1f}%, 입~턱 {lower:.1f}%)"
+            detailed_analysis.append(analysis_text)
+        
+        # 전체 대칭성
+        if main_scores['symmetry'] >= 10:
+            detailed_analysis.append(f"전체 대칭성: {main_scores['symmetry']:.1f}점")
+        
+        # 턱 곡률 (각도 정보)
+        if main_scores['jaw'] >= 10:
+            analysis_text = f"턱 곡률: {main_scores['jaw']:.1f}점"
+            if 'gonialAngle' in jaw_info and 'cervicoMentalAngle' in jaw_info:
+                gonial = jaw_info['gonialAngle']
+                cervico = jaw_info['cervicoMentalAngle']
+                analysis_text += f" (하악각 {gonial:.1f}°, 턱목각 {cervico:.1f}°)"
+            detailed_analysis.append(analysis_text)
+        
+        user_prompt = f"""
+얼굴 비율 정밀 측정 결과:
+
+【종합 뷰티 점수】 {main_scores['overall']:.1f}점
+
+【정량적 측정 데이터】
+{chr(10).join(detailed_analysis) if detailed_analysis else '- 전체적인 얼굴 조화도 분석 완료'}
+
+【우수 영역 (80점 이상)】
+{', '.join(strengths) if strengths else '균형잡힌 전체 비율'}
+
+【개선 가능 영역 (70점 미만)】
+{', '.join(improvement_areas) if improvement_areas else '대부분 이상적 수준'}
+
+다음 형식으로 전문적 분석을 제공하세요:
+
+1. **정밀 비율 분석** (3-4문장)
+   - 측정된 구체적 퍼센트 수치를 활용한 분석
+   - 황금비율(1:1.618) 및 이상적 얼굴 비율과의 비교
+   - V라인, 턱선, 이마-눈-코-입 비율 등 해부학적 기준 언급
+   
+2. **얼굴형 특성 및 윤곽 분석** (2-3문장)
+   - 측정 결과에 기반한 구체적 얼굴형 분류 (오벌, 하트형, 스퀘어 등)
+   - 높은 점수 영역의 mm단위 또는 각도 수치 활용
+   - 리프팅 효과, 윤곽 라인, 대칭성 등 전문 용어 사용
+   
+3. **맞춤형 뷰티 솔루션** (구체적 지침)
+   - 측정 데이터 기반 컨투어링, 하이라이팅 포인트 제시
+   - 시술/관리 추천 시 구체적 부위와 방법 명시
+   - 헤어라인, 아이브로우, 립라인 등 세부 가이드라인
+
+**분석 기준**: 제공된 모든 수치를 반드시 활용하여 과학적이고 전문적인 분석을 제공하세요.
+측정값이 이상적 범위에서 벗어난 경우도 정확한 수치와 함께 개선 방향을 제시하세요.
+"""
+
+        # GPT-4o mini 호출
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            max_tokens=1200,
+            temperature=0.7
+        )
+
+        analysis_text = response.choices[0].message.content or "분석 중 오류가 발생했습니다."
+
+        # 추천사항, 강점, 개선영역 추출
+        recommendations = []
+        strengths_list = []
+        improvement_list = []
+
+        # 간단한 텍스트 파싱으로 섹션별 내용 추출
+        lines = analysis_text.split('\n')
+        current_section = None
+        
+        for line in lines:
+            line = line.strip()
+            if any(keyword in line for keyword in ["팁", "추천", "제안", "방법"]):
+                clean_line = line.lstrip('-').lstrip('*').lstrip('•').strip()
+                if len(clean_line) > 10:
+                    recommendations.append(clean_line)
+            elif any(keyword in line for keyword in ["강점", "매력", "장점"]):
+                clean_line = line.lstrip('-').lstrip('*').lstrip('•').strip()
+                if len(clean_line) > 10:
+                    strengths_list.append(clean_line)
+            elif any(keyword in line for keyword in ["개선", "보완", "발전"]):
+                clean_line = line.lstrip('-').lstrip('*').lstrip('•').strip()
+                if len(clean_line) > 10:
+                    improvement_list.append(clean_line)
+
+        # 기본값 설정
+        if not recommendations:
+            if main_scores['overall'] >= 80:
+                recommendations = [
+                    "현재 매우 균형잡힌 아름다운 얼굴을 가지고 계시네요.",
+                    "자연스러운 메이크업으로 본인의 매력을 더욱 부각시켜보세요.",
+                    "건강한 라이프스타일을 유지하시면 자연스러운 아름다움이 지속될 것입니다."
+                ]
+            elif main_scores['overall'] >= 70:
+                recommendations = [
+                    "이미 좋은 기본기를 가지고 계시니 자신감을 가지세요.",
+                    "포인트 메이크업으로 개성을 표현해보시는 것을 추천합니다.",
+                    "규칙적인 스킨케어로 피부 상태를 개선해보세요."
+                ]
+            else:
+                recommendations = [
+                    "모든 사람은 고유한 아름다움을 가지고 있습니다.",
+                    "자신만의 매력적인 스타일을 찾아보세요.",
+                    "단계적인 관리를 통해 점진적인 개선을 추구하시면 좋을 것 같습니다."
+                ]
+
+        if not strengths_list:
+            strengths_list = [item for item in strengths] if strengths else ["고유한 개성과 매력"]
+
+        if not improvement_list:
+            improvement_list = [item for item in improvement_areas] if improvement_areas else []
+
+        return {
+            "analysis": analysis_text,
+            "recommendations": recommendations[:4],
+            "strengths": strengths_list[:3],
+            "improvement_areas": improvement_list[:3]
+        }
+
+    except Exception as e:
+        print(f"기초 뷰티스코어 GPT 분석 오류: {e}")
+        # 폴백 응답
+        return {
+            "analysis": "뷰티 분석이 완료되었습니다. 여러분만의 고유한 매력을 발견하고 자신감을 가지세요!",
+            "recommendations": [
+                "자신만의 매력을 찾아 표현해보세요.",
+                "건강한 라이프스타일을 유지하시면 자연스러운 아름다움이 빛날 것입니다.",
+                "정기적인 관리로 꾸준한 개선을 추구해보세요."
+            ],
+            "strengths": ["고유한 개성"],
+            "improvement_areas": []
         }
 
 

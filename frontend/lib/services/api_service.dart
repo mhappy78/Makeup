@@ -150,6 +150,24 @@ class ApiService {
       throw ApiException('뷰티 분석 비교 실패: ${e.message}');
     }
   }
+
+  /// 기초 뷰티스코어 GPT 분석
+  Future<InitialBeautyAnalysisResult> analyzeInitialBeautyScore(
+    Map<String, dynamic> beautyAnalysis
+  ) async {
+    try {
+      final response = await _dio.post(
+        '/analyze-initial-beauty-score',
+        data: {
+          'beauty_analysis': beautyAnalysis,
+        },
+      );
+
+      return InitialBeautyAnalysisResult.fromJson(response.data);
+    } on DioException catch (e) {
+      throw ApiException('기초 뷰티스코어 GPT 분석 실패: ${e.message}');
+    }
+  }
   
 }
 
@@ -310,6 +328,29 @@ class BeautyComparisonResult {
       ),
       recommendations: List<String>.from(json['recommendations'] ?? []),
       analysisText: json['analysis_text'] ?? '',
+    );
+  }
+}
+
+class InitialBeautyAnalysisResult {
+  final String analysisText;
+  final List<String> recommendations;
+  final List<String> strengths;
+  final List<String> improvementAreas;
+
+  InitialBeautyAnalysisResult({
+    required this.analysisText,
+    required this.recommendations,
+    required this.strengths,
+    required this.improvementAreas,
+  });
+
+  factory InitialBeautyAnalysisResult.fromJson(Map<String, dynamic> json) {
+    return InitialBeautyAnalysisResult(
+      analysisText: json['analysis_text'] ?? '',
+      recommendations: List<String>.from(json['recommendations'] ?? []),
+      strengths: List<String>.from(json['strengths'] ?? []),
+      improvementAreas: List<String>.from(json['improvement_areas'] ?? []),
     );
   }
 }
