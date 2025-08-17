@@ -684,7 +684,7 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
       {
         'id': 'vertical',
         'title': '가로 황금비율',
-        'subtitle': '20%/20%/20%/20%/20% 에 가까울수록 점수가 높습니다',
+        'subtitle': '5구간 균등 분석',
         'score': analysis['verticalScore']?['score']?.toDouble() ?? 75.0,
         'color': Colors.indigo,
         'gradient': [Colors.indigo.shade400, Colors.purple.shade300],
@@ -692,7 +692,7 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
       {
         'id': 'horizontal',
         'title': '세로 대칭성',
-        'subtitle': '50%(눈에서 코끝)/50%(코끝에서 턴)에 가까울수록 점수가 높습니다',
+        'subtitle': '상하 균형 분석',
         'score': analysis['horizontalScore']?['score']?.toDouble() ?? 75.0,
         'color': Colors.teal,
         'gradient': [Colors.teal.shade400, Colors.green.shade300],
@@ -700,7 +700,7 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
       {
         'id': 'lowerface',
         'title': '하관 조화',
-        'subtitle': '33%(인중)/66%(입과 턴사이)에 가까울수록 점수가 높습니다',
+        'subtitle': '인중-턱 비율 분석',
         'score': analysis['lowerFaceScore']?['score']?.toDouble() ?? 75.0,
         'color': Colors.amber,
         'gradient': [Colors.amber.shade400, Colors.orange.shade300],
@@ -708,7 +708,7 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
       {
         'id': 'jawline',
         'title': '턱 곡률',
-        'subtitle': '하악각(90-120°)과 턱목각(105-115°)의 조화',
+        'subtitle': '턱선 각도 분석',
         'score': analysis['jawline']?['score']?.toDouble() ?? 75.0,
         'color': Colors.pink,
         'gradient': [Colors.pink.shade400, Colors.red.shade300],
@@ -722,7 +722,7 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
         crossAxisCount: 2,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: 1.1,
+        childAspectRatio: 0.9, // 높이를 더 크게 하여 오버플로우 방지
       ),
       itemCount: categories.length,
       itemBuilder: (context, index) {

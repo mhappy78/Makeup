@@ -12,6 +12,64 @@ class BeautyComparisonWidget extends StatelessWidget {
       builder: (context, appState, child) {
         final comparison = appState.beautyAnalysis['comparison'] as Map<String, dynamic>?;
         
+        // GPT 분석 중일 때 로딩 인디케이터 표시
+        if (appState.isGptAnalyzing) {
+          return Container(
+            margin: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+                  Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.3),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                width: 2,
+              ),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      '🤖 AI 전문가가 재진단 결과를 분석 중입니다...',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '변화된 뷰티 점수를 바탕으로 맞춤형 분석과 추천사항을 준비하고 있어요.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        
         if (comparison == null || comparison['isReAnalysis'] != true) {
           return const SizedBox.shrink();
         }
@@ -34,101 +92,105 @@ class BeautyComparisonWidget extends StatelessWidget {
               width: 2,
             ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 헤더
-              Row(
-                children: [
-                  Icon(
-                    Icons.analytics,
-                    color: Theme.of(context).colorScheme.primary,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '🔄 재진단 결과 비교',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 헤더
+                Row(
+                  children: [
+                    Icon(
+                      Icons.analytics,
                       color: Theme.of(context).colorScheme.primary,
+                      size: 24,
                     ),
-                  ),
-                  const Spacer(),
-                  _buildOverallChangeChip(context, comparison['overallChange'] as String),
-                ],
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // 점수 변화 표시
-              _buildScoreChanges(context, comparison['scoreChanges'] as Map<String, double>),
-              
-              const SizedBox(height: 16),
-              
-              // GPT 분석 텍스트
-              if (comparison['analysisText'] != null && (comparison['analysisText'] as String).isNotEmpty) ...[
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface.withOpacity(0.8),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.psychology,
-                            size: 20,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'AI 전문가 분석',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
+                    const SizedBox(width: 8),
+                    Text(
+                      '🔄 재진단 결과 비교',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        comparison['analysisText'] as String,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ],
-                  ),
+                    ),
+                    const Spacer(),
+                    Flexible(
+                      child: _buildOverallChangeChip(context, comparison['overallChange'] as String),
+                    ),
+                  ],
                 ),
+                
                 const SizedBox(height: 16),
-              ],
-              
-              // 추천사항
-              if (comparison['recommendations'] != null) ...[
-                Text(
-                  '💡 맞춤 추천사항',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                ...((comparison['recommendations'] as List<String>).map((rec) => 
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Row(
+                
+                // 점수 변화 표시
+                _buildScoreChanges(context, comparison['scoreChanges'] as Map<String, double>),
+                
+                const SizedBox(height: 16),
+                
+                // GPT 분석 텍스트
+                if (comparison['analysisText'] != null && (comparison['analysisText'] as String).isNotEmpty) ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface.withOpacity(0.8),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('• ', style: TextStyle(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        )),
-                        Expanded(child: Text(rec, style: Theme.of(context).textTheme.bodyMedium)),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.psychology,
+                              size: 20,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'AI 전문가 분석',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          comparison['analysisText'] as String,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
                       ],
                     ),
                   ),
-                )),
+                  const SizedBox(height: 16),
+                ],
+                
+                // 추천사항
+                if (comparison['recommendations'] != null) ...[
+                  Text(
+                    '💡 맞춤 추천사항',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ...((comparison['recommendations'] as List<String>).map((rec) => 
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('• ', style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                          )),
+                          Expanded(child: Text(rec, style: Theme.of(context).textTheme.bodyMedium)),
+                        ],
+                      ),
+                    ),
+                  )),
+                ],
               ],
-            ],
+            ),
           ),
         );
       },
@@ -189,7 +251,7 @@ class BeautyComparisonWidget extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(displayName),
+              Expanded(child: Text(displayName)),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(

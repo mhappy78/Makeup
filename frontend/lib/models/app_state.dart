@@ -82,6 +82,7 @@ class AppState extends ChangeNotifier {
   // 재진단 관련 상태
   Map<String, dynamic>? _originalBeautyAnalysis; // 최초 뷰티 분석 결과 저장
   bool _isReAnalyzing = false;
+  bool _isGptAnalyzing = false; // GPT 분석 진행 중 상태
   
   // 컨텍스트 저장 (오버레이 사용을 위해)
   BuildContext? _context;
@@ -156,6 +157,7 @@ class AppState extends ChangeNotifier {
   bool get isWarpLoading => _isWarpLoading;
   Map<String, int> get presetCounters => _presetCounters;
   bool get isReAnalyzing => _isReAnalyzing;
+  bool get isGptAnalyzing => _isGptAnalyzing;
   Map<String, dynamic>? get originalBeautyAnalysis => _originalBeautyAnalysis;
   Map<String, int> get presetSettings => _presetSettings;
   bool get showLaserEffect => _showLaserEffect;
@@ -1547,6 +1549,9 @@ class AppState extends ChangeNotifier {
     
     try {
       print('GPT 분석 시작');
+      _isGptAnalyzing = true;
+      notifyListeners(); // GPT 분석 시작 알림
+      
       final apiService = ApiService();
       
       // GPT 분석 요청
@@ -1565,12 +1570,14 @@ class AppState extends ChangeNotifier {
       };
       
       print('GPT 분석 완료');
+      notifyListeners(); // GPT 분석 완료 즉시 UI 업데이트
       
     } catch (e) {
       print('GPT 분석 실패: $e');
       setError('재진단 GPT 분석 실패: $e');
     } finally {
       _isReAnalyzing = false;
+      _isGptAnalyzing = false;
       notifyListeners();
     }
   }
