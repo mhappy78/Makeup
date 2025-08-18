@@ -3,9 +3,9 @@ import 'package:camera/camera.dart';
 import 'package:provider/provider.dart';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
-import '../models/app_state.dart';
-import '../utils/image_processor.dart';
-import '../services/api_service.dart';
+import '../../models/app_state.dart';
+import '../../utils/image_processor.dart';
+import '../../services/api_service.dart';
 
 /// 얼굴 가이드라인이 있는 카메라 촬영 위젯
 class CameraCaptureWidget extends StatefulWidget {

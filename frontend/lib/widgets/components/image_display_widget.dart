@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../models/app_state.dart';
-import '../models/face_regions.dart';
-import '../services/api_service.dart';
+import '../../models/app_state.dart';
+import '../../models/face_regions.dart';
+import '../../services/api_service.dart';
 import 'dart:math' as math;
-import 'beauty_score_visualizer.dart';
-import '../models/app_state.dart' show Landmark, WarpMode;
+import '../analysis/beauty_score_visualizer.dart';
+import '../../models/app_state.dart' show Landmark, WarpMode;
 
 // 시각화 상수들
 class VisualizationConstants {

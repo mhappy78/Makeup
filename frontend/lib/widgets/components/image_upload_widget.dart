@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:typed_data';
-import '../models/app_state.dart';
-import '../services/api_service.dart';
-import '../utils/image_processor.dart';
+import '../../models/app_state.dart';
+import '../../services/api_service.dart';
+import '../../utils/image_processor.dart';
 import 'camera_capture_widget.dart';
 
 /// 이미지 업로드 위젯

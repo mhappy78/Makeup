@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/app_state.dart';
-import '../services/api_service.dart';
+import '../../models/app_state.dart';
+import '../../services/api_service.dart';
 import 'dart:html' as html;
 import 'dart:math' as math;
-import 'before_after_comparison.dart';
+import '../before_after_comparison.dart';
 
 /// 프리셋 컨트롤 위젯
 class LandmarkControlsWidget extends StatefulWidget {

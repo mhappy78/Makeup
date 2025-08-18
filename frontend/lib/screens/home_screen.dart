@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:math' as math;
 import '../models/app_state.dart';
-import '../widgets/image_upload_widget.dart';
-import '../widgets/image_display_widget.dart';
-import '../widgets/warp_controls_widget.dart';
-import '../widgets/landmark_controls_widget.dart';
-import '../widgets/face_regions_widget.dart';
+import '../widgets/components/image_upload_widget.dart';
+import '../widgets/components/image_display_widget.dart';
+import '../widgets/controls/warp_controls_widget.dart';
+import '../widgets/controls/landmark_controls_widget.dart';
+import '../widgets/analysis/face_regions_widget.dart';
 
 /// 메인 홈 스크린
 class HomeScreen extends StatefulWidget {

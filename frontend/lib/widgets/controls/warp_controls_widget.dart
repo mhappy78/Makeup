@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/app_state.dart';
-import '../services/api_service.dart';
-import 'before_after_comparison.dart';
+import '../../models/app_state.dart';
+import '../../services/api_service.dart';
+import '../before_after_comparison.dart';
 
 /// 워핑 컨트롤 위젯
 class WarpControlsWidget extends StatelessWidget {
