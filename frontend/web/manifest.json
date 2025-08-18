@@ -1,7 +1,7 @@
 {
-    "name": "Face Simulator - 얼굴 성형 시뮬레이터",
-    "short_name": "Face Simulator",
-    "description": "AI 기반 실시간 얼굴 성형 시뮬레이션 도구",
+    "name": "BeautyGen - AI 기반 뷰티 분석",
+    "short_name": "BeautyGen",
+    "description": "AI 기술로 얼굴을 분석하고 뷰티 시뮬레이션을 경험해보세요",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#667eea",
@@ -26,18 +26,11 @@
     ],
     "screenshots": [
         {
-            "src": "screenshots/desktop.png",
+            "src": "images/og-image.png",
             "type": "image/png",
-            "sizes": "1280x720",
+            "sizes": "1200x630",
             "form_factor": "wide",
-            "label": "Face Simulator Desktop View"
-        },
-        {
-            "src": "screenshots/mobile.png", 
-            "type": "image/png",
-            "sizes": "375x667",
-            "form_factor": "narrow",
-            "label": "Face Simulator Mobile View"
+            "label": "BeautyGen Desktop View"
         }
     ]
 }
