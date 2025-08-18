@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:provider/provider.dart';
 import 'dart:typed_data';
-import 'dart:ui' as ui;
 import '../../models/app_state.dart';
 import '../../utils/image_processor.dart';
 import '../../services/api_service.dart';
@@ -48,7 +47,7 @@ class _CameraCaptureWidgetState extends State<CameraCaptureWidget>
     try {
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
-        print('카메라를 찾을 수 없습니다.');
+        debugPrint('카메라를 찾을 수 없습니다.');
         return;
       }
 
@@ -77,7 +76,7 @@ class _CameraCaptureWidgetState extends State<CameraCaptureWidget>
         });
       }
     } catch (e) {
-      print('카메라 초기화 오류: $e');
+      debugPrint('카메라 초기화 오류: $e');
     }
   }
 
@@ -149,7 +148,7 @@ class _CameraCaptureWidgetState extends State<CameraCaptureWidget>
           Navigator.of(context).pop();
         }
       } catch (e) {
-        print('얼굴 기반 처리 실패, 기본 크롭 적용: $e');
+        debugPrint('얼굴 기반 처리 실패, 기본 크롭 적용: $e');
         
         // 얼굴 감지 실패 시 기본 3:4 크롭 적용
         final croppedBytes = await ImageProcessor.cropImageTo3x4(bytes);
@@ -166,7 +165,7 @@ class _CameraCaptureWidgetState extends State<CameraCaptureWidget>
         }
       }
     } catch (e) {
-      print('사진 촬영 오류: $e');
+      debugPrint('사진 촬영 오류: $e');
     } finally {
       setState(() {
         _isCapturing = false;
@@ -174,7 +173,6 @@ class _CameraCaptureWidgetState extends State<CameraCaptureWidget>
       });
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -393,4 +391,3 @@ class _CameraCaptureWidgetState extends State<CameraCaptureWidget>
     );
   }
 }
-

@@ -25,97 +25,97 @@ class ImageUploadWidget extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
-            // 로고 이미지
-            Container(
-              decoration: BoxDecoration(
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.15),
-                    blurRadius: 20,
-                    offset: const Offset(8, 8), // 오른쪽 아래 방향
-                    spreadRadius: 0,
+                // 로고 이미지
+                Container(
+                  decoration: BoxDecoration(
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.15),
+                        blurRadius: 20,
+                        offset: const Offset(8, 8), // 오른쪽 아래 방향
+                        spreadRadius: 0,
+                      ),
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 40,
+                        offset: const Offset(12, 12), // 더 멀리 오른쪽 아래
+                        spreadRadius: -4,
+                      ),
+                    ],
                   ),
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 40,
-                    offset: const Offset(12, 12), // 더 멀리 오른쪽 아래
-                    spreadRadius: -4,
-                  ),
-                ],
-              ),
-              child: Image.network(
-                'images/logo_e.png',
-                width: 480,
-                height: 240,
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  // 이미지 로드 실패 시 기본 아이콘 표시
-                  return Container(
+                  child: Image.network(
+                    'images/logo_e.png',
                     width: 480,
                     height: 240,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Icon(
-                      Icons.face,
-                      size: 120,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  );
-                },
-              ),
-            ),
-            
-            const SizedBox(height: 48),
-            
-            // 업로드 버튼들
-            Row(
-              children: [
-                // 이미지 선택 버튼
-                Expanded(
-                  child: SizedBox(
-                    height: 56,
-                    child: FilledButton.icon(
-                      onPressed: () => _pickAndUploadImage(context),
-                      icon: const Icon(Icons.upload),
-                      label: const Text('갤러리'),
-                      style: FilledButton.styleFrom(
-                        textStyle: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      // 이미지 로드 실패 시 기본 아이콘 표시
+                      return Container(
+                        width: 480,
+                        height: 240,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(20),
                         ),
-                      ),
-                    ),
+                        child: Icon(
+                          Icons.face,
+                          size: 120,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      );
+                    },
                   ),
                 ),
                 
-                const SizedBox(width: 16),
+                const SizedBox(height: 48),
                 
-                // 카메라 촬영 버튼
-                Expanded(
-                  child: SizedBox(
-                    height: 56,
-                    child: OutlinedButton.icon(
-                      onPressed: () => _openCamera(context),
-                      icon: const Icon(Icons.camera_alt),
-                      label: const Text('카메라'),
-                      style: OutlinedButton.styleFrom(
-                        textStyle: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                // 업로드 버튼들
+                Row(
+                  children: [
+                    // 이미지 선택 버튼
+                    Expanded(
+                      child: SizedBox(
+                        height: 56,
+                        child: FilledButton.icon(
+                          onPressed: () => _pickAndUploadImage(context),
+                          icon: const Icon(Icons.upload),
+                          label: const Text('갤러리'),
+                          style: FilledButton.styleFrom(
+                            textStyle: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                    
+                    const SizedBox(width: 16),
+                    
+                    // 카메라 촬영 버튼
+                    Expanded(
+                      child: SizedBox(
+                        height: 56,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _openCamera(context),
+                          icon: const Icon(Icons.camera_alt),
+                          label: const Text('카메라'),
+                          style: OutlinedButton.styleFrom(
+                            textStyle: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            
-            const SizedBox(height: 32),
-            
-            // 사진 촬영 가이드
-            Container(
+                
+                const SizedBox(height: 32),
+                
+                // 사진 촬영 가이드
+                Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),

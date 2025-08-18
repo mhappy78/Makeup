@@ -2110,9 +2110,6 @@ extension on _BeautyScoreDashboardState {
     final gptAnalysis = analysis['gptAnalysis'] as Map<String, dynamic>?;
     final hasComparison = analysis.containsKey('comparison');
     
-    // 디버깅: 전체 analysis 구조 확인
-    print('🔍 Frontend analysis keys: ${analysis.keys.toList()}');
-    print('🔍 Frontend gptAnalysis: ${gptAnalysis != null ? gptAnalysis.keys.toList() : 'null'}');
     
     // 재진단 비교가 있으면 GPT 기초 분석 대신 비교 결과만 표시
     if (hasComparison) {
@@ -2121,7 +2118,6 @@ extension on _BeautyScoreDashboardState {
     
     // GPT 분석이 없으면 표시하지 않음
     if (gptAnalysis == null) {
-      print('🔍 Frontend: GPT 분석이 null이므로 표시하지 않음');
       return const SizedBox.shrink();
     }
 

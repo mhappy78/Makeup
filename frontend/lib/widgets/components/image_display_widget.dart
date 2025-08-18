@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../../models/app_state.dart';
+import 'dart:math' as math;
+import '../../models/app_state.dart' show AppState, Landmark, WarpMode;
 import '../../models/face_regions.dart';
 import '../../services/api_service.dart';
-import 'dart:math' as math;
 import '../analysis/beauty_score_visualizer.dart';
-import '../../models/app_state.dart' show Landmark, WarpMode;
 
 // 시각화 상수들
 class VisualizationConstants {
@@ -120,10 +119,10 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
                     }
                     
                     // 확대/축소 모드에서 단일 클릭 처리
-                    print('onTapDown 호출됨: 탭=${appState.currentTabIndex}, 모드=${appState.warpMode?.displayName}');
+                    debugPrint('onTapDown 호출됨: 탭=${appState.currentTabIndex}, 모드=${appState.warpMode?.displayName}');
                     if (appState.currentTabIndex == 2 && 
                         (appState.warpMode == WarpMode.expand || appState.warpMode == WarpMode.shrink)) {
-                      print('확대/축소 클릭 감지됨');
+                      debugPrint('확대/축소 클릭 감지됨');
                       final localPosition = details.localPosition;
                       if (_isPointInImageBounds(localPosition, constraints, appState)) {
                         setState(() {
@@ -131,7 +130,7 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
                           _currentPoint = localPosition;
                           _isDragging = false;
                         });
-                        print('워핑 실행 중...');
+                        debugPrint('워핑 실행 중...');
                         _performWarp(constraints, appState);
                         setState(() {
                           _startPoint = null;
@@ -178,7 +177,7 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
                   _baseScaleValue = appState.zoomScale;
                   
                   // 프리스타일 탭에서 단일 터치인 경우 워핑 시작점 설정 (팬 모드가 아닐 때만)
-                  print('현재 탭: ${appState.currentTabIndex}, 포인터 수: ${details.pointerCount}, 팬 모드: $_isPanMode');
+                  debugPrint('현재 탭: ${appState.currentTabIndex}, 포인터 수: ${details.pointerCount}, 팬 모드: $_isPanMode');
                   if (appState.currentTabIndex == 2 && details.pointerCount == 1 && !_isPanMode) {
                     final localPosition = details.localFocalPoint;
                     if (_isPointInImageBounds(localPosition, constraints, appState)) {
@@ -189,9 +188,9 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
                       });
                       
                       // 확대/축소 모드일 때는 클릭 즉시 워핑 실행
-                      print('현재 워핑 모드: ${appState.warpMode.displayName}, 값: ${appState.warpMode.value}');
+                      debugPrint('현재 워핑 모드: ${appState.warpMode.displayName}, 값: ${appState.warpMode.value}');
                       if (appState.warpMode == WarpMode.expand || appState.warpMode == WarpMode.shrink) {
-                        print('확대/축소 모드 감지됨, 즉시 워핑 실행');
+                        debugPrint('확대/축소 모드 감지됨, 즉시 워핑 실행');
                         _performWarp(constraints, appState);
                         setState(() {
                           _startPoint = null;
@@ -583,22 +582,22 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
 
   // 워핑 수행 메서드 (기존 _onPanEnd 로직)
   Future<void> _performWarp(BoxConstraints constraints, AppState appState) async {
-    print('_performWarp 호출됨: startPoint=$_startPoint, currentPoint=$_currentPoint, isDragging=$_isDragging, mode=${appState.warpMode.value}');
+    debugPrint('_performWarp 호출됨: startPoint=$_startPoint, currentPoint=$_currentPoint, isDragging=$_isDragging, mode=${appState.warpMode.value}');
     
     // 재진단 중이면 워핑 비활성화
     if (appState.isReAnalyzing) {
-      print('재진단 중이므로 워핑 비활성화');
+      debugPrint('재진단 중이므로 워핑 비활성화');
       return;
     }
     
     if (_startPoint == null || _currentPoint == null) {
-      print('시작점 또는 현재점이 null');
+      debugPrint('시작점 또는 현재점이 null');
       return;
     }
     
     // 확대/축소 모드가 아니면서 드래그하지 않은 경우 리턴
     if ((appState.warpMode != WarpMode.expand && appState.warpMode != WarpMode.shrink) && !_isDragging) {
-      print('드래그 모드이지만 드래그하지 않음');
+      debugPrint('드래그 모드이지만 드래그하지 않음');
       return;
     }
 
@@ -1459,7 +1458,7 @@ class _AnalysisTextOverlayState extends State<AnalysisTextOverlay>
           });
         }
       } catch (e) {
-        print('텍스트 애니메이션 에러: $e');
+        debugPrint('텍스트 애니메이션 에러: $e');
         break;
       }
     }
