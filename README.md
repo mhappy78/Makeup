@@ -1,8 +1,22 @@
 # BeautyGen
 
-**AI-Powered Facial Analysis and Beauty Enhancement Platform**
+**AI-Powered Facial Analysis and Virtual Beauty Simulation Platform**
 
-BeautyGen is a comprehensive facial analysis application that combines professional beauty scoring with real-time facial transformations. Built with Flutter and FastAPI, it provides both analytical insights and interactive beauty enhancement tools.
+BeautyGen is a comprehensive facial analysis application that combines professional beauty scoring with real-time facial transformations and virtual plastic surgery simulation. Built with Flutter and FastAPI, it provides both analytical insights and interactive beauty enhancement tools for professional-grade results.
+
+## 🎯 Latest Updates
+
+### ✨ Enhanced User Experience
+- **Streamlined Interface**: Optimized first screen with enhanced logo branding
+- **Smart Image Processing**: Automatic face detection with intelligent cropping
+- **Multiple Face Handling**: Detects multiple faces and automatically selects the largest
+- **User-Friendly Errors**: Improved error messages with helpful photography tips
+
+### 🖼️ Visual Improvements
+- **Professional Logo**: Custom brand identity with shadow effects (logo_e.png)
+- **Web-Ready Assets**: Favicon, social media sharing images, splash screen
+- **Responsive Design**: Mobile-first approach with overflow protection
+- **Clean Layout**: Removed redundant text elements for cleaner interface
 
 ## 🚀 Features
 
@@ -24,11 +38,13 @@ BeautyGen is a comprehensive facial analysis application that combines professio
 - **Undo/Redo System** - Up to 20-step history management
 - **Before/After Comparison** - Side-by-side slider visualization
 
-### 📸 Camera Integration
+### 📸 Smart Camera & Upload System
 - **Cross-platform Support** - Desktop webcam and mobile front camera
-- **Face Guidelines** - Real-time 3:4 aspect ratio preview
-- **Smart Cropping** - Automatic face detection-based cropping
-- **Professional Workflow** - Seamless integration with analysis tools
+- **Face Guidelines** - Real-time 3:4 aspect ratio preview with overlay
+- **Intelligent Cropping** - Face-based automatic cropping with 60% padding
+- **Multiple Face Detection** - Handles multiple faces, selects largest automatically
+- **Comprehensive Photo Guide** - Built-in tips for optimal photo quality
+- **Minimum Size Guarantee** - Ensures images are at least 600x800 pixels
 
 ## 🏗️ Architecture
 
@@ -51,9 +67,17 @@ frontend/
 │   │   └── camera_capture_widget.dart      # Camera integration
 │   └── utils/
 │       └── image_processor.dart    # Client-side image processing
-└── assets/
+├── assets/
+│   └── images/
+│       └── face_guide.png          # Camera guideline overlay
+└── web/
+    ├── index.html                  # Entry point with splash screen
+    ├── favicon.png                 # Browser tab icon
+    ├── manifest.json               # PWA configuration
     └── images/
-        └── face_guide.png          # Camera guideline overlay
+        ├── logo_e.png              # Main brand logo (480x240)
+        ├── og-image.png            # Social media sharing (1200x630)
+        └── og-image-square.png     # Square social sharing (1200x1200)
 ```
 
 ### Backend (FastAPI)
@@ -150,6 +174,7 @@ final weightedScore =
 1. **💉 아래턱 (Lower Jaw)** - Landmarks 150, 379 → 4 (nose bridge direction)
 2. **💉 중간턱 (Middle Jaw)** - Landmarks 172, 397 → 4 (nose bridge direction)
 3. **💉 볼 (Cheek)** - Landmarks 215, 435 → 4 (nose bridge direction)
+   - *Updated: Enhanced cheek targeting with landmark 361 for better precision*
 4. **💉 앞트임 (Front Protusion)** - Eye landmarks with elliptical transformation
 5. **💉 뒷트임 (Back Slit)** - Outer eye corner extension
 
@@ -174,20 +199,51 @@ final weightedScore =
 
 ## 🔧 Development Notes
 
+### Current State
+- ✅ Multiple face detection with automatic largest face selection
+- ✅ Enhanced UI with professional branding and shadow effects
+- ✅ Smart image processing with face-based cropping
+- ✅ User-friendly error handling and photography guides
+- ✅ Web deployment ready with PWA assets
+- ✅ Responsive layout with overflow protection
+- ✅ AI analysis text parsing improvements
+
+### Technical Details
 - Zero-flicker UI with smooth transitions
 - Professional chart integration with hover tooltips
 - Comprehensive state management with Provider pattern
-- Mobile-first responsive design
+- Mobile-first responsive design with 480x240 logo branding
+- Client-side image processing with minimum size guarantee
 - Scalable architecture for easy feature extension
+
+## 🚀 Getting Started
+
+### 🎨 For Users
+1. **Upload Photo**: Use gallery or camera to capture/select your front-facing photo
+2. **Follow Guide**: Use the comprehensive photo guide for best results
+3. **Analyze Beauty**: Get professional beauty scoring and AI recommendations
+4. **Try Presets**: Experiment with virtual plastic surgery simulations
+5. **Freestyle Edit**: Use advanced warping tools for precise adjustments
+
+### 👩‍💻 For Developers
+1. Clone the repository
+2. Set up Flutter frontend and FastAPI backend (see Quick Start above)
+3. Review CLAUDE.md for detailed technical guidance
+4. Follow mobile-first design principles
+5. Ensure user-friendly error messaging
 
 ## 📄 License
 
-This project is for educational and demonstration purposes. Commercial use of included assets may require additional licensing.
+This project is for educational and demonstration purposes. Commercial use may require additional licensing for included assets and AI models.
 
 ## 🤝 Contributing
 
+Contributions are welcome! Please follow these steps:
+
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+3. Follow the coding guidelines in CLAUDE.md
+4. Test on both mobile and desktop viewports
+5. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+6. Push to the branch (`git push origin feature/AmazingFeature`)
+7. Open a Pull Request

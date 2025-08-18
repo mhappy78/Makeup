@@ -1,7 +1,24 @@
 import 'package:flutter/material.dart';
 
+<<<<<<< HEAD
 /// UI 관련 헬퍼 유틸리티
 class UiHelpers {
+=======
+/// UI 헬퍼 유틸리티
+class UiHelpers {
+  /// 성공 스낵바 표시
+  static void showSuccessSnackBar(BuildContext context, String message) {
+    if (!context.mounted) return;
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+  
+>>>>>>> f435d49af910aaf9ed939c9da05f44ebe54ec140
   /// 에러 스낵바 표시
   static void showErrorSnackBar(BuildContext context, String message) {
     if (!context.mounted) return;
@@ -20,6 +37,7 @@ class UiHelpers {
       ),
     );
   }
+<<<<<<< HEAD
 
   /// 성공 스낵바 표시
   static void showSuccessSnackBar(BuildContext context, String message) {
@@ -42,6 +60,14 @@ class UiHelpers {
 
   /// 여러 얼굴 경고 다이얼로그 표시
   static void showMultipleFacesWarningDialog(BuildContext context, String warningMessage) {
+=======
+  
+  /// 여러 얼굴 감지 경고 다이얼로그
+  static void showMultipleFacesWarningDialog(
+    BuildContext context, 
+    String warningMessage,
+  ) {
+>>>>>>> f435d49af910aaf9ed939c9da05f44ebe54ec140
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -98,6 +124,7 @@ class UiHelpers {
       },
     );
   }
+<<<<<<< HEAD
 
   /// 로딩 다이얼로그 표시
   static void showLoadingDialog(BuildContext context, String message) {
@@ -141,4 +168,6 @@ class UiHelpers {
       ),
     );
   }
+=======
+>>>>>>> f435d49af910aaf9ed939c9da05f44ebe54ec140
 }

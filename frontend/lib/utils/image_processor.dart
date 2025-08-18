@@ -2,7 +2,7 @@ import 'dart:typed_data';
 import 'package:image/image.dart' as img;
 import 'dart:math' as math;
 
-/// 이미지 처리 유틸리티 클래스
+/// BeautyGen 이미지 처리 유틸리티 클래스
 class ImageProcessor {
   
   /// 얼굴 감지 결과를 기반으로 3:4 비율로 크롭하고 밝기 보정

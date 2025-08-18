@@ -14,7 +14,11 @@ class AnimationConstants {
   static const int jawlineAreaDuration = 3500;
   static const int defaultDuration = 2000;
   
+<<<<<<< HEAD
   // 레이저 효과 시간
+=======
+  // 레이저 효과
+>>>>>>> f435d49af910aaf9ed939c9da05f44ebe54ec140
   static const int minLaserDuration = 1500;
   static const int maxLaserDuration = 15000;
   static const int laserIterationDuration = 1000;
@@ -27,6 +31,7 @@ class AnimationConstants {
   // 공통 스텝 설정
   static const int stepDurationMs = 50;
   
+<<<<<<< HEAD
   // 애니메이션 시퀀스 순서
   static const List<String> animationSequence = [
     'eyebrow_area',    // 1. 눈썹주변영역
@@ -44,4 +49,30 @@ class AnimationConstants {
   
   // 히스토리 관리
   static const int maxHistorySize = 20;
+=======
+  /// 영역별 애니메이션 지속시간 가져오기
+  static int getDurationForRegion(String regionKey) {
+    switch (regionKey) {
+      case 'eyebrow_area':
+        return eyebrowAreaDuration;
+      case 'eyebrows':
+        return eyebrowsDuration;
+      case 'eyes':
+      case 'eyelid_lower_area':
+      case 'cheek_area':
+        return eyesAreaDuration;
+      case 'nose_bridge':
+      case 'nose_sides':
+        return noseBridgeDuration;
+      case 'nose_wings':
+      case 'lip_upper':
+      case 'lip_lower':
+        return noseWingsDuration;
+      case 'jawline_area':
+        return jawlineAreaDuration;
+      default:
+        return defaultDuration;
+    }
+  }
+>>>>>>> f435d49af910aaf9ed939c9da05f44ebe54ec140
 }

@@ -31,6 +31,7 @@ class Landmark {
     );
   }
   
+<<<<<<< HEAD
   Map<String, dynamic> toJson() {
     return {
       'x': x,
@@ -38,6 +39,22 @@ class Landmark {
       'index': index,
     };
   }
+=======
+  @override
+  String toString() => 'Landmark(x: $x, y: $y, index: $index)';
+  
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is Landmark &&
+        other.x == x &&
+        other.y == y &&
+        other.index == index;
+  }
+  
+  @override
+  int get hashCode => Object.hash(x, y, index);
+>>>>>>> f435d49af910aaf9ed939c9da05f44ebe54ec140
 }
 
 /// 워핑 모드 열거형
@@ -54,6 +71,7 @@ enum WarpMode {
   final String description;
 }
 
+<<<<<<< HEAD
 /// API 응답 모델들
 class UploadResponse {
   final String imageId;
@@ -172,6 +190,25 @@ class GptAnalysisResponse {
       recommendations: List<String>.from(json['recommendations'] ?? []),
       overallChange: json['overall_change']?.toDouble() ?? 0.0,
       scoreChanges: json['score_changes'] ?? {},
+=======
+/// 프리셋 타입 열거형
+enum PresetType {
+  lowerJaw('lower_jaw', '아래턱'),
+  middleJaw('middle_jaw', '중간턱'), 
+  cheek('cheek', '볼'),
+  frontProtusion('front_protusion', '앞트임'),
+  backSlit('back_slit', '뒷트임');
+  
+  const PresetType(this.value, this.displayName);
+  
+  final String value;
+  final String displayName;
+  
+  static PresetType fromValue(String value) {
+    return PresetType.values.firstWhere(
+      (preset) => preset.value == value,
+      orElse: () => PresetType.lowerJaw,
+>>>>>>> f435d49af910aaf9ed939c9da05f44ebe54ec140
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+<<<<<<< HEAD
 import 'dart:typed_data';
 
 /// 이미지 표시용 컨테이너 - 다양한 상황에서 재사용 가능
@@ -22,10 +23,25 @@ class ImageContainer extends StatelessWidget {
     this.placeholder,
     this.errorWidget,
     this.boxShadow,
+=======
+import '../../config/app_constants.dart';
+import '../image_display_widget.dart';
+
+/// 이미지 표시 컨테이너
+class ImageContainer extends StatelessWidget {
+  final EdgeInsets? margin;
+  final double? height;
+  
+  const ImageContainer({
+    super.key,
+    this.margin,
+    this.height,
+>>>>>>> f435d49af910aaf9ed939c9da05f44ebe54ec140
   });
 
   @override
   Widget build(BuildContext context) {
+<<<<<<< HEAD
     Widget child;
 
     if (imageData != null) {
@@ -114,6 +130,20 @@ class ImageContainer extends StatelessWidget {
             ),
           ),
         ],
+=======
+    return Container(
+      height: height,
+      margin: margin ?? AppConstants.smallPadding,
+      decoration: BoxDecoration(
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline,
+        ),
+        borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
+        child: const ImageDisplayWidget(),
+>>>>>>> f435d49af910aaf9ed939c9da05f44ebe54ec140
       ),
     );
   }
