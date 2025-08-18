@@ -56,6 +56,26 @@ face_mesh = mp_face_mesh.FaceMesh(
 TEMP_DIR = "temp_images"
 os.makedirs(TEMP_DIR, exist_ok=True)
 
+def cleanup_old_temp_files(max_age_hours: int = 24):
+    """오래된 임시 파일들을 정리"""
+    try:
+        import time
+        current_time = time.time()
+        max_age_seconds = max_age_hours * 3600
+        
+        for filename in os.listdir(TEMP_DIR):
+            if filename.endswith(('.jpg', '.jpeg', '.png', '.webp')):
+                file_path = os.path.join(TEMP_DIR, filename)
+                file_age = current_time - os.path.getctime(file_path)
+                
+                if file_age > max_age_seconds:
+                    try:
+                        os.remove(file_path)
+                    except OSError:
+                        pass  # 파일 삭제 실패 시 무시
+    except Exception:
+        pass  # 정리 실패 시 무시 (치명적이지 않음)
+
 def select_largest_face(multi_face_landmarks):
     """여러 얼굴 중 가장 큰 얼굴을 선택"""
     if not multi_face_landmarks:
@@ -135,6 +155,9 @@ async def root():
 async def upload_image(file: UploadFile = File(...)):
     """이미지 업로드 및 ID 반환"""
     try:
+        # 오래된 임시 파일들 정리 (24시간 이상)
+        cleanup_old_temp_files(max_age_hours=1)
+        
         # 파일 검증
         if not file.content_type.startswith("image/"):
             raise HTTPException(status_code=400, detail="이미지 파일만 업로드 가능합니다")
