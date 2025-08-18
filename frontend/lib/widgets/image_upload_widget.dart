@@ -21,45 +21,50 @@ class ImageUploadWidget extends StatelessWidget {
         child: Center(
           child: Container(
             constraints: const BoxConstraints(maxWidth: 600),
-            padding: const EdgeInsets.all(32),
+            padding: const EdgeInsets.fromLTRB(32, 16, 32, 32), // 상단 패딩만 16px로 줄임
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.start,
               children: [
-            // 업로드 아이콘
+            // 로고 이미지
             Container(
-              width: 120,
-              height: 120,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(60),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 20,
+                    offset: const Offset(8, 8), // 오른쪽 아래 방향
+                    spreadRadius: 0,
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 40,
+                    offset: const Offset(12, 12), // 더 멀리 오른쪽 아래
+                    spreadRadius: -4,
+                  ),
+                ],
               ),
-              child: Icon(
-                Icons.face,
-                size: 60,
-                color: Theme.of(context).colorScheme.primary,
+              child: Image.network(
+                'images/logo_e.png',
+                width: 480,
+                height: 240,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  // 이미지 로드 실패 시 기본 아이콘 표시
+                  return Container(
+                    width: 480,
+                    height: 240,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Icon(
+                      Icons.face,
+                      size: 120,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  );
+                },
               ),
-            ),
-            
-            const SizedBox(height: 32),
-            
-            // 제목
-            Text(
-              'BeautyGen',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // 설명
-            Text(
-              'AI 기반 뷰티 분석과 자유 스타일링을 시작하세요',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-              textAlign: TextAlign.center,
             ),
             
             const SizedBox(height: 48),
