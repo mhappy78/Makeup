@@ -22,7 +22,7 @@ class ApiService {
     // _dio.interceptors.add(LogInterceptor(
     //   requestBody: false, // 이미지 데이터가 클 수 있으므로 비활성화
     //   responseBody: false,
-    //   logPrint: (obj) => print('API: $obj'),
+    //   logPrint: (obj) => debugPrint('API: $obj'),
     // ));
   }
   
@@ -32,7 +32,7 @@ class ApiService {
       final response = await _dio.get('/');
       return response.statusCode == 200;
     } catch (e) {
-      print('Server status check failed: $e');
+      debugPrint('Server status check failed: $e');
       return false;
     }
   }
@@ -127,7 +127,7 @@ class ApiService {
       await _dio.delete('/image/$imageId');
     } on DioException catch (e) {
       // 삭제 실패는 치명적이지 않으므로 로그만 출력
-      print('Image deletion failed: ${e.message}');
+      debugPrint('Image deletion failed: ${e.message}');
     }
   }
 

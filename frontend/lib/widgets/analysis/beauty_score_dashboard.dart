@@ -433,18 +433,12 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
   List<String> _generateRecommendations(Map<String, dynamic> analysis) {
     // 먼저 Backend GPT 분석에서 추천사항 확인
     final gptAnalysis = analysis['gptAnalysis'] as Map<String, dynamic>?;
-    print('🔍 케어 팁 생성 - gptAnalysis: $gptAnalysis');
-    
     if (gptAnalysis != null && gptAnalysis['recommendations'] != null) {
       final gptRecommendations = List<String>.from(gptAnalysis['recommendations']);
-      print('🔍 GPT recommendations 발견: $gptRecommendations');
       if (gptRecommendations.isNotEmpty) {
-        print('🔍 GPT recommendations 사용함 (${gptRecommendations.length}개)');
         return gptRecommendations.take(3).toList();
       }
     }
-    
-    print('🔍 GPT recommendations 없음 - 폴백 케어 팁 사용');
     
     // GPT 추천사항이 없을 경우에만 폴백 케어 팁 생성
     final List<String> careTips = [];
@@ -730,49 +724,35 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
 
   /// AI 분석 텍스트를 리치 텍스트로 변환 (3번까지만 표시)
   Widget _buildRichAnalysisText(BuildContext context, String text) {
-    print('🔍 _buildRichAnalysisText 호출됨');
-    print('🔍 입력 텍스트 길이: ${text.length}');
-    print('🔍 입력 텍스트 전체: $text');
-    
     // --- 구분선 이전의 내용만 사용 (1, 2, 3번 분석 부분)
     final parts = text.split('---');
     final analysisOnly = parts[0].trim();
-    
-    print('🔍 --- 분리 후 analysisOnly: $analysisOnly');
     
     final lines = analysisOnly.split('\n');
     final List<Widget> widgets = [];
     bool reachedEnd = false;
     
-    print('🔍 총 라인 수: ${lines.length}');
-    
     for (int i = 0; i < lines.length; i++) {
       String line = lines[i].trim();
       if (line.isEmpty) continue;
-      
-      print('🔍 처리 중인 라인 $i: $line');
       
       // ### 마크다운 헤더 처리
       if (line.startsWith('###')) {
         // 실천 방법 관련 ### 헤더면 중단
         if (line.contains('실천 방법') || line.contains('개선 방법') || line.contains('구체적 실천')) {
-          print('🔍 실천 방법 ### 헤더 발견, 중단: $line');
           reachedEnd = true;
           break;
         } else {
           // 분석 섹션의 ### 헤더는 마크다운 제거 후 메인 제목 체크
           final cleanedLine = line.replaceAll('###', '').trim();
-          print('🔍 분석 ### 헤더 발견: $cleanedLine');
           
           // 메인 섹션 제목인지 체크
           if (_isMainSectionTitle(cleanedLine)) {
-            print('🔍 메인 제목으로 처리: $cleanedLine');
             widgets.add(Padding(
               padding: EdgeInsets.only(bottom: 12, top: widgets.isEmpty ? 0 : 24),
               child: _buildAnalysisTitle(context, cleanedLine),
             ));
           } else {
-            print('🔍 서브 제목으로 처리: $cleanedLine');
             widgets.add(_buildRichTextLine(context, cleanedLine, TextType.subTitle));
           }
           continue;
@@ -782,7 +762,6 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
       // 실천 방법 관련 키워드가 나오면 중단 (### 제외)
       if (line.contains('🎯') || line.contains('💪') || line.contains('🏥') ||
           line.contains('가로 황금비율 개선') || line.contains('턱선 개선')) {
-        print('🔍 실천 방법 키워드 발견, 중단: $line');
         reachedEnd = true;
         break;
       }
@@ -790,7 +769,6 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
       if (reachedEnd) break;
       // 주요 섹션 제목 인식 (더 엄격하고 안전한 패턴)
       else if (_isMainSectionTitle(line)) {
-        print('🔍 메인 제목 섹션 추가: $line');
         widgets.add(Padding(
           padding: EdgeInsets.only(bottom: 12, top: widgets.isEmpty ? 0 : 24),
           child: _buildAnalysisTitle(context, line),
@@ -798,7 +776,6 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
       }
       // **볼드** 텍스트는 소제목
       else if (line.contains('**')) {
-        print('🔍 볼드 소제목 추가: $line');
         widgets.add(Padding(
           padding: const EdgeInsets.only(bottom: 6, top: 8),
           child: _buildAnalysisSubtitle(context, line),
@@ -806,15 +783,12 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
       }
       // 일반 본문
       else {
-        print('🔍 일반 본문 추가: $line');
         widgets.add(Padding(
           padding: const EdgeInsets.only(bottom: 6),
           child: _buildAnalysisBody(context, line),
         ));
       }
     }
-    
-    print('🔍 최종 위젯 개수: ${widgets.length}');
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2123,9 +2097,6 @@ extension on _BeautyScoreDashboardState {
 
     return Consumer<AppState>(
       builder: (context, appState, child) {
-        print('🔍 GPT 위젯 렌더링 - isGptAnalyzing: ${appState.isGptAnalyzing}');
-        print('🔍 GPT 위젯 렌더링 - gptAnalysis keys: ${gptAnalysis?.keys.toList()}');
-        
         // GPT 분석 중일 때 로딩 표시
         if (appState.isGptAnalyzing) {
           return Container(
@@ -2167,10 +2138,6 @@ extension on _BeautyScoreDashboardState {
             ),
           );
         }
-
-        print('🔍 GPT 위젯 실제 렌더링 시작');
-        print('🔍 analysisText 존재: ${gptAnalysis['analysisText'] != null}');
-        print('🔍 analysisText 길이: ${(gptAnalysis['analysisText'] as String?)?.length ?? 0}');
 
         return Column(
           children: [

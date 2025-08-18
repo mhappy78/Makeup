@@ -896,7 +896,7 @@ class AppState extends ChangeNotifier {
     
     // 재진단 중이라면 GPT 분석을 계속 진행
     if (_isReAnalyzing && _originalBeautyAnalysis != null) {
-      print('재진단 중 애니메이션 강제 완료: GPT 분석 진행');
+      debugPrint('재진단 중 애니메이션 강제 완료: GPT 분석 진행');
       _performGptAnalysis();
     }
   }
@@ -905,7 +905,7 @@ class AppState extends ChangeNotifier {
   void setCurrentTabIndex(int index) {
     // 재진단 중일 때 다른 탭으로 전환하면 재진단 취소
     if (_isReAnalyzing && index != 0) {
-      print('재진단 중 다른 탭으로 전환: 재진단 취소');
+      debugPrint('재진단 중 다른 탭으로 전환: 재진단 취소');
       _isReAnalyzing = false;
       completeAllAnimations();
     }
@@ -1506,7 +1506,7 @@ class AppState extends ChangeNotifier {
   // 상태 리셋
   // 뷰티 점수 재진단 (프리셋/프리스타일에서 호출)
   Future<void> startReAnalysis() async {
-    print('startReAnalysis 호출됨: _originalBeautyAnalysis=${_originalBeautyAnalysis != null}, _isReAnalyzing=$_isReAnalyzing, _currentImageId=$_currentImageId');
+    debugPrint('startReAnalysis 호출됨: _originalBeautyAnalysis=${_originalBeautyAnalysis != null}, _isReAnalyzing=$_isReAnalyzing, _currentImageId=$_currentImageId');
     if (_originalBeautyAnalysis == null || _isReAnalyzing || _currentImageId == null) return;
     
     _isReAnalyzing = true;
@@ -1539,7 +1539,7 @@ class AppState extends ChangeNotifier {
       
       // 5. 새로운 랜드마크 설정 (뷰티 분석 및 GPT 분석 자동 시작됨)
       setLandmarks(landmarkResponse.landmarks, resetAnalysis: true);
-      print('🔍 재분석: 랜드마크 설정 완료, 뷰티 분석 및 GPT 분석이 자동으로 시작됩니다.');
+      debugPrint('🔍 재분석: 랜드마크 설정 완료, 뷰티 분석 및 GPT 분석이 자동으로 시작됩니다.');
       
     } catch (e) {
       setError('재진단 실패: $e');
@@ -1555,7 +1555,7 @@ class AppState extends ChangeNotifier {
     
     // 이미 GPT 분석 중이면 중복 실행 방지
     if (_isGptAnalyzing) {
-      print('🔍 GPT 분석이 이미 진행 중입니다. 중복 실행 방지');
+      debugPrint('🔍 GPT 분석이 이미 진행 중입니다. 중복 실행 방지');
       return;
     }
     
@@ -1598,7 +1598,7 @@ class AppState extends ChangeNotifier {
     if (_originalBeautyAnalysis == null || _beautyAnalysis.isEmpty) return;
     
     try {
-      print('GPT 분석 시작');
+      debugPrint('GPT 분석 시작');
       _isGptAnalyzing = true;
       notifyListeners(); // GPT 분석 시작 알림
       
@@ -1619,11 +1619,11 @@ class AppState extends ChangeNotifier {
         'isReAnalysis': true,
       };
       
-      print('GPT 분석 완료');
+      debugPrint('GPT 분석 완료');
       notifyListeners(); // GPT 분석 완료 즉시 UI 업데이트
       
     } catch (e) {
-      print('GPT 분석 실패: $e');
+      debugPrint('GPT 분석 실패: $e');
       setError('재진단 GPT 분석 실패: $e');
     } finally {
       _isReAnalyzing = false;

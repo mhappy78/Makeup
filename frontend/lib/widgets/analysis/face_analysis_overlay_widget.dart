@@ -65,13 +65,6 @@ class _FaceAnalysisOverlayWidgetState extends State<FaceAnalysisOverlayWidget>
   Widget build(BuildContext context) {
     return Consumer<AppState>(
       builder: (context, appState, child) {
-        // 디버깅용 출력
-        print('뷰티 스코어 상태 확인:');
-        print('- showBeautyScore: ${appState.showBeautyScore}');
-        print('- beautyScores: ${appState.beautyScores}');
-        print('- overallBeautyScore: ${appState.overallBeautyScore}');
-        print('- currentImage: ${appState.currentImage != null}');
-        
         if (!appState.showBeautyScore || 
             appState.beautyScores == null || 
             appState.overallBeautyScore == null ||
@@ -211,17 +204,8 @@ class FaceAnalysisOverlayPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    print('페인트 시작 - 랜드마크 수: ${landmarks.length}, 이미지 크기: ${imageWidth}x${imageHeight}');
-    
     if (landmarks.isEmpty || imageWidth == 0 || imageHeight == 0) {
-      print('페인트 조기 종료: 데이터 부족');
       return;
-    }
-
-    // 랜드마크 타입 확인
-    if (landmarks.isNotEmpty) {
-      print('첫 번째 랜드마크 타입: ${landmarks[0].runtimeType}');
-      print('첫 번째 랜드마크: x=${landmarks[0].x}, y=${landmarks[0].y}');
     }
 
     // 이미지의 실제 표시 영역 계산
@@ -631,7 +615,6 @@ class FaceAnalysisOverlayPainter extends CustomPainter {
       // Landmark 객체의 x, y 속성 사용
       return Offset(landmark.x / imageWidth, landmark.y / imageHeight);
     } catch (e) {
-      print('랜드마크 $index 접근 에러: $e');
       return null;
     }
   }
