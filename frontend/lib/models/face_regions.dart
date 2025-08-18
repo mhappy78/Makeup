@@ -333,8 +333,18 @@ class RegionVisibility {
     _visibility[region] = visible;
   }
   
-  void toggleVisibility(String region) {
+  void toggle(String region) {
     _visibility[region] = !(_visibility[region] ?? false);
+  }
+  
+  void toggleVisibility(String region) {
+    toggle(region);
+  }
+  
+  void reset() {
+    for (final key in FaceRegions.regions.keys) {
+      _visibility[key] = false;
+    }
   }
   
   Map<String, bool> get all => Map.unmodifiable(_visibility);

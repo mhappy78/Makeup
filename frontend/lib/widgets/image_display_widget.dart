@@ -7,7 +7,7 @@ import '../models/face_regions.dart';
 import '../services/api_service.dart';
 import 'dart:math' as math;
 import 'beauty_score_visualizer.dart';
-import '../models/app_state.dart' show Landmark, WarpMode;
+import '../models/image_models.dart';
 
 // 시각화 상수들
 class VisualizationConstants {

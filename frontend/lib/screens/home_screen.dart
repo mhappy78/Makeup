@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:math' as math;
+
+import '../config/app_constants.dart';
 import '../models/app_state.dart';
 import '../widgets/image_upload_widget.dart';
-import '../widgets/image_display_widget.dart';
-import '../widgets/warp_controls_widget.dart';
-import '../widgets/landmark_controls_widget.dart';
-import '../widgets/face_regions_widget.dart';
+import '../widgets/components/app_state_widgets.dart';
+import '../widgets/components/app_tab_system.dart';
+import '../widgets/components/image_container.dart';
 
-/// 메인 홈 스크린
+/// BeautyGen 메인 홈 스크린
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -23,17 +24,16 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: AppTabSystem.tabs.length, vsync: this);
+    _tabController.addListener(_onTabChanged);
+  }
+  
+  /// 탭 변경 이벤트 처리
+  void _onTabChanged() {
+    if (_tabController.indexIsChanging) return;
     
-    // 탭 변경 감지
-    _tabController.addListener(() {
-      if (_tabController.indexIsChanging) return; // 탭 변경 중이면 무시
-      
-      final appState = context.read<AppState>();
-      
-      // 현재 탭 인덱스 업데이트
-      appState.setCurrentTabIndex(_tabController.index);
-    });
+    final appState = context.read<AppState>();
+    appState.setCurrentTabIndex(_tabController.index);
   }
 
   @override
@@ -47,233 +47,138 @@ class _HomeScreenState extends State<HomeScreen>
     return Scaffold(
       body: Consumer<AppState>(
         builder: (context, appState, child) {
-          // AppState의 탭 인덱스 변경을 TabController에 반영
-          if (_tabController.index != appState.currentTabIndex) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (_tabController.index != appState.currentTabIndex) {
-                _tabController.animateTo(appState.currentTabIndex);
-              }
-            });
-          }
+          _syncTabController(appState);
           
           return Stack(
             children: [
-              // 메인 컨텐츠
-              if (appState.isLoading)
-                const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircularProgressIndicator(),
-                      SizedBox(height: 16),
-                      Text('처리 중...'),
-                    ],
-                  ),
-                )
-              else if (appState.errorMessage != null)
-                Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.error_outline,
-                        size: 64,
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        appState.errorMessage!,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                          fontSize: 16,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: appState.clearError,
-                        child: const Text('다시 시도'),
-                      ),
-                    ],
-                  ),
-                )
-              else if (appState.currentImage == null)
-                const ImageUploadWidget()
-              else
-                _buildMainLayout(context, appState),
-              
-              // 플로팅 초기화 버튼
-              if (appState.currentImage != null)
-                Positioned(
-                  top: MediaQuery.of(context).padding.top + 8, // SafeArea 고려
-                  right: 16,
-                  child: FloatingActionButton.small(
-                    onPressed: () => _showResetDialog(context),
-                    tooltip: '초기화',
-                    backgroundColor: Theme.of(context).colorScheme.surface.withOpacity(0.9),
-                    foregroundColor: Theme.of(context).colorScheme.onSurface,
-                    child: const Icon(Icons.refresh),
-                  ),
-                ),
-              
-              
+              _buildMainContent(appState),
+              if (appState.currentImage != null) _buildResetButton(),
             ],
           );
-
         },
       ),
     );
   }
-
-  Widget _buildMainLayout(BuildContext context, AppState appState) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isMobile = constraints.maxWidth < 768;
-        
-        if (isMobile) {
-          // 모바일 레이아웃: 전체 스크롤 가능
-          return SingleChildScrollView(
-            child: Column(
-              children: [
-                // 이미지 표시 영역 (모바일 최적화)
-                Container(
-                  height: math.max(600, math.min(constraints.maxWidth * 1.2, constraints.maxHeight * 0.6)),
-                  margin: const EdgeInsets.fromLTRB(12, 4, 12, 4), // 상하 마진 최소화
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.outline,
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const ClipRRect(
-                    borderRadius: BorderRadius.all(Radius.circular(12)),
-                    child: ImageDisplayWidget(),
-                  ),
-                ),
-                
-                // 컨트롤 패널 (탭 형태)
-                SizedBox(
-                  height: constraints.maxHeight * 1.05, // 50% 더 늘려서 스크롤 공간 확보
-                  child: Column(
-                    children: [
-                      Container(
-                        height: 42, // 탭 높이 정의
-                        child: TabBar(
-                          controller: _tabController,
-                          tabs: const [
-                            Tab(icon: Icon(Icons.analytics, size: 18), text: '뷰티스코어'),
-                            Tab(icon: Icon(Icons.edit, size: 18), text: '프리셋'),
-                            Tab(icon: Icon(Icons.psychology, size: 18), text: '프리스타일'),
-                          ],
-                          indicatorColor: Theme.of(context).colorScheme.primary,
-                          labelColor: Theme.of(context).colorScheme.primary,
-                          labelStyle: const TextStyle(fontSize: 12),
-                          unselectedLabelStyle: const TextStyle(fontSize: 12),
-                        ),
-                      ),
-                      Expanded(
-                        child: TabBarView(
-                          controller: _tabController,
-                          children: const [
-                            FaceRegionsWidget(),
-                            LandmarkControlsWidget(),
-                            WarpControlsWidget(),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          );
-        } else {
-          // 데스크톱 레이아웃: 가로 분할
-          return Row(
-            children: [
-              // 이미지 표시 영역
-              Expanded(
-                flex: 3,
-                child: Container(
-                  margin: const EdgeInsets.fromLTRB(16, 4, 16, 16), // 상단 마진 최소화
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.outline,
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const ClipRRect(
-                    borderRadius: BorderRadius.all(Radius.circular(12)),
-                    child: ImageDisplayWidget(),
-                  ),
-                ),
-              ),
-              
-              // 컨트롤 패널
-              SizedBox(
-                width: 500,
-                child: Container(
-                  margin: const EdgeInsets.only(top: 4, right: 16, bottom: 16), // 상단 마진 최소화
-                  child: Column(
-                    children: [
-                      Container(
-                        height: 42, // 탭 높이 정의
-                        child: TabBar(
-                          controller: _tabController,
-                          tabs: const [
-                            Tab(icon: Icon(Icons.analytics, size: 18), text: '뷰티스코어'),
-                            Tab(icon: Icon(Icons.edit, size: 18), text: '프리셋'),
-                            Tab(icon: Icon(Icons.psychology, size: 18), text: '프리스타일'),
-                          ],
-                          indicatorColor: Theme.of(context).colorScheme.primary,
-                          labelColor: Theme.of(context).colorScheme.primary,
-                          labelStyle: const TextStyle(fontSize: 12),
-                          unselectedLabelStyle: const TextStyle(fontSize: 12),
-                        ),
-                      ),
-                      Expanded(
-                        child: TabBarView(
-                          controller: _tabController,
-                          children: const [
-                            FaceRegionsWidget(),
-                            LandmarkControlsWidget(),
-                            WarpControlsWidget(),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          );
+  
+  /// 탭 컨트롤러 동기화
+  void _syncTabController(AppState appState) {
+    if (_tabController.index != appState.currentTabIndex) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_tabController.index != appState.currentTabIndex) {
+          _tabController.animateTo(appState.currentTabIndex);
         }
-      },
+      });
+    }
+  }
+  
+  /// 메인 콘텐츠 빌드
+  Widget _buildMainContent(AppState appState) {
+    if (appState.isLoading) {
+      return AppStateWidgets.buildLoadingWidget();
+    }
+    
+    if (appState.errorMessage != null) {
+      return AppStateWidgets.buildErrorWidget(
+        context,
+        appState.errorMessage!,
+        appState.clearError,
+      );
+    }
+    
+    if (appState.currentImage == null) {
+      return const ImageUploadWidget();
+    }
+    
+    return _buildMainLayout();
+  }
+  
+  /// 초기화 버튼 빌드
+  Widget _buildResetButton() {
+    return Positioned(
+      top: MediaQuery.of(context).padding.top + AppConstants.floatingButtonTopOffset,
+      right: 16,
+      child: FloatingActionButton.small(
+        onPressed: () => _showResetDialog(),
+        tooltip: '초기화',
+        backgroundColor: Theme.of(context).colorScheme.surface.withOpacity(0.9),
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
+        child: const Icon(Icons.refresh),
+      ),
     );
   }
 
-  void _showResetDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('초기화'),
-          content: const Text('모든 변경사항이 사라집니다. 계속하시겠습니까?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('취소'),
-            ),
-            FilledButton(
-              onPressed: () {
-                context.read<AppState>().reset();
-                Navigator.of(context).pop();
-              },
-              child: const Text('초기화'),
-            ),
-          ],
-        );
+  /// 메인 레이아웃 빌드
+  Widget _buildMainLayout() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < AppConstants.mobileBreakpoint;
+        
+        return isMobile
+            ? _buildMobileLayout(constraints)
+            : _buildDesktopLayout();
       },
+    );
+  }
+  
+  /// 모바일 레이아웃
+  Widget _buildMobileLayout(BoxConstraints constraints) {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // 이미지 영역
+          ImageContainer(
+            height: _calculateMobileImageHeight(constraints),
+            margin: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+          ),
+          // 탭 시스템
+          SizedBox(
+            height: constraints.maxHeight * 1.05,
+            child: AppTabSystem(controller: _tabController),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  /// 데스크톱 레이아웃
+  Widget _buildDesktopLayout() {
+    return Row(
+      children: [
+        // 이미지 영역
+        Expanded(
+          flex: 3,
+          child: ImageContainer(
+            margin: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+          ),
+        ),
+        // 컨트롤 패널
+        SizedBox(
+          width: AppConstants.desktopControlPanelWidth,
+          child: Container(
+            margin: const EdgeInsets.only(top: 4, right: 16, bottom: 16),
+            child: AppTabSystem(controller: _tabController),
+          ),
+        ),
+      ],
+    );
+  }
+  
+  /// 모바일 이미지 높이 계산
+  double _calculateMobileImageHeight(BoxConstraints constraints) {
+    return math.max(
+      AppConstants.minMobileImageHeight,
+      math.min(
+        constraints.maxWidth * 1.2,
+        constraints.maxHeight * 0.6,
+      ),
+    );
+  }
+
+  /// 리셋 다이얼로그 표시
+  void _showResetDialog() {
+    AppStateWidgets.showResetDialog(
+      context,
+      () => context.read<AppState>().reset(),
     );
   }
   

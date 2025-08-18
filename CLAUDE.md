@@ -4,10 +4,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-BeautyGen is a comprehensive facial analysis and beauty scoring application with AI-powered transformations.
+BeautyGen is a comprehensive facial analysis and beauty scoring application with AI-powered transformations and virtual plastic surgery simulation.
 
 **Backend** (`backend/`): FastAPI-based image processing server with MediaPipe face detection and transformation algorithms
 **Frontend** (`frontend/`): Flutter web application providing professional beauty analysis dashboard and real-time facial transformations
+
+## Recent Updates
+
+### UI/UX Improvements
+- Enhanced first screen design with logo_e.png branding
+- Optimized image layout with shadow effects and responsive spacing
+- Removed redundant text elements for cleaner interface
+- Improved error handling with user-friendly messages
+- Added multiple face detection with automatic largest face selection
+
+### Image Processing
+- Face-based intelligent cropping with automatic resizing
+- Multiple face detection and warning system
+- Enhanced image upload workflow with comprehensive photography guides
+- Removed brightness correction to prevent noise artifacts
+
+### Web Deployment Assets
+- Added favicon, social media sharing images (og-image.png)
+- Splash screen with smooth transitions
+- PWA-ready manifest configuration
+- Brand logo assets (logo_c.png, logo_d.png, logo_e.png)
 
 ## Build and Development Commands
 
@@ -74,7 +95,10 @@ docker run -p 8000:8000 beautygen-backend
 
 **Assets:**
 - `assets/images/face_guide.png`: Camera guideline overlay
-- `web/index.html`: Web application entry point
+- `web/index.html`: Web application entry point with splash screen
+- `web/images/logo_e.png`: Main brand logo (480x240)
+- `web/images/og-image.png`: Social media sharing image (1200x630)
+- `web/favicon.png`: Browser tab icon
 
 ### Backend Structure (`backend/`)
 
@@ -117,9 +141,12 @@ docker run -p 8000:8000 beautygen-backend
 ## Face Detection and Processing
 
 - Uses MediaPipe Face Mesh for real-time facial landmark detection (468 landmarks)
-- Automatic face detection-based 3:4 aspect ratio cropping
+- **Multiple Face Detection**: Detects up to 10 faces, automatically selects largest
+- **Intelligent Cropping**: Face-based 3:4 aspect ratio cropping with 60% padding
+- **Minimum Size Guarantee**: Ensures images are at least 600x800 pixels
 - Advanced transformation algorithms with mathematical warping formulas
 - Real-time visualization with coordinate mapping
+- User-friendly error messages for failed detections
 
 ## Image Warping Algorithm
 
@@ -141,6 +168,7 @@ Where:
 1. **💉 아래턱 (Lower Jaw)**: Landmarks 150, 379 → 4 (nose bridge direction)
 2. **💉 중간턱 (Middle Jaw)**: Landmarks 172, 397 → 4 (nose bridge direction)  
 3. **💉 볼 (Cheek)**: Landmarks 215, 435 → 4 (nose bridge direction)
+   - **Updated**: Changed landmark 301 → 361 for better cheek area targeting
 4. **💉 앞트임 (Front Protusion)**: Eye landmarks with elliptical transformation
 5. **💉 뒷트임 (Back Slit)**: Outer eye corner extension
 
@@ -323,8 +351,27 @@ class ApiService {
 - Zero-flicker UI with smooth transitions
 - Scalable architecture for easy feature extension
 
+## Current State & Known Issues
+
+### Completed Features
+- ✅ Multiple face detection with automatic largest face selection
+- ✅ User-friendly error messages and photography guides
+- ✅ Enhanced UI with logo branding and shadow effects
+- ✅ Face-based intelligent image cropping
+- ✅ Web deployment assets (favicon, splash screen, social sharing)
+- ✅ Overflow handling for responsive layout
+- ✅ AI analysis text parsing improvements
+
+### Technical Notes
+- **Image Assets**: Currently using logo_e.png (480x240) with shadow effects
+- **API Endpoints**: Backend supports multiple face detection via MediaPipe
+- **Error Handling**: Graceful degradation with fallback messages
+- **Performance**: Client-side image processing with automatic resizing
+
 ## Rules
 
 - 코드 수정 시 자동으로 .claude 폴더에 필요한 사항을 저장하고 업데이트해라
 - 코드 수정 시 자동으로 이 파일에 필요한 부분이 있으면 수정을 해라
-- 필요하면 자동 compact를 실행해라.
+- 필요하면 자동 compact를 실행해라
+- UI 개선 시 여성 유저 친화적인 디자인 고려
+- 에러 메시지는 사용자 경험을 고려한 친화적 문구 사용

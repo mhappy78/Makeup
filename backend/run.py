@@ -7,7 +7,7 @@ import uvicorn
 from main import app
 
 if __name__ == "__main__":
-    print("🚀 Face Simulator API 서버 시작...")
+    print("🚀 BeautyGen API 서버 시작...")
     print("📍 서버 주소: http://localhost:8080")
     print("📚 API 문서: http://localhost:8080/docs")
     print("🔄 Interactive API: http://localhost:8080/redoc")
