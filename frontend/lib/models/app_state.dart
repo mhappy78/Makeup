@@ -226,6 +226,12 @@ class AppState extends ChangeNotifier {
     }
   }
   
+  // 카메라에서 촬영한 이미지 설정 (임시 저장)
+  void setCurrentImage(Uint8List imageData) {
+    _currentImage = imageData;
+    notifyListeners();
+  }
+  
   // 프리셋 적용용 이미지 업데이트 (히스토리 보존)
   void updateImageFromPreset(Uint8List imageData, String imageId) {
     _addToHistory(); // 히스토리에 현재 이미지 추가
@@ -1686,8 +1692,8 @@ class Landmark {
 enum WarpMode {
   pull('pull', '당기기', '선택한 점을 드래그 방향으로 당김'),
   push('push', '밀어내기', '선택한 점을 드래그 방향으로 밀어냄'),
-  expand('expand', '축소', '선택한 점 주변을 방사형으로 축소'),
-  shrink('shrink', '확대', '선택한 점 주변을 방사형으로 확대');
+  expand('expand', '확대', '선택한 점 주변을 방사형으로 축소'),
+  shrink('shrink', '축소', '선택한 점 주변을 방사형으로 확대');
   
   const WarpMode(this.value, this.displayName, this.description);
   

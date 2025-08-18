@@ -91,13 +91,15 @@ class _LandmarkControlsWidgetState extends State<LandmarkControlsWidget> {
                       const SizedBox(height: 16),
                     ],
                     
-                    // 재진단 버튼
-                    _buildReAnalysisButton(context, appState, isMobile),
-                    
                     const SizedBox(height: 16),
                     
                     // 컨트롤 버튼들
                     _buildControlButtons(context, appState, isMobile),
+                    
+                    const SizedBox(height: 16),
+                    
+                    // 재진단 버튼 (Before/After와 저장 버튼 아래)
+                    _buildReAnalysisButton(context, appState, isMobile),
                     
                     const SizedBox(height: 32),
                     

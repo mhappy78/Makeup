@@ -4,6 +4,8 @@ import 'package:file_picker/file_picker.dart';
 import 'dart:typed_data';
 import '../models/app_state.dart';
 import '../services/api_service.dart';
+import '../utils/image_processor.dart';
+import 'camera_capture_widget.dart';
 
 /// 이미지 업로드 위젯
 class ImageUploadWidget extends StatelessWidget {
@@ -57,52 +59,47 @@ class ImageUploadWidget extends StatelessWidget {
             
             const SizedBox(height: 48),
             
-            // 업로드 버튼
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: FilledButton.icon(
-                onPressed: () => _pickAndUploadImage(context),
-                icon: const Icon(Icons.upload),
-                label: const Text('이미지 선택'),
-                style: FilledButton.styleFrom(
-                  textStyle: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // 드래그 앤 드롭 안내
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.outline,
-                  style: BorderStyle.solid,
-                ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.cloud_upload_outlined,
-                    size: 48,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    '또는 이미지를 여기에 드래그하세요',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+            // 업로드 버튼들
+            Row(
+              children: [
+                // 이미지 선택 버튼
+                Expanded(
+                  child: SizedBox(
+                    height: 56,
+                    child: FilledButton.icon(
+                      onPressed: () => _pickAndUploadImage(context),
+                      icon: const Icon(Icons.upload),
+                      label: const Text('갤러리'),
+                      style: FilledButton.styleFrom(
+                        textStyle: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
-                ],
-              ),
+                ),
+                
+                const SizedBox(width: 16),
+                
+                // 카메라 촬영 버튼
+                Expanded(
+                  child: SizedBox(
+                    height: 56,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _openCamera(context),
+                      icon: const Icon(Icons.camera_alt),
+                      label: const Text('카메라'),
+                      style: OutlinedButton.styleFrom(
+                        textStyle: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
             
             const SizedBox(height: 32),
@@ -118,6 +115,80 @@ class ImageUploadWidget extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _openCamera(BuildContext context) async {
+    try {
+      // 카메라 화면으로 이동
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => const CameraCaptureWidget(),
+          fullscreenDialog: true,
+        ),
+      );
+      
+      // 카메라에서 돌아온 후 이미지가 설정되었다면 처리
+      final appState = context.read<AppState>();
+      if (appState.currentImage != null) {
+        await _processCameraImage(context, appState.currentImage!);
+      }
+    } catch (e) {
+      _showError(context, '카메라 오류: $e');
+    }
+  }
+
+  Future<void> _processCameraImage(BuildContext context, Uint8List imageBytes) async {
+    final appState = context.read<AppState>();
+    final apiService = context.read<ApiService>();
+
+    appState.setLoading(true);
+
+    try {
+      // 1. 이미지 업로드
+      final uploadResponse = await apiService.uploadImage(imageBytes, 'camera_capture.jpg');
+      
+      // 2. 얼굴 랜드마크 자동 검출
+      final landmarkResponse = await apiService.getFaceLandmarks(uploadResponse.imageId);
+      
+      // 3. 얼굴 기반 이미지 처리 (크롭 + 밝기 보정)
+      final processedBytes = await ImageProcessor.processImageWithFaceDetection(
+        imageBytes, 
+        landmarkResponse.landmarks.cast<dynamic>(),
+      );
+      
+      // 4. 처리된 이미지로 다시 업로드
+      final processedUploadResponse = await apiService.uploadImage(processedBytes, 'processed_camera_capture.jpg');
+      
+      // 5. 앱 상태 업데이트
+      appState.setImage(
+        processedBytes,
+        processedUploadResponse.imageId,
+        processedUploadResponse.width,
+        processedUploadResponse.height,
+      );
+
+      // 6. 랜드마크 다시 검출 (처리된 이미지 기준)
+      final finalLandmarkResponse = await apiService.getFaceLandmarks(processedUploadResponse.imageId);
+      appState.setLandmarks(finalLandmarkResponse.landmarks);
+
+      appState.setLoading(false);
+      
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('카메라 촬영 및 얼굴 인식 완료!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+      
+    } catch (e) {
+      appState.setError('카메라 이미지 처리 실패: $e');
+      
+      if (context.mounted) {
+        _showError(context, e.toString());
+      }
+    }
   }
 
   Future<void> _pickAndUploadImage(BuildContext context) async {
@@ -154,14 +225,14 @@ class ImageUploadWidget extends StatelessWidget {
         return;
       }
 
-      await _uploadImage(context, fileBytes, fileName);
+      await _processImage(context, fileBytes, fileName);
       
     } catch (e) {
       _showError(context, '파일 선택 중 오류가 발생했습니다: $e');
     }
   }
 
-  Future<void> _uploadImage(BuildContext context, Uint8List imageBytes, String fileName) async {
+  Future<void> _processImage(BuildContext context, Uint8List imageBytes, String fileName) async {
     final appState = context.read<AppState>();
     final apiService = context.read<ApiService>();
 
@@ -171,17 +242,29 @@ class ImageUploadWidget extends StatelessWidget {
       // 1. 이미지 업로드
       final uploadResponse = await apiService.uploadImage(imageBytes, fileName);
       
-      // 2. 앱 상태 업데이트
+      // 2. 얼굴 랜드마크 자동 검출
+      final landmarkResponse = await apiService.getFaceLandmarks(uploadResponse.imageId);
+      
+      // 3. 얼굴 기반 이미지 처리 (크롭 + 밝기 보정)
+      final processedBytes = await ImageProcessor.processImageWithFaceDetection(
+        imageBytes, 
+        landmarkResponse.landmarks.cast<dynamic>(),
+      );
+      
+      // 4. 처리된 이미지로 다시 업로드
+      final processedUploadResponse = await apiService.uploadImage(processedBytes, 'processed_$fileName');
+      
+      // 5. 앱 상태 업데이트
       appState.setImage(
-        imageBytes,
-        uploadResponse.imageId,
-        uploadResponse.width,
-        uploadResponse.height,
+        processedBytes,
+        processedUploadResponse.imageId,
+        processedUploadResponse.width,
+        processedUploadResponse.height,
       );
 
-      // 3. 얼굴 랜드마크 자동 검출
-      final landmarkResponse = await apiService.getFaceLandmarks(uploadResponse.imageId);
-      appState.setLandmarks(landmarkResponse.landmarks);
+      // 6. 랜드마크 다시 검출 (처리된 이미지 기준)
+      final finalLandmarkResponse = await apiService.getFaceLandmarks(processedUploadResponse.imageId);
+      appState.setLandmarks(finalLandmarkResponse.landmarks);
 
       appState.setLoading(false);
       

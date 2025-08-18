@@ -22,7 +22,7 @@ class _BeforeAfterComparisonState extends State<BeforeAfterComparison> {
   Offset? _lastPanUpdate;
   
   // 회색조 상태
-  bool _isGrayscale = false; // 디폴트로 Before 이미지를 컬러로 표시
+  bool _isGrayscale = true; // 디폴트로 Before 이미지를 회색으로 표시
 
   // 줌 리셋
   void _resetZoom() {

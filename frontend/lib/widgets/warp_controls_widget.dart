@@ -122,11 +122,6 @@ class WarpControlsWidget extends StatelessWidget {
               
               SizedBox(height: isMobile ? 8 : 30),
               
-              // 재진단 버튼
-              _buildReAnalysisButton(context, appState, isMobile),
-              
-              SizedBox(height: isMobile ? 8 : 16),
-              
               // 히스토리 관리 버튼들
               Row(
                 children: [
@@ -197,7 +192,7 @@ class WarpControlsWidget extends StatelessWidget {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Row(
-                        children: [WarpMode.pull, WarpMode.push, WarpMode.shrink, WarpMode.expand].asMap().entries.map((entry) {
+                        children: [WarpMode.pull, WarpMode.push, WarpMode.expand, WarpMode.shrink].asMap().entries.map((entry) {
                           final index = entry.key;
                           final mode = entry.value;
                           final isSelected = appState.warpMode == mode;
@@ -277,15 +272,15 @@ class WarpControlsWidget extends StatelessWidget {
                 
                 const SizedBox(height: 16),
                 
-                // 세 번째 줄: 확대, 축소 
+                // 세 번째 줄: 축소, 확대 
                 Row(
                   children: [
                     Expanded(
-                      child: _buildDesktopModeButton(context, appState, WarpMode.shrink),
+                      child: _buildDesktopModeButton(context, appState, WarpMode.expand),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: _buildDesktopModeButton(context, appState, WarpMode.expand),
+                      child: _buildDesktopModeButton(context, appState, WarpMode.shrink),
                     ),
                   ],
                 ),
@@ -395,6 +390,11 @@ class WarpControlsWidget extends StatelessWidget {
                     ),
                   ),
                 ],
+                SizedBox(height: isMobile ? 8 : 16),
+                
+                // 재진단 버튼 (Before/After와 저장 버튼 아래)
+                _buildReAnalysisButton(context, appState, isMobile),
+                
                 SizedBox(height: isMobile ? 8 : 30),
               ] else if (appState.currentImage != null) ...[
                 // 이미지는 있지만 원본이 없는 경우 저장만 표시

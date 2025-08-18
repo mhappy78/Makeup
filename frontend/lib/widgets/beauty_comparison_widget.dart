@@ -53,7 +53,9 @@ class BeautyComparisonWidget extends StatelessWidget {
                     const SizedBox(width: 12),
                     Flexible(
                       child: Text(
-                        '🤖 AI 전문가가 재진단 결과를 분석 중입니다...',
+                        appState.isReAnalyzing 
+                          ? '🤖 AI 전문가가 재진단 결과를 분석 중입니다...'
+                          : '🤖 AI 전문가가 진단 결과를 분석 중입니다...',
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                           color: Theme.of(context).colorScheme.primary,
