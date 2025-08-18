@@ -25,14 +25,10 @@ class _LandmarkControlsWidgetState extends State<LandmarkControlsWidget> {
         return LayoutBuilder(
           builder: (context, constraints) {
             // 실제 브라우저 화면 크기 기준 반응형 감지
-            final constraintWidth = constraints.maxWidth;
             final screenWidth = MediaQuery.of(context).size.width;
-            final screenHeight = MediaQuery.of(context).size.height;
             
-            // 실제 브라우저 화면 크기로 모바일 판단 (탭 제약 무시)
             // 768px 이하면 모바일, 그 이상이면 데스크톱
             final isMobile = screenWidth <= 768;
-            
             
             return SingleChildScrollView(
               padding: EdgeInsets.all(isMobile ? 8.0 : 16.0),
@@ -135,9 +131,9 @@ class _LandmarkControlsWidgetState extends State<LandmarkControlsWidget> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            '• 프리셋은 시뮬레이션 목적입니다\\n'
-                            '• 실제 시술과는 차이가 있을 수 있습니다\\n'
-                            '• 여러 프리셋을 조합하여 사용 가능합니다\\n'
+                            '• 프리셋은 시뮬레이션 목적입니다\n'
+                            '• 실제 시술과는 차이가 있을 수 있습니다\n'
+                            '• 여러 프리셋을 조합하여 사용 가능합니다\n'
                             '• 뒤로가기로 언제든 되돌릴 수 있습니다',
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: Theme.of(context).colorScheme.onErrorContainer,
@@ -163,7 +159,7 @@ class _LandmarkControlsWidgetState extends State<LandmarkControlsWidget> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            '이미지를 업로드하면\\n프리셋을 사용할 수 있습니다',
+                            '이미지를 업로드하면\n프리셋을 사용할 수 있습니다',
                             textAlign: TextAlign.center,
                             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                               color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -393,7 +389,7 @@ class _LandmarkControlsWidgetState extends State<LandmarkControlsWidget> {
       return const SizedBox.shrink();
     }
 
-    return Container(
+    return SizedBox(
       width: double.infinity,
       child: FilledButton.icon(
         onPressed: appState.currentImage != null && !appState.isReAnalyzing

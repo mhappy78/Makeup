@@ -77,7 +77,6 @@ class _BeforeAfterComparisonState extends State<BeforeAfterComparison> {
     );
   }
 
-  // 빠른 선택 버튼
   Widget _buildQuickSelectButton({
     required VoidCallback onPressed,
     required IconData icon,

@@ -1513,10 +1513,13 @@ class AppState extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // 1. 뷰티스코어 탭으로 즉시 이동
+      // 1. 줌 상태 리셋 (애니메이션과 이미지 좌표 동기화)
+      resetZoom();
+      
+      // 2. 뷰티스코어 탭으로 즉시 이동
       setCurrentTabIndex(0);
       
-      // 2. 기존 시각화 정리
+      // 3. 기존 시각화 정리
       _showBeautyScore = false;
       _beautyAnalysis.clear();
       _landmarks.clear();
@@ -1527,7 +1530,7 @@ class AppState extends ChangeNotifier {
       stopAutoAnimation();
       notifyListeners();
       
-      // 3. 잠시 대기 (UI 업데이트 보장)
+      // 4. 잠시 대기 (UI 업데이트 보장)
       await Future.delayed(const Duration(milliseconds: 300));
       
       // 4. 변형된 이미지에 대한 새로운 랜드마크 요청

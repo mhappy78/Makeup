@@ -418,7 +418,7 @@ class WarpControlsWidget extends StatelessWidget {
               Container(
                 padding: EdgeInsets.all(isMobile ? 8 : 12),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Column(
@@ -441,7 +441,7 @@ class WarpControlsWidget extends StatelessWidget {
                         ),
                       ],
                     ),
-                    SizedBox(height: isMobile ? 4 : 8),
+                    SizedBox(height: isMobile ? 4.0 : 8.0),
                     Text(
                       isMobile 
                           ? '1. 변형모드 선택\n2. 반경/강도 조절\n3. 짧게 터치&드래그로 워핑\n4. 길게 누르고 드래그로 이동'
@@ -500,11 +500,11 @@ class WarpControlsWidget extends StatelessWidget {
         style: FilledButton.styleFrom(
           backgroundColor: isSelected 
               ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).colorScheme.surfaceVariant,
+              : Theme.of(context).colorScheme.surfaceContainerHighest,
           foregroundColor: isSelected 
               ? Theme.of(context).colorScheme.onPrimary
               : Theme.of(context).colorScheme.onSurfaceVariant,
-          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
             side: BorderSide(
@@ -580,7 +580,7 @@ class WarpControlsWidget extends StatelessWidget {
     try {
       appState.setLoading(true);
       
-      final imageBytes = await apiService.downloadImage(appState.currentImageId!);
+      await apiService.downloadImage(appState.currentImageId!);
       
       // 웹에서는 브라우저 다운로드 트리거
       // 실제 구현에서는 html 패키지를 사용해야 함
