@@ -272,7 +272,6 @@ async def warp_image(request: WarpRequest):
         )
         
         # 새로운 UUID로 결과 이미지 저장 (원본 보존)
-        import uuid
         new_image_id = str(uuid.uuid4())
         new_temp_path = os.path.join(TEMP_DIR, f"{new_image_id}.jpg")
         cv2.imwrite(new_temp_path, cv2.cvtColor(warped_image, cv2.COLOR_RGB2BGR))
@@ -423,7 +422,6 @@ async def analyze_beauty_comparison(request: BeautyComparisonRequest):
                             # 하관 조화나 대칭성 변화의 30% 정도로 턱 곡률 변화 추정
                             estimated_change = (lower_face_change + symmetry_change) * 0.3
                             score_changes[item] = max(-3.0, min(3.0, estimated_change))  # -3~+3 범위로 제한
-                            print(f"🔧 턱 곡률 변화 추정: {int(estimated_change)}점 (하관조화: {int(lower_face_change)}, 대칭성: {int(symmetry_change)})")
                         else:
                             score_changes[item] = calculated_change
                     else:
@@ -450,9 +448,6 @@ async def analyze_beauty_comparison(request: BeautyComparisonRequest):
         )
         
     except Exception as e:
-        print(f"뷰티 분석 비교 에러: {type(e).__name__}: {str(e)}")
-        import traceback
-        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"뷰티 분석 비교 실패: {str(e)}")
 
 @app.post("/analyze-initial-beauty-score")
@@ -470,9 +465,6 @@ async def analyze_initial_beauty_score(request: InitialBeautyAnalysisRequest):
         )
         
     except Exception as e:
-        print(f"기초 뷰티스코어 GPT 분석 에러: {type(e).__name__}: {str(e)}")
-        import traceback
-        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"기초 뷰티스코어 GPT 분석 실패: {str(e)}")
 
 
@@ -488,19 +480,15 @@ def apply_warp(image: np.ndarray, start_x: float, start_y: float,
     end_x = max(0, min(end_x, img_width - 1))
     end_y = max(0, min(end_y, img_height - 1))
     
-    print(f"워핑 모드: {mode}")
     if mode == "pull":
         return apply_pull_warp(image, start_x, start_y, end_x, end_y, influence_radius, strength)
     elif mode == "push":
         return apply_push_warp(image, start_x, start_y, end_x, end_y, influence_radius, strength)
     elif mode == "expand":
-        print("확대 모드 실행 - expand=True")
         return apply_radial_warp(image, start_x, start_y, influence_radius, strength, expand=True)
     elif mode == "shrink":
-        print("축소 모드 실행 - expand=False")
         return apply_radial_warp(image, start_x, start_y, influence_radius, strength, expand=False)
     else:
-        print(f"알 수 없는 모드: {mode}")
         return image
 
 def apply_pull_warp(image: np.ndarray, start_x: float, start_y: float,
@@ -637,9 +625,6 @@ def apply_radial_warp(image: np.ndarray, center_x: float, center_y: float,
 
 def apply_preset_transformation(image: np.ndarray, landmarks: List[Tuple[float, float]], preset_type: str) -> np.ndarray:
     """프리셋 변형 적용"""
-    print(f"\n=== PRESET DEBUG: {preset_type} ===")
-    print(f"Image shape: {image.shape}")
-    print(f"Total landmarks: {len(landmarks)}")
     
     # 프리셋 상수들 (face_simulator.py에서 가져옴)
     PRESET_CONFIGS = {
@@ -691,13 +676,9 @@ def apply_preset_transformation(image: np.ndarray, landmarks: List[Tuple[float, 
     face_size_right = landmarks[config['face_size_landmarks'][1]]
     face_width = abs(face_size_right[0] - face_size_left[0])
     
-    print(f"Face landmarks: left={face_size_left}, right={face_size_right}")
-    print(f"Face width: {face_width}px")
     
     # 영향 반경 계산
     influence_radius = face_width * config['influence_ratio']
-    print(f"Influence radius: {influence_radius}px (ratio: {config['influence_ratio']})")
-    print(f"Config: {config}")
     
     result_image = image.copy()
     
@@ -758,9 +739,6 @@ def apply_preset_transformation(image: np.ndarray, landmarks: List[Tuple[float, 
         landmark_243 = landmarks[243]
         landmark_463 = landmarks[463]
         
-        print(f"\n--- FRONT PROTUSION DEBUG ---")
-        print(f"Landmark 243 (left inner): {landmark_243}")
-        print(f"Landmark 463 (right inner): {landmark_463}")
         
         # 중간점들 계산
         mid_56_190 = ((landmarks[56][0] + landmarks[190][0]) / 2,
@@ -768,15 +746,12 @@ def apply_preset_transformation(image: np.ndarray, landmarks: List[Tuple[float, 
         mid_414_286 = ((landmarks[414][0] + landmarks[286][0]) / 2,
                        (landmarks[414][1] + landmarks[286][1]) / 2)
         
-        print(f"Mid 56_190: {mid_56_190}")
-        print(f"Mid 414_286: {mid_414_286}")
         
         # 앞트임: 예전 방식 - 코 중심으로 당기기
         # 타겟 중간점 계산 (168 + 6의 중간점)
         target_mid = ((landmarks[168][0] + landmarks[6][0]) / 2,
                       (landmarks[168][1] + landmarks[6][1]) / 2)
         
-        print(f"Target mid (nose center): {target_mid}")
         
         # 각 포인트에 변형 적용 (코 중심으로)
         for i, (source_landmark, target_point) in enumerate([
@@ -793,11 +768,6 @@ def apply_preset_transformation(image: np.ndarray, landmarks: List[Tuple[float, 
             dy = target_point[1] - source_landmark[1]
             norm = math.sqrt(dx**2 + dy**2)
             
-            print(f"\nPoint {i+1}: {source_landmark} -> {target_point}")
-            print(f"Distance: {distance:.2f}px")
-            print(f"Pull ratio: {config['pull_ratio']}")
-            print(f"Pull distance: {pull_distance:.2f}px")
-            print(f"Direction vector: ({dx:.2f}, {dy:.2f})")
             
             if norm > 0:
                 dx = (dx / norm) * pull_distance
@@ -806,12 +776,6 @@ def apply_preset_transformation(image: np.ndarray, landmarks: List[Tuple[float, 
                 target_x = source_landmark[0] + dx
                 target_y = source_landmark[1] + dy
                 
-                print(f"Normalized direction: ({dx:.2f}, {dy:.2f})")
-                print(f"Final target: ({target_x:.2f}, {target_y:.2f})")
-                print(f"Actual movement: ({dx:.2f}, {dy:.2f})")
-                print(f"Strength: {config['strength']}")
-                print(f"Influence radius: {influence_radius:.2f}px")
-                print(f"Ellipse ratio: {config.get('ellipse_ratio')}")
                 
                 result_image = apply_pull_warp(
                     result_image,
@@ -983,9 +947,6 @@ async def get_gpt_beauty_analysis(before_analysis: Dict[str, Any], after_analysi
             if practice_section and len(practice_section) > 10:
                 recommendations = [practice_section]
             
-            print(f"🔍 재진단 분석 텍스트 길이: {len(clean_analysis_text)}자")
-            print(f"🔍 재진단 recommendations 길이: {len(recommendations[0]) if recommendations else 0}자")
-            print(f"🔍 재진단 recommendations 샘플: {recommendations[0][:100] if recommendations else 'None'}...")
 
         return {
             "analysis": clean_analysis_text,
@@ -1007,7 +968,6 @@ async def get_gpt_beauty_analysis(before_analysis: Dict[str, Any], after_analysi
 
 async def get_gpt_initial_beauty_analysis(beauty_analysis: Dict[str, Any]) -> Dict[str, Any]:
     """GPT-4o mini를 사용한 기초 뷰티스코어 분석"""
-    print(f"🔍 GPT 분석 함수 호출됨")
     try:
         # 시스템 프롬프트 정의 - 분석과 구체적 실천 방법 연결
         system_prompt = """
@@ -1256,10 +1216,6 @@ async def get_gpt_initial_beauty_analysis(beauty_analysis: Dict[str, Any]) -> Di
                 full_practice_content = '\n'.join(cleaned_lines).strip()
                 recommendations = [full_practice_content]  # 전체 내용을 하나의 요소로
                 
-            print(f"🔍 Backend recommendations 길이: {len(recommendations[0]) if recommendations else 0}자")
-            print(f"🔍 Backend recommendations 샘플: {recommendations[0][:100] if recommendations else 'None'}...")
-        else:
-            print(f"🔍 Backend GPT 응답에 --- 구분자 없음: {analysis_text[:200]}...")
         
         # 기존 분석 내용 추출 (1, 2, 3번 섹션에서)
         lines = analysis_text.split('\n')
@@ -1326,11 +1282,9 @@ async def get_gpt_initial_beauty_analysis(beauty_analysis: Dict[str, Any]) -> Di
             "analysis": analysis_text,
             "recommendations": recommendations[:4]
         }
-        print(f"🔍 Backend GPT 응답: {result}")
         return result
 
     except Exception as e:
-        print(f"기초 뷰티스코어 GPT 분석 오류: {e}")
         # 폴백 응답
         return {
             "analysis": "뷰티 분석이 완료되었습니다. 여러분만의 고유한 매력을 발견하고 자신감을 가지세요!",
