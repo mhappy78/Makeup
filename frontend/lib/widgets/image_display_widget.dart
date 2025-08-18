@@ -1808,7 +1808,7 @@ class LaserEffectPainter extends CustomPainter {
         targetLandmarks = [
           215, 435, // 메인 볼 랜드마크
           132, 147, 187, 207, 192, 138, 214, // 왼쪽 볼 주변
-          301, 376, 411, 427, 434, 367, 416  // 오른쪽 볼 주변
+          361, 376, 411, 427, 434, 367, 416  // 오른쪽 볼 주변
         ];
         treatmentArea = '볼';
         break;

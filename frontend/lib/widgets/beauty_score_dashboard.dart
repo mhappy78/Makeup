@@ -873,16 +873,24 @@ class _BeautyScoreDashboardState extends State<BeautyScoreDashboard>
 
   /// 메인 섹션 제목 여부를 엄격하게 판단하는 헬퍼 함수
   bool _isMainSectionTitle(String line) {
-    // 1. 숫자로 시작하는 패턴 (1., 2., 3.)은 메인 제목에서만 허용
+    // 1. 숫자로 시작하는 패턴 (1., 2., 3.)은 메인 제목으로 우선 처리
     if (RegExp(r'^\d+\.').hasMatch(line)) {
-      // "개선이 필요한 부분" 아래의 세부 항목들은 메인 제목이 아님
-      if (line.contains('-') || line.contains('개선') || line.contains('조정') || 
-          line.contains('보완') || line.contains('관리') || line.contains('운동') ||
-          line.contains('마사지') || line.contains('케어') || line.contains('시술') ||
-          line.contains('치료') || line.contains('교정') || line.contains('수술')) {
+      // 메인 제목 예외: "1. 내 얼굴의 좋은 점", "2. 개선이 필요한 부분", "3. 개선 후 기대효과" 등
+      // 이들은 짧고 간결한 메인 섹션 제목이므로 허용
+      if (line.length < 50 && !line.contains('-') && !line.contains(':')) {
+        return true;
+      }
+      
+      // 세부 항목들 (긴 텍스트이거나 하이픈, 콜론이 포함된 경우)은 메인 제목이 아님
+      if (line.contains('-') || line.contains(':') || line.length > 50 ||
+          (line.contains('조정') || line.contains('보완') || line.contains('관리') || 
+           line.contains('운동') || line.contains('마사지') || line.contains('케어') || 
+           line.contains('시술') || line.contains('치료') || line.contains('교정') || 
+           line.contains('수술'))) {
         return false;
       }
-      // 숫자로만 시작하고 위 키워드가 없으면 메인 제목으로 처리
+      
+      // 기본적으로 숫자로 시작하는 짧은 제목은 메인 제목으로 처리
       return true;
     }
     

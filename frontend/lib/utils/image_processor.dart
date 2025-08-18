@@ -23,7 +23,10 @@ class ImageProcessor {
       processedImage = _cropImageTo3x4(processedImage);
     }
 
-    // 2. JPEG로 인코딩 (품질 90%)
+    // 2. 이미지가 너무 작으면 적당한 크기로 확대
+    processedImage = _ensureMinimumSize(processedImage);
+
+    // 3. JPEG로 인코딩 (품질 90%)
     final processedBytes = img.encodeJpg(processedImage, quality: 90);
     return Uint8List.fromList(processedBytes);
   }
@@ -125,5 +128,34 @@ class ImageProcessor {
     final croppedImage = _cropImageTo3x4(originalImage);
     final croppedBytes = img.encodeJpg(croppedImage, quality: 90);
     return Uint8List.fromList(croppedBytes);
+  }
+
+  /// 이미지가 너무 작으면 최소 크기로 확대
+  static img.Image _ensureMinimumSize(img.Image image) {
+    // 최소 권장 크기 (3:4 비율 유지)
+    const int minWidth = 600;  // 최소 너비
+    const int minHeight = 800; // 최소 높이 (3:4 비율)
+    
+    // 현재 이미지가 이미 충분히 크면 그대로 반환
+    if (image.width >= minWidth && image.height >= minHeight) {
+      return image;
+    }
+    
+    // 3:4 비율을 유지하면서 확대할 스케일 계산
+    final scaleByWidth = minWidth / image.width;
+    final scaleByHeight = minHeight / image.height;
+    final scale = math.max(scaleByWidth, scaleByHeight);
+    
+    // 새로운 크기 계산
+    final newWidth = (image.width * scale).round();
+    final newHeight = (image.height * scale).round();
+    
+    // 이미지 리사이즈 (고품질 보간법 사용)
+    return img.copyResize(
+      image,
+      width: newWidth,
+      height: newHeight,
+      interpolation: img.Interpolation.cubic, // 부드러운 확대를 위한 cubic 보간
+    );
   }
 }

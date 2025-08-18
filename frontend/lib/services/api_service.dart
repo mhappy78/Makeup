@@ -59,7 +59,7 @@ class ApiService {
       
       return ImageUploadResponse.fromJson(response.data);
     } on DioException catch (e) {
-      throw ApiException('이미지 업로드 실패: ${e.message}');
+      throw ApiException('📤 이미지 업로드 중 문제가 발생했어요\n\n🔄 다시 시도해보세요:\n• 인터넷 연결을 확인해주세요\n• 이미지 크기가 너무 크지 않은지 확인해주세요\n• 잠시 후 다시 업로드해주세요');
     }
   }
   
@@ -70,7 +70,7 @@ class ApiService {
       return LandmarkResponse.fromJson(response.data);
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) {
-        throw ApiException('얼굴을 찾을 수 없습니다');
+        throw ApiException('🤔 사진 속 얼굴이 잘 보이지 않아요\n\n📸 이렇게 시도해보세요:\n• 얼굴이 정면으로 나온 사진을 선택해주세요\n• 조명이 밝은 곳에서 찍은 사진을 사용해주세요\n• 얼굴 전체가 잘 보이는 사진을 업로드해주세요');
       }
       throw ApiException('랜드마크 검출 실패: ${e.message}');
     }
@@ -199,11 +199,13 @@ class LandmarkResponse {
   final List<Landmark> landmarks;
   final int imageWidth;
   final int imageHeight;
+  final String? warningMessage;
   
   LandmarkResponse({
     required this.landmarks,
     required this.imageWidth,
     required this.imageHeight,
+    this.warningMessage,
   });
   
   factory LandmarkResponse.fromJson(Map<String, dynamic> json) {
@@ -218,6 +220,7 @@ class LandmarkResponse {
       landmarks: landmarks,
       imageWidth: json['image_width'],
       imageHeight: json['image_height'],
+      warningMessage: json['warning_message'],
     );
   }
 }

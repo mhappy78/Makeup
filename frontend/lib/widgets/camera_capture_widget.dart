@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 import '../models/app_state.dart';
 import '../utils/image_processor.dart';
+import '../services/api_service.dart';
 
 /// 얼굴 가이드라인이 있는 카메라 촬영 위젯
 class CameraCaptureWidget extends StatefulWidget {
@@ -107,16 +108,62 @@ class _CameraCaptureWidgetState extends State<CameraCaptureWidget>
       final image = await _controller!.takePicture();
       final bytes = await image.readAsBytes();
       
-      // 이미지를 3:4 비율로 크롭
-      final croppedBytes = await ImageProcessor.cropImageTo3x4(bytes);
-      
-      // AppState에 이미지 설정
+      // AppState와 ApiService 가져오기
       final appState = context.read<AppState>();
-      appState.setCurrentImage(croppedBytes);
+      final apiService = ApiService();
       
-      // 카메라 화면 닫기
+      // 로딩 상태 표시
       if (mounted) {
-        Navigator.of(context).pop();
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
+      }
+      
+      try {
+        // 1. 임시 이미지 업로드
+        final uploadResponse = await apiService.uploadImage(bytes, 'camera_capture.jpg');
+        
+        // 2. 얼굴 랜드마크 자동 검출
+        final landmarkResponse = await apiService.getFaceLandmarks(uploadResponse.imageId);
+        
+        // 3. 얼굴 기반 이미지 처리 (크롭)
+        final processedBytes = await ImageProcessor.processImageWithFaceDetection(
+          bytes, 
+          landmarkResponse.landmarks.cast<dynamic>(),
+        );
+        
+        // 4. AppState에 처리된 이미지 설정
+        appState.setCurrentImage(processedBytes);
+        
+        // 로딩 다이얼로그 닫기
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
+        
+        // 카메라 화면 닫기
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
+      } catch (e) {
+        print('얼굴 기반 처리 실패, 기본 크롭 적용: $e');
+        
+        // 얼굴 감지 실패 시 기본 3:4 크롭 적용
+        final croppedBytes = await ImageProcessor.cropImageTo3x4(bytes);
+        appState.setCurrentImage(croppedBytes);
+        
+        // 로딩 다이얼로그 닫기
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
+        
+        // 카메라 화면 닫기
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
       }
     } catch (e) {
       print('사진 촬영 오류: $e');

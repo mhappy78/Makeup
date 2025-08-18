@@ -47,7 +47,7 @@ mp_drawing_styles = mp.solutions.drawing_styles
 # 전역 변수
 face_mesh = mp_face_mesh.FaceMesh(
     static_image_mode=True,
-    max_num_faces=1,
+    max_num_faces=10,  # 여러 얼굴 감지를 위해 증가
     refine_landmarks=True,
     min_detection_confidence=0.5
 )
@@ -55,6 +55,34 @@ face_mesh = mp_face_mesh.FaceMesh(
 # 임시 파일 저장 디렉토리
 TEMP_DIR = "temp_images"
 os.makedirs(TEMP_DIR, exist_ok=True)
+
+def select_largest_face(multi_face_landmarks):
+    """여러 얼굴 중 가장 큰 얼굴을 선택"""
+    if not multi_face_landmarks:
+        return None, False
+    
+    if len(multi_face_landmarks) == 1:
+        return multi_face_landmarks[0], False
+    
+    # 여러 얼굴이 있는 경우 가장 큰 얼굴 찾기
+    largest_face = None
+    largest_area = 0
+    
+    for face_landmarks in multi_face_landmarks:
+        # 얼굴 경계 박스 계산
+        min_x = min([landmark.x for landmark in face_landmarks.landmark])
+        max_x = max([landmark.x for landmark in face_landmarks.landmark])
+        min_y = min([landmark.y for landmark in face_landmarks.landmark])
+        max_y = max([landmark.y for landmark in face_landmarks.landmark])
+        
+        # 면적 계산
+        area = (max_x - min_x) * (max_y - min_y)
+        
+        if area > largest_area:
+            largest_area = area
+            largest_face = face_landmarks
+    
+    return largest_face, True  # True는 여러 얼굴이 있었음을 의미
 
 # Pydantic 모델들
 class WarpRequest(BaseModel):
@@ -75,6 +103,7 @@ class LandmarkResponse(BaseModel):
     landmarks: List[Tuple[float, float]]
     image_width: int
     image_height: int
+    warning_message: Optional[str] = None
 
 class ImageResponse(BaseModel):
     image_id: str
@@ -163,9 +192,19 @@ async def get_face_landmarks(image_id: str):
         if not results.multi_face_landmarks:
             raise HTTPException(status_code=404, detail="얼굴을 찾을 수 없습니다")
         
+        # 가장 큰 얼굴 선택
+        face_landmarks, has_multiple_faces = select_largest_face(results.multi_face_landmarks)
+        
+        if face_landmarks is None:
+            raise HTTPException(status_code=404, detail="얼굴을 찾을 수 없습니다")
+        
+        # 여러 얼굴이 있었다면 경고 메시지 포함
+        warning_message = None
+        if has_multiple_faces:
+            warning_message = f"여러 명의 얼굴이 감지되었습니다. 가장 큰 얼굴을 자동으로 선택했습니다."
+        
         # 랜드마크 좌표 추출
         landmarks = []
-        face_landmarks = results.multi_face_landmarks[0]
         
         for landmark in face_landmarks.landmark:
             x = landmark.x * width
@@ -175,7 +214,8 @@ async def get_face_landmarks(image_id: str):
         return LandmarkResponse(
             landmarks=landmarks,
             image_width=width,
-            image_height=height
+            image_height=height,
+            warning_message=warning_message
         )
         
     except Exception as e:
@@ -274,10 +314,15 @@ async def apply_preset(request: PresetRequest):
         if not results.multi_face_landmarks:
             raise HTTPException(status_code=404, detail="얼굴을 찾을 수 없습니다")
         
+        # 가장 큰 얼굴 선택
+        face_landmarks, has_multiple_faces = select_largest_face(results.multi_face_landmarks)
+        
+        if face_landmarks is None:
+            raise HTTPException(status_code=404, detail="얼굴을 찾을 수 없습니다")
+        
         # 랜드마크 좌표 추출
         height, width = image_rgb.shape[:2]
         landmarks = []
-        face_landmarks = results.multi_face_landmarks[0]
         
         for landmark in face_landmarks.landmark:
             x = landmark.x * width

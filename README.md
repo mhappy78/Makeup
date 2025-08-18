@@ -1,75 +1,193 @@
-# 项目介绍  
+# BeautyGen
 
-本项目是一个Android Project，用Canvas给人脸化妆(画妆)的APP演示项目  
+**AI-Powered Facial Analysis and Beauty Enhancement Platform**
 
-主要内容包括：
-- 唇彩，美瞳，粉底，眼影，腮红，眼线，双眼皮，眉毛等，能画的妆，都画了
-- 利用图形局部变形算法进行 大眼，瘦脸，丰胸，大长腿等
-- 磨平/美白
+BeautyGen is a comprehensive facial analysis application that combines professional beauty scoring with real-time facial transformations. Built with Flutter and FastAPI, it provides both analytical insights and interactive beauty enhancement tools.
 
-# 部分效果展示
-美妆  
-![](https://github.com/DingProg/Makeup/blob/master/doc/3.png)
-![](https://github.com/DingProg/Makeup/blob/master/doc/5.png)      
-大眼  
-![](https://github.com/DingProg/Makeup/blob/master/doc/1.png)  
-瘦脸  
-![](https://github.com/DingProg/Makeup/blob/master/doc/2.png)  
-大长腿  
-![](https://github.com/DingProg/Makeup/blob/master/doc/4.png)   
+## 🚀 Features
 
+### 📊 Professional Beauty Analysis
+- **Real-time Facial Landmark Detection** - 468-point MediaPipe integration
+- **Comprehensive Beauty Scoring** - Multi-factor analysis with weighted algorithms
+- **Interactive Dashboard** - Professional charts and radar visualizations
+- **AI-Powered Recommendations** - GPT-based beauty analysis and suggestions
 
-![](https://github.com/DingProg/Makeup/blob/master/doc/smallface.gif)
+### ⚡ Preset Transformations
+- **💉 Facial Contouring** - Jaw, cheek, and chin enhancement
+- **👁️ Eye Treatments** - Front/back eye corner adjustments
+- **Shot-based System** - Realistic treatment progression tracking
+- **Real-time Preview** - Laser animation effects during application
 
-更多演示效果请直接查看下方原理文章，或者直接下载 [演示APP Release V1.0.0版本](https://github.com/DingProg/Makeup/releases)   
+### 🎨 Freestyle Warping
+- **Advanced Image Warping** - Pull, push, expand, shrink modes
+- **Precision Controls** - Percentage-based influence radius
+- **Undo/Redo System** - Up to 20-step history management
+- **Before/After Comparison** - Side-by-side slider visualization
 
-如果你要看OpenCV相关的(换证件照背景/污点修复)，可以切换到分支[with-photo-changecolor](https://github.com/DingProg/Makeup/tree/with-photo-changecolor)   
-相关的演示APP为 [带替换证件照背景/污点修复版本](https://github.com/DingProg/Makeup/releases)
+### 📸 Camera Integration
+- **Cross-platform Support** - Desktop webcam and mobile front camera
+- **Face Guidelines** - Real-time 3:4 aspect ratio preview
+- **Smart Cropping** - Automatic face detection-based cropping
+- **Professional Workflow** - Seamless integration with analysis tools
 
-# 演示APP 主要实现了的部分为
-```java
-public enum Region {
+## 🏗️ Architecture
 
-    FOUNDATION("粉底"),
-    BLUSH("腮红"),
-    LIP("唇彩"),
-    BROW("眉毛"),
-
-    EYE_LASH("睫毛"),
-    EYE_CONTACT("美瞳"),
-    EYE_DOUBLE("双眼皮"),
-    EYE_LINE("眼线"),
-    EYE_SHADOW("眼影");
-
-    private String name;
-    Region(String name) {
-        this.name = name;
-    }
-}
-
-public enum BeautyType {
-
-    SMALLFACE(2,"瘦脸"),
-    LONGLEG(3,"大长腿增高"),
-    EYE(4,"眼睛放大"),
-    BREST(5,"丰胸"),
-    WHITE(7,"美白"),
-    SMALLBODY(9,"瘦脸瘦身");
-
-    private int type;
-    private String name;
-
-    BeautyType(int type, String name) {
-        this.type = type;
-        this.name = name;
-    }
-}
+### Frontend (Flutter Web)
+```
+frontend/
+├── lib/
+│   ├── main.dart                    # Application entry point
+│   ├── models/
+│   │   └── app_state.dart          # Global state management
+│   ├── screens/
+│   │   └── home_screen.dart        # Main tab navigation
+│   ├── services/
+│   │   └── api_service.dart        # Backend API communication
+│   ├── widgets/
+│   │   ├── beauty_score_dashboard.dart     # Professional analysis UI
+│   │   ├── landmark_controls_widget.dart   # Preset transformation controls
+│   │   ├── warp_controls_widget.dart       # Freestyle warping interface
+│   │   ├── before_after_comparison.dart    # Image comparison slider
+│   │   └── camera_capture_widget.dart      # Camera integration
+│   └── utils/
+│       └── image_processor.dart    # Client-side image processing
+└── assets/
+    └── images/
+        └── face_guide.png          # Camera guideline overlay
 ```
 
-# 原理
+### Backend (FastAPI)
+```
+backend/
+├── main.py              # FastAPI application with all endpoints
+├── requirements.txt     # Python dependencies
+├── Dockerfile          # Container deployment
+└── temp_images/        # Temporary image storage
+```
 
-[Android：让你的“女神”逆袭，代码撸彩妆（画妆)](https://github.com/DingProg/Makeup/blob/master/doc/doc1.md)  
-[Android：让你的“女神”逆袭，代码撸彩妆 2（大眼，瘦脸，大长腿）](https://github.com/DingProg/Makeup/blob/master/doc/doc2.md)
+## 🛠️ Technology Stack
 
-# 声明  
-本项目是演示性及学习性项目，项目中所用素材对于直接拿去商用所造成的侵权，概不负责.  如果有侵权，请联系删除
+**Frontend:**
+- Flutter 3.10+ (Cross-platform web application)
+- Provider (State management)
+- MediaPipe (Facial landmark detection)
+- fl_chart 0.69.0 (Professional chart visualization)
+- Camera package (Webcam/mobile integration)
+
+**Backend:**
+- FastAPI (High-performance API server)
+- MediaPipe (468-point facial landmark detection)
+- OpenCV (Image processing and transformations)
+- PIL/Pillow (Image manipulation)
+- NumPy (Numerical operations)
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Flutter SDK 3.10+
+- Python 3.8+
+- Chrome browser (for web development)
+
+### Frontend Setup
+```bash
+cd frontend
+flutter pub get
+flutter run -d chrome --web-port=3000
+```
+
+### Backend Setup
+```bash
+cd backend
+pip install -r requirements.txt
+python main.py
+```
+
+### Docker Deployment
+```bash
+cd backend
+docker build -t beautygen-backend .
+docker run -p 8000:8000 beautygen-backend
+```
+
+## 📐 Core Algorithms
+
+### Image Warping Formula
+```
+e = ((pow_r - dd) * (pow_r - dd)) / ((pow_r - dd + d_pull * d_pull) * (pow_r - dd + d_pull * d_pull))
+```
+Where:
+- `pow_r`: squared influence radius
+- `dd`: squared distance from touch point to pixel  
+- `d_pull`: drag distance
+
+### Beauty Score Calculation
+```dart
+final weightedScore = 
+    (verticalScore * 0.25) +    // Horizontal Golden Ratio 25%
+    (horizontalScore * 0.20) +  // Vertical Symmetry 20%
+    (lowerFaceScore * 0.15) +   // Lower Face Harmony 15%
+    (symmetry * 0.15) +         // Basic Symmetry 15%
+    (eyeScore * 0.10) +         // Eyes 10%
+    (noseScore * 0.08) +        // Nose 8%
+    (lipScore * 0.05) +         // Lips 5%
+    (jawScore * 0.02);          // Jaw Curvature 2%
+```
+
+## 🎯 API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/upload-image` | POST | Image upload and storage |
+| `/get-face-landmarks` | POST | MediaPipe face detection |
+| `/apply-warp` | POST | Image warping transformations |
+| `/apply-preset` | POST | Predefined transformation presets |
+| `/get-beauty-analysis` | POST | Comprehensive beauty scoring |
+| `/analyze-beauty-gpt` | POST | AI-powered analysis with recommendations |
+
+## 🎨 Preset System
+
+### Available Treatments
+1. **💉 아래턱 (Lower Jaw)** - Landmarks 150, 379 → 4 (nose bridge direction)
+2. **💉 중간턱 (Middle Jaw)** - Landmarks 172, 397 → 4 (nose bridge direction)
+3. **💉 볼 (Cheek)** - Landmarks 215, 435 → 4 (nose bridge direction)
+4. **💉 앞트임 (Front Protusion)** - Eye landmarks with elliptical transformation
+5. **💉 뒷트임 (Back Slit)** - Outer eye corner extension
+
+### Shot Count System
+- **Jaw/Cheek Treatments**: 100-500 shots
+- **Eye Treatments**: 1%-10% intensity
+- **Real-time Animation**: Laser treatment visualization
+- **Cumulative Progress**: Session tracking and history
+
+## 📱 User Interface
+
+### Tab Navigation
+- **📊 뷰티스코어 (BeautyScore)** - Professional analysis dashboard
+- **⚡ 프리셋 (Preset)** - Quick transformations with laser effects
+- **🎨 프리스타일 (Freestyle)** - Advanced warping and editing tools
+
+### Mobile-First Design
+- Dynamic image sizing based on screen constraints
+- Touch-friendly interface elements
+- Optimized margins and spacing
+- SingleChildScrollView for full-screen scrollability
+
+## 🔧 Development Notes
+
+- Zero-flicker UI with smooth transitions
+- Professional chart integration with hover tooltips
+- Comprehensive state management with Provider pattern
+- Mobile-first responsive design
+- Scalable architecture for easy feature extension
+
+## 📄 License
+
+This project is for educational and demonstration purposes. Commercial use of included assets may require additional licensing.
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
