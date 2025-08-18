@@ -1,130 +1,210 @@
 # Face Simulator Frontend
 
-Flutter로 개발된 얼굴 성형 시뮬레이터 웹 프론트엔드입니다.
+Flutter로 개발된 AI 기반 얼굴 분석 및 뷰티 시뮬레이터 웹 프론트엔드입니다.
 
-## 주요 기능
+## 🎯 주요 기능
 
-- **이미지 업로드**: 드래그 앤 드롭 또는 파일 선택으로 얼굴 사진 업로드
-- **자동 얼굴 인식**: MediaPipe 기반 468개 얼굴 랜드마크 자동 검출
-- **실시간 변형**: 4가지 모드(당기기/밀어내기/확대/축소)로 실시간 얼굴 변형
-- **직관적 UI**: Material Design 3 기반 현대적이고 반응형 인터페이스
+### 📊 전문적 뷰티 분석
+- **실시간 얼굴 랜드마크 검출**: MediaPipe 기반 468개 포인트 정밀 분석
+- **종합 뷰티 스코어**: 가중평균 기반 정밀 점수 계산 시스템
+- **인터랙티브 애니메이션**: 11개 얼굴 영역별 순차 애니메이션
+- **AI 기반 개인 맞춤 추천**: GPT 연동 뷰티 분석 및 조언
 
-## 기술 스택
+### ⚡ 프리셋 가상 시술
+- **5가지 시술 타입**: 턱선(3), 앞트임, 뒷트임
+- **샷 기반 진행도**: 실제 시술과 유사한 100-500샷 시스템
+- **실시간 레이저 효과**: 시술 과정 시각화
+- **전후 비교**: Before/After 슬라이더 비교
 
-- **Flutter 3.x**: 크로스 플랫폼 UI 프레임워크
-- **Provider**: 상태 관리
-- **Dio**: HTTP 클라이언트
-- **Material Design 3**: 디자인 시스템
+### 🎨 프리스타일 편집
+- **고급 이미지 워핑**: Pull/Push/Expand/Shrink 4모드
+- **정밀 제어**: 퍼센트 기반 영향 반경 (0.5%-50%)
+- **히스토리 관리**: 최대 20단계 Undo/Redo
+- **실시간 프리뷰**: 마우스 호버 시 변형 미리보기
 
-## 프로젝트 구조
+### 📸 스마트 카메라 시스템
+- **크로스 플랫폼**: 데스크톱 웹캠, 모바일 전면 카메라
+- **3:4 비율 실시간 프리뷰**: 최적 얼굴 촬영 가이드
+- **자동 얼굴 크로핑**: 지능형 60% 패딩 처리
+- **다중 얼굴 감지**: 자동 최대 얼굴 선택
 
+## 🏗️ 아키텍처
+
+### 프로젝트 구조
 ```
 lib/
-├── main.dart                 # 앱 진입점
-├── models/                   # 데이터 모델
-│   └── app_state.dart       # 앱 전역 상태
-├── services/                 # 서비스 레이어
-│   └── api_service.dart     # FastAPI 백엔드 통신
-├── screens/                  # 화면 컴포넌트
-│   └── home_screen.dart     # 메인 홈 화면
-└── widgets/                  # 재사용 가능한 위젯
-    ├── image_upload_widget.dart      # 이미지 업로드
-    ├── image_display_widget.dart     # 이미지 표시 및 상호작용
-    ├── landmark_controls_widget.dart # 랜드마크 컨트롤
-    └── warp_controls_widget.dart     # 워핑 도구 컨트롤
+├── main.dart                    # 앱 진입점
+├── config/                      # 설정 파일
+│   ├── animation_constants.dart # 애니메이션 상수
+│   ├── app_constants.dart       # 앱 상수
+│   └── app_theme.dart          # 테마 설정
+├── models/                      # 데이터 모델
+│   ├── app_state.dart          # 전역 상태 관리
+│   ├── face_regions.dart       # 얼굴 영역 정의
+│   └── image_models.dart       # 이미지 관련 모델
+├── screens/                     # 화면 컴포넌트
+│   └── home_screen.dart        # 메인 홈 화면
+├── services/                    # 서비스 레이어
+│   ├── api_service.dart        # FastAPI 백엔드 통신
+│   └── beauty_analysis_service.dart # 뷰티 분석 로직
+├── utils/                       # 유틸리티
+│   ├── file_validator.dart     # 파일 검증
+│   ├── image_processor.dart    # 이미지 처리
+│   └── ui_helpers.dart         # UI 헬퍼
+└── widgets/                     # UI 컴포넌트
+    ├── beauty_comparison_widget.dart     # 뷰티 비교
+    ├── beauty_score_dashboard.dart      # 뷰티 대시보드
+    ├── beauty_score_visualizer.dart     # 실시간 시각화
+    ├── before_after_comparison.dart     # 전후 비교
+    ├── camera_capture_widget.dart       # 카메라 통합
+    ├── face_regions_widget.dart         # 얼굴 영역 위젯
+    ├── image_display_widget.dart        # 이미지 표시
+    ├── image_upload_widget.dart         # 이미지 업로드
+    ├── landmark_controls_widget.dart    # 프리셋 컨트롤
+    ├── warp_controls_widget.dart        # 워핑 컨트롤
+    └── components/                       # 재사용 컴포넌트
+        ├── image_container.dart         # 이미지 컨테이너
+        ├── logo_widget.dart            # 브랜딩
+        ├── photography_tips.dart        # 촬영 가이드
+        └── upload_buttons.dart          # 업로드 버튼
 ```
 
-## 설치 및 실행
+### 상태 관리
+- **Provider 패턴**: 전역 상태 관리
+- **AppState 클래스**: 중앙집중식 상태 관리
+- **실시간 반응형 UI**: ChangeNotifier 기반
 
-### 1. Flutter 설치
-[Flutter 공식 문서](https://flutter.dev/docs/get-started/install) 참조
+## 🛠️ 기술 스택
 
-### 2. 의존성 설치
+**Frontend Framework:**
+- Flutter 3.10+ (Cross-platform web application)
+- Provider (State management pattern)
+- Material Design 3 (UI system)
+
+**Image Processing:**
+- MediaPipe (468-point facial landmark detection)
+- Image package (Client-side processing)
+- Camera package (Webcam/mobile integration)
+
+**Network & APIs:**
+- Dio 5.3.2 (HTTP client)
+- JSON serialization
+- Base64 encoding
+
+## 🚀 개발 및 실행
+
+### Prerequisites
+- Flutter SDK 3.10+
+- Chrome browser
+- Dart SDK (Flutter 포함)
+
+### 개발 환경 설정
 ```bash
-cd frontend
+# 의존성 설치
 flutter pub get
-```
 
-### 3. 웹 서버 실행
-```bash
-flutter run -d web-server --web-port 3000
-```
+# 웹 개발 서버 실행
+flutter run -d chrome --web-port=3000
 
-### 4. 개발 모드 실행 (Hot Reload)
-```bash
-flutter run -d chrome
-```
-
-## API 연동
-
-FastAPI 백엔드와 통신하여 다음 기능을 제공합니다:
-
-### 엔드포인트
-- `POST /upload-image`: 이미지 업로드
-- `GET /landmarks/{id}`: 얼굴 랜드마크 검출
-- `POST /warp-image`: 이미지 워핑 적용
-- `GET /download-image/{id}`: 변형된 이미지 다운로드
-
-### 설정
-기본적으로 `http://localhost:8080`으로 백엔드에 연결합니다.
-다른 주소를 사용할 경우 `lib/services/api_service.dart`에서 `baseUrl`을 수정하세요.
-
-## 주요 컴포넌트
-
-### AppState
-- 앱의 전역 상태 관리
-- 이미지, 랜드마크, 워핑 설정 등의 상태 보관
-- Provider 패턴으로 상태 변경 알림
-
-### ImageDisplayWidget
-- 이미지 표시 및 터치/마우스 상호작용 처리
-- 랜드마크 오버레이 렌더링
-- 워핑 도구 시각화 (영향 반경, 드래그 벡터 등)
-
-### WarpControlsWidget
-- 4가지 워핑 모드 선택
-- 영향 반경 및 변형 강도 조절
-- 실시간 매개변수 업데이트
-
-## 빌드
-
-### 웹 배포용 빌드
-```bash
+# 프로덕션 빌드
 flutter build web
 ```
 
-빌드된 파일은 `build/web/` 디렉토리에 생성됩니다.
-
-### 개발 설정
+### 코드 품질 관리
 ```bash
-# 코드 분석
+# 정적 분석
 flutter analyze
+
+# 코드 포맷팅
+dart format .
 
 # 테스트 실행
 flutter test
 
-# 의존성 업데이트
-flutter pub upgrade
+# 빌드 캐시 정리
+flutter clean
 ```
 
-## 사용법
+## 📐 핵심 알고리즘
 
-1. **이미지 업로드**: "이미지 선택" 버튼을 클릭하거나 파일을 드래그하여 얼굴 사진을 업로드합니다.
+### 이미지 워핑 공식
+```dart
+e = ((pow_r - dd) * (pow_r - dd)) / 
+    ((pow_r - dd + d_pull * d_pull) * (pow_r - dd + d_pull * d_pull))
+```
 
-2. **랜드마크 확인**: 업로드 후 자동으로 얼굴 랜드마크가 검출되며, 토글을 통해 표시/숨김이 가능합니다.
+### 뷰티 스코어 가중치
+```dart
+final weightedScore = 
+    (verticalScore * 0.25) +      // 가로 황금비율 25%
+    (horizontalScore * 0.20) +    // 세로 대칭성 20%
+    (lowerFaceScore * 0.15) +     // 하관 조화 15%
+    (symmetry * 0.15) +           // 기본 대칭성 15%
+    (eyeScore * 0.10) +           // 눈 10%
+    (noseScore * 0.08) +          // 코 8%
+    (lipScore * 0.05) +           // 입술 5%
+    (jawScore * 0.02);            // 턱 곡률 2%
+```
 
-3. **변형 적용**: 
-   - 원하는 변형 모드(당기기/밀어내기/확대/축소)를 선택
-   - 영향 반경과 강도를 조절
-   - 이미지에서 마우스로 드래그하여 변형 적용
+## 🎨 사용자 인터페이스
 
-4. **결과 저장**: "결과 저장" 버튼을 클릭하여 변형된 이미지를 다운로드합니다.
+### 탭 네비게이션 시스템
+- **📊 뷰티스코어**: 전문 분석 대시보드
+- **⚡ 프리셋**: 빠른 변형 및 레이저 효과
+- **🎨 프리스타일**: 고급 편집 도구
 
-## 브라우저 지원
+### 반응형 디자인
+- 모바일 우선 접근법
+- 브라우저별 최적화
+- 터치 친화적 인터페이스
+- 480x240 로고 브랜딩
 
-- Chrome (권장)
-- Firefox
-- Safari
-- Edge
+## 🔧 성능 최적화
 
-모든 주요 모던 브라우저에서 동작하며, 웹 표준을 준수합니다.
+### 상태 관리
+- Provider 패턴 기반 중앙집중식 관리
+- 메모리 누수 방지 (proper dispose)
+- 단일 책임 원칙 준수
+
+### 이미지 처리
+- 클라이언트 사이드 3:4 비율 처리
+- 최소 600x800 크기 보장
+- Base64 인코딩/디코딩 최적화
+- 히스토리 관리 (최대 20단계)
+
+### 애니메이션
+- 60 FPS 부드러운 애니메이션
+- 지능형 시퀀스 관리
+- 메모리 효율적인 프레임 제어
+
+## 📱 브라우저 호환성
+
+- ✅ Chrome (권장)
+- ✅ Firefox
+- ✅ Safari
+- ✅ Edge
+- 📱 모바일 브라우저 지원
+
+## 🤝 개발 가이드라인
+
+### 코딩 규칙
+- Material Design 3 가이드라인 준수
+- Provider 패턴 활용
+- 재사용 가능한 컴포넌트 설계
+- 명확한 파일명 및 구조
+
+### 파일 구조 규칙
+- 기능별 폴더 분리 (config, models, services, utils, widgets)
+- components/ 폴더에 재사용 컴포넌트 배치
+- 단일 책임 원칙에 따른 파일 분할
+- 명확한 import 경로 설정
+
+### 성능 고려사항
+- 불필요한 rebuild 최소화
+- 메모리 누수 방지
+- 효율적인 애니메이션 관리
+- 최적화된 이미지 처리
+
+## 📄 라이선스
+
+이 프로젝트는 교육 및 시연 목적으로 개발되었습니다.
