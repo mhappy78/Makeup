@@ -32,19 +32,16 @@ class WarpFallbackManager {
   }) async {
     _totalAttempts++;
     
-    debugPrint('🔄 스마트 워핑 시작 - 시도 #$_totalAttempts');
     
     // 1. 클라이언트 사이드 시도
     final clientResult = await _attemptClientSideWarp(imageBytes, warpParams);
     
     if (clientResult.success) {
       _clientSuccessCount++;
-      debugPrint('✅ 클라이언트 워핑 성공 (${clientResult.processingTime}ms)');
       return clientResult;
     }
     
     _clientFailureCount++;
-    debugPrint('❌ 클라이언트 워핑 실패: ${clientResult.error}');
     
     // 2. 백엔드 폴백
     _backendFallbackCount++;
@@ -69,28 +66,23 @@ class WarpFallbackManager {
   }) async {
     _totalAttempts++;
     
-    debugPrint('🔄 스마트 프리셋 적용 시작 - $presetType');
     
     // 1. 클라이언트 사이드 시도
     final clientResult = await _attemptClientSidePreset(imageBytes, landmarks, presetType);
     
     if (clientResult.success) {
       _clientSuccessCount++;
-      debugPrint('✅ 클라이언트 프리셋 성공 (${clientResult.processingTime}ms)');
       return clientResult;
     }
     
     _clientFailureCount++;
-    debugPrint('❌ 클라이언트 프리셋 실패: ${clientResult.error}');
     
     // 2. 백엔드 폴백
     _backendFallbackCount++;
     final backendResult = await _attemptBackendPreset(imageId, presetType, apiService);
     
     if (backendResult.success) {
-      debugPrint('✅ 백엔드 프리셋 폴백 성공 (${backendResult.processingTime}ms)');
     } else {
-      debugPrint('❌ 백엔드 프리셋 폴백도 실패: ${backendResult.error}');
     }
     
     return backendResult;
@@ -259,7 +251,6 @@ class WarpFallbackManager {
         stopwatch.stop();
         
         if (attempt < _maxRetries) {
-          debugPrint('🔄 백엔드 워핑 재시도 $attempt/$_maxRetries: $e');
           await Future.delayed(_retryDelay);
           continue;
         }
@@ -304,7 +295,6 @@ class WarpFallbackManager {
         stopwatch.stop();
         
         if (attempt < _maxRetries) {
-          debugPrint('🔄 백엔드 프리셋 재시도 $attempt/$_maxRetries: $e');
           await Future.delayed(_retryDelay);
           continue;
         }
@@ -343,7 +333,6 @@ class WarpFallbackManager {
     _backendFallbackCount = 0;
     _totalAttempts = 0;
     
-    debugPrint('📊 워핑 통계가 초기화되었습니다');
   }
 
   /// 클라이언트 엔진 건강성 체크

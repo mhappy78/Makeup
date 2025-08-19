@@ -31,7 +31,6 @@ class OpenAIService {
     }
 
     try {
-      debugPrint('🤖 GPT 뷰티 비교 분석 시작...');
 
       final systemPrompt = _getComparisonSystemPrompt();
       final userPrompt = _buildComparisonPrompt(beforeAnalysis, afterAnalysis, scoreChanges);
@@ -42,12 +41,10 @@ class OpenAIService {
         'isComparison': true,
       });
       
-      debugPrint('✅ GPT 뷰티 비교 분석 완료');
       
       return _parseGptResponse(response);
       
     } catch (e) {
-      debugPrint('❌ GPT 뷰티 비교 분석 실패: $e');
       rethrow;
     }
   }
@@ -65,7 +62,6 @@ class OpenAIService {
     }
 
     try {
-      debugPrint('🤖 GPT 기초 뷰티스코어 분석 시작...');
 
       final systemPrompt = _getInitialAnalysisSystemPrompt();
       final userPrompt = _buildInitialAnalysisPrompt(beautyAnalysis);
@@ -76,12 +72,10 @@ class OpenAIService {
         'isComparison': false,
       });
       
-      debugPrint('✅ GPT 기초 뷰티스코어 분석 완료');
       
       return _parseGptResponse(response);
       
     } catch (e) {
-      debugPrint('❌ GPT 기초 뷰티스코어 분석 실패: $e');
       rethrow;
     }
   }
@@ -479,7 +473,6 @@ ${improvementPoints.isNotEmpty ? improvementPoints.map((point) => '- $point').jo
   /// GPT 응답 파싱 (백엔드와 동일한 방식)
   static Map<String, dynamic> _parseGptResponse(String response) {
     try {
-      debugPrint('🤖 GPT 원본 응답: ${response.substring(0, response.length > 500 ? 500 : response.length)}...');
       
       // 분석 텍스트와 실천 방법 분리 (백엔드와 동일)
       final recommendations = <String>[];
@@ -509,8 +502,6 @@ ${improvementPoints.isNotEmpty ? improvementPoints.map((point) => '- $point').jo
         ],
       };
     } catch (e) {
-      debugPrint('❌ GPT 응답 파싱 실패: $e');
-      debugPrint('원본 응답: $response');
       
       // 파싱 실패 시 기본 응답
       return {

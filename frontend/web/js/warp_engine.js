@@ -491,4 +491,4 @@ window.applyPresetTransformation = function(imageDataArray, width, height, landm
     }
 };
 
-console.log('BeautyGen Warp Engine loaded successfully');
+// BeautyGen Warp Engine loaded

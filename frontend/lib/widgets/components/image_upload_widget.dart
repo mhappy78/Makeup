@@ -27,29 +27,49 @@ class _ImageUploadWidgetState extends State<ImageUploadWidget> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // 헤더 아이콘과 제목
+                // 로고 이미지
                 Container(
-                  padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
-                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        spreadRadius: 2,
+                        blurRadius: 8,
+                        offset: const Offset(2, 2), // 오른쪽 아래 방향 그림자
+                      ),
+                    ],
                   ),
-                  child: Icon(
-                    Icons.photo_camera,
-                    size: 60,
-                    color: Theme.of(context).colorScheme.primary,
+                  child: Image.network(
+                    'images/logo_e.png',
+                    height: 240,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      // 로고 로드 실패 시 기본 아이콘 표시
+                      return Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              spreadRadius: 2,
+                              blurRadius: 8,
+                              offset: const Offset(2, 2),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          Icons.photo_camera,
+                          size: 60,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      );
+                    },
                   ),
                 ),
                 
                 const SizedBox(height: 32),
-                
-                Text(
-                  '사진 업로드',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.onBackground,
-                  ),
-                ),
                 
                 const SizedBox(height: 16),
                 

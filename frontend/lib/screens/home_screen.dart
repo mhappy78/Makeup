@@ -8,7 +8,6 @@ import '../widgets/components/image_display_widget.dart';
 import '../widgets/controls/warp_controls_widget.dart';
 import '../widgets/controls/landmark_controls_widget.dart';
 import '../widgets/analysis/face_regions_widget.dart';
-import '../widgets/debug/warp_engine_status.dart';
 
 /// 메인 홈 스크린
 class HomeScreen extends StatefulWidget {
@@ -124,13 +123,6 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ),
               
-              // 디버그 위젯 (우측 하단)
-              if (kDebugMode)
-                const Positioned(
-                  bottom: 16,
-                  right: 16,
-                  child: WarpEngineStatusWidget(),
-                ),
               
             ],
           );

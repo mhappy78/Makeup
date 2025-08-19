@@ -1548,7 +1548,6 @@ class AppState extends ChangeNotifier {
         throw Exception('현재 이미지가 없습니다');
       }
       
-      debugPrint('🔍 프론트엔드 MediaPipe로 변형된 이미지 랜드마크 검출 시작...');
       
       // 프론트엔드 MediaPipe로 랜드마크 검출
       final landmarkResult = await MediaPipeService.detectFaceLandmarks(_currentImage!);
@@ -1561,12 +1560,10 @@ class AppState extends ChangeNotifier {
       final rawLandmarks = landmarkResult['landmarks'] as List<List<double>>;
       final landmarks = MediaPipeService.convertToLandmarks(rawLandmarks);
       
-      debugPrint('✅ 프론트엔드에서 ${landmarks.length}개 랜드마크 검출 완료');
       
       // 5. 새로운 랜드마크 설정 (뷰티 분석 및 GPT 분석 자동 시작됨)
       final source = landmarkResult['source'] ?? 'unknown';
       setLandmarks(landmarks, resetAnalysis: true, source: source);
-      debugPrint('🔍 재분석: 랜드마크 설정 완료 (소스: $source), 뷰티 분석 및 GPT 분석이 자동으로 시작됩니다.');
       
     } catch (e) {
       setError('재진단 실패: $e');
@@ -1582,12 +1579,10 @@ class AppState extends ChangeNotifier {
     
     // 이미 GPT 분석 중이면 중복 실행 방지
     if (_isGptAnalyzing) {
-      debugPrint('🔍 GPT 분석이 이미 진행 중입니다. 중복 실행 방지');
       return;
     }
     
     try {
-      debugPrint('🤖 프론트엔드 GPT 분석 시작...');
       _isGptAnalyzing = true;
       notifyListeners(); // GPT 분석 시작 알림
       
@@ -1605,14 +1600,11 @@ class AppState extends ChangeNotifier {
           'isInitialAnalysis': true,
         };
         
-        debugPrint('✅ 프론트엔드 GPT 분석 완료');
         notifyListeners(); // GPT 분석 완료 즉시 UI 업데이트
       } else {
-        debugPrint('🔍 GPT 분석 완료 - 중복 응답 무시');
       }
       
     } catch (e) {
-      debugPrint('❌ 프론트엔드 GPT 분석 실패: $e');
       // 실패해도 기본 분석은 유지
     } finally {
       _isGptAnalyzing = false;
@@ -1624,7 +1616,6 @@ class AppState extends ChangeNotifier {
     if (_originalBeautyAnalysis == null || _beautyAnalysis.isEmpty) return;
     
     try {
-      debugPrint('🤖 프론트엔드 GPT 비교 분석 시작...');
       _isGptAnalyzing = true;
       notifyListeners(); // GPT 분석 시작 알림
       
@@ -1647,11 +1638,9 @@ class AppState extends ChangeNotifier {
         'isReAnalysis': true,
       };
       
-      debugPrint('✅ 프론트엔드 GPT 비교 분석 완료');
       notifyListeners(); // GPT 분석 완료 즉시 UI 업데이트
       
     } catch (e) {
-      debugPrint('❌ 프론트엔드 GPT 비교 분석 실패: $e');
       setError('재진단 GPT 분석 실패: $e');
     } finally {
       _isReAnalyzing = false;

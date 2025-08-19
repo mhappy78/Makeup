@@ -10,31 +10,26 @@ class WarpCoordinator {
   /// SmartWarpWidget 등록
   static void registerSmartWarpWidget(SmartWarpWidgetState widget) {
     _smartWarpWidget = widget;
-    debugPrint('📱 SmartWarpWidget 등록됨');
   }
   
   /// SmartWarpWidget 등록 해제
   static void unregisterSmartWarpWidget() {
     _smartWarpWidget = null;
-    debugPrint('📱 SmartWarpWidget 등록 해제됨');
   }
   
   /// ImageDisplayWidget 등록
   static void registerImageDisplayWidget(dynamic widget) {
     _imageDisplayWidget = widget;
-    debugPrint('📱 ImageDisplayWidget 등록됨');
   }
   
   /// ImageDisplayWidget 등록 해제
   static void unregisterImageDisplayWidget() {
     _imageDisplayWidget = null;
-    debugPrint('📱 ImageDisplayWidget 등록 해제됨');
   }
   
   /// 프리셋 적용
   static Future<bool> applyPreset(String presetType) async {
     if (_smartWarpWidget == null) {
-      debugPrint('❌ SmartWarpWidget이 등록되지 않음');
       return false;
     }
     

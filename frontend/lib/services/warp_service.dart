@@ -75,13 +75,11 @@ class WarpService {
       ]);
 
       stopwatch.stop();
-      debugPrint('워핑 처리 시간: ${stopwatch.elapsedMilliseconds}ms');
 
       // JavaScript 결과를 Dart Uint8List로 변환
       if (result != null) {
         final List<dynamic> resultList = result;
         final jpegBytes = Uint8List.fromList(resultList.cast<int>());
-        debugPrint('✅ JavaScript 워핑 완료: ${jpegBytes.length} bytes JPEG');
         return jpegBytes;
       } else {
         debugPrint('워핑 처리 결과가 null입니다');
@@ -119,9 +117,6 @@ class WarpService {
       // 랜드마크를 JavaScript 배열 형식으로 변환
       final landmarkArray = landmarks.map((landmark) => [landmark.x, landmark.y]).toList();
       
-      debugPrint('Dart에서 전송할 랜드마크 데이터: ${landmarkArray.length}개');
-      debugPrint('첫 번째 랜드마크: ${landmarkArray.isNotEmpty ? landmarkArray[0] : 'none'}');
-      debugPrint('마지막 랜드마크: ${landmarkArray.isNotEmpty ? landmarkArray[landmarkArray.length - 1] : 'none'}');
       
       // JavaScript Array로 명시적으로 변환
       final jsLandmarkArray = js.JsArray.from(
@@ -139,7 +134,6 @@ class WarpService {
       ]);
 
       stopwatch.stop();
-      debugPrint('프리셋 [$presetType] 처리 시간: ${stopwatch.elapsedMilliseconds}ms');
 
       if (result != null) {
         final List<dynamic> resultList = result;
@@ -259,7 +253,6 @@ class WarpService {
     
     while (DateTime.now().difference(startTime).inSeconds < timeoutSeconds) {
       if (isEngineLoaded) {
-        debugPrint('워핑 엔진 로드 완료');
         return true;
       }
       

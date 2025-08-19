@@ -584,7 +584,6 @@ class _LandmarkControlsWidgetState extends State<LandmarkControlsWidget> {
     
     // 스마트 워핑이 가능한지 확인
     if (WarpCoordinator.isSmartWarpAvailable) {
-      debugPrint('🚀 스마트 워핑으로 프리셋 적용: $presetType');
       
       // 프리셋 시각화 표시
       appState.showPresetVisualizationFor(presetType);
@@ -624,7 +623,6 @@ class _LandmarkControlsWidgetState extends State<LandmarkControlsWidget> {
     }
     
     // 백엔드 폴백 (기존 로직)
-    debugPrint('🔄 백엔드 워핑으로 프리셋 적용: $presetType');
     
     // 프리셋 시각화 표시
     appState.showPresetVisualizationFor(presetType);
@@ -681,7 +679,6 @@ class _LandmarkControlsWidgetState extends State<LandmarkControlsWidget> {
           appState.updateCurrentImage(presetResult.resultBytes!);
         }
         
-        debugPrint('✅ 프리셋 적용 완료 - 타입: $presetType, 소스: ${presetResult.source}, 처리시간: ${presetResult.processingTime}ms');
       } else {
         throw Exception(presetResult.error ?? '프리셋 적용 실패');
       }
@@ -693,7 +690,6 @@ class _LandmarkControlsWidgetState extends State<LandmarkControlsWidget> {
       // 에러 시에도 즉시 로딩 상태 해제
       appState.setPresetLoading(null);
       appState.setError('프리셋 적용 실패: $e');
-      debugPrint('❌ 프리셋 적용 실패: $e');
     }
   }
 

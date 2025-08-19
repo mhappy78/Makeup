@@ -136,7 +136,6 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
                     }
                     
                     // 확대/축소 모드에서 단일 클릭 처리
-                    debugPrint('onTapDown 호출됨: 탭=${appState.currentTabIndex}, 모드=${appState.warpMode?.displayName}');
                     if (appState.currentTabIndex == 2 && 
                         (appState.warpMode == WarpMode.expand || appState.warpMode == WarpMode.shrink)) {
                       debugPrint('확대/축소 클릭 감지됨');
@@ -147,7 +146,6 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
                           _currentPoint = localPosition;
                           _isDragging = false;
                         });
-                        debugPrint('워핑 실행 중...');
                         _performWarp(constraints, appState);
                         setState(() {
                           _startPoint = null;
@@ -194,7 +192,6 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
                   _baseScaleValue = appState.zoomScale;
                   
                   // 프리스타일 탭에서 단일 터치인 경우 워핑 시작점 설정 (팬 모드가 아닐 때만)
-                  debugPrint('현재 탭: ${appState.currentTabIndex}, 포인터 수: ${details.pointerCount}, 팬 모드: $_isPanMode');
                   if (appState.currentTabIndex == 2 && details.pointerCount == 1 && !_isPanMode) {
                     final localPosition = details.localFocalPoint;
                     if (_isPointInImageBounds(localPosition, constraints, appState)) {
@@ -205,9 +202,7 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
                       });
                       
                       // 확대/축소 모드일 때는 클릭 즉시 워핑 실행
-                      debugPrint('현재 워핑 모드: ${appState.warpMode.displayName}, 값: ${appState.warpMode.value}');
                       if (appState.warpMode == WarpMode.expand || appState.warpMode == WarpMode.shrink) {
-                        debugPrint('확대/축소 모드 감지됨, 즉시 워핑 실행');
                         _performWarp(constraints, appState);
                         setState(() {
                           _startPoint = null;
@@ -506,6 +501,7 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
                         children: [
                           // 줌인 버튼
                           FloatingActionButton.small(
+                            heroTag: "zoom_in_button",
                             onPressed: () {
                               final newScale = (appState.zoomScale * 1.2).clamp(0.5, 3.0);
                               appState.setZoomScale(newScale);
@@ -534,6 +530,7 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
                           const SizedBox(height: 8),
                           // 줌아웃 버튼
                           FloatingActionButton.small(
+                            heroTag: "zoom_out_button",
                             onPressed: () {
                               final newScale = (appState.zoomScale / 1.2).clamp(0.5, 3.0);
                               appState.setZoomScale(newScale);
@@ -599,11 +596,9 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
 
   // 워핑 수행 메서드 (기존 _onPanEnd 로직)
   Future<void> _performWarp(BoxConstraints constraints, AppState appState) async {
-    debugPrint('_performWarp 호출됨: startPoint=$_startPoint, currentPoint=$_currentPoint, isDragging=$_isDragging, mode=${appState.warpMode.value}');
     
     // 재진단 중이면 워핑 비활성화
     if (appState.isReAnalyzing) {
-      debugPrint('재진단 중이므로 워핑 비활성화');
       return;
     }
     
@@ -632,7 +627,6 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
       // 프론트엔드 워핑 시스템 사용
       await _applyWarp(appState, imageCoordinates);
     } catch (e) {
-      debugPrint('워핑 적용 실패: $e');
       appState.setError('변형 적용 실패: $e');
     }
   }
@@ -796,14 +790,12 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
           }
         }
         
-        debugPrint('✅ 워핑 완료 - 소스: ${warpResult.source}, 처리시간: ${warpResult.processingTime}ms');
       } else {
         throw Exception(warpResult.error ?? '프론트엔드 워핑 실패');
       }
       
     } catch (e) {
       appState.setError('변형 적용 실패: $e');
-      debugPrint('워핑 에러: $e');
     } finally {
       // 워핑 로딩 상태 종료
       appState.setWarpLoading(false);

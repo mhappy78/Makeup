@@ -16,14 +16,10 @@ class MediaPipeEngine {
      */
     async initializeEngine() {
         try {
-            console.log('🚀 MediaPipe 엔진 초기화 시작...');
-            
             // MediaPipe 라이브러리 로드 확인
             if (typeof FaceMesh === 'undefined') {
                 throw new Error('MediaPipe FaceMesh 라이브러리가 로드되지 않았습니다');
             }
-            
-            console.log('✅ MediaPipe FaceMesh 라이브러리 확인됨');
             
             this.faceMesh = new FaceMesh({
                 locateFile: (file) => {
@@ -43,9 +39,8 @@ class MediaPipeEngine {
             });
 
             this.isInitialized = true;
-            console.log('✅ MediaPipe 엔진 초기화 완료');
         } catch (error) {
-            console.error('❌ MediaPipe 엔진 초기화 실패:', error);
+            console.error('MediaPipe 엔진 초기화 실패:', error);
             this.isInitialized = false;
         }
     }
@@ -297,4 +292,4 @@ window.runMediaPipeBenchmark = async function(imageDataArray, width, height) {
     }
 };
 
-console.log('📡 BeautyGen MediaPipe Engine loaded successfully');
+// BeautyGen MediaPipe Engine loaded
