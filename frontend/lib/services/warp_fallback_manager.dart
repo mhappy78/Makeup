@@ -2,90 +2,85 @@ import 'package:flutter/foundation.dart';
 import 'dart:typed_data';
 import 'dart:async';
 import 'warp_service.dart';
-import 'api_service.dart';
 import '../models/app_state.dart';
 
-/// 워핑 폴백 관리자 - 클라이언트 실패 시 백엔드로 자동 전환
+/// 클라이언트 전용 워핑 관리자 - 100% 프론트엔드 독립
 class WarpFallbackManager {
   static const int _maxRetries = 2;
   static const Duration _retryDelay = Duration(milliseconds: 500);
   static const int _clientSideTimeoutMs = 10000; // 10초 타임아웃
   
-  // 통계 데이터
+  // 통계 데이터 (클라이언트 전용)
   static int _clientSuccessCount = 0;
   static int _clientFailureCount = 0;
-  static int _backendFallbackCount = 0;
   static int _totalAttempts = 0;
   
-  /// 스마트 워핑 적용 - 클라이언트 우선, 실패 시 백엔드 폴백
+  /// 클라이언트 전용 워핑 적용 - 재시도 로직 포함
   /// 
   /// [imageBytes] - 이미지 데이터
-  /// [imageId] - 백엔드 이미지 ID (폴백용)
   /// [warpParams] - 워핑 파라미터
   /// 
-  /// Returns: {success: bool, result: WarpResult?, source: 'client'|'backend', error: String?}
+  /// Returns: WarpAttemptResult (클라이언트 전용)
   static Future<WarpAttemptResult> smartApplyWarp({
     required Uint8List imageBytes,
-    required String imageId,
     required WarpParameters warpParams,
-    required ApiService apiService,
   }) async {
     _totalAttempts++;
     
-    
-    // 1. 클라이언트 사이드 시도
-    final clientResult = await _attemptClientSideWarp(imageBytes, warpParams);
-    
-    if (clientResult.success) {
-      _clientSuccessCount++;
-      return clientResult;
+    // 클라이언트 워핑 시도 (재시도 로직 포함)
+    for (int attempt = 1; attempt <= _maxRetries; attempt++) {
+      final result = await _attemptClientSideWarp(imageBytes, warpParams);
+      
+      if (result.success) {
+        _clientSuccessCount++;
+        return result;
+      }
+      
+      // 마지막 시도가 아니면 잠시 대기 후 재시도
+      if (attempt < _maxRetries) {
+        await Future.delayed(_retryDelay);
+        debugPrint('🔄 클라이언트 워핑 재시도 ($attempt/$_maxRetries): ${result.error}');
+      }
     }
     
     _clientFailureCount++;
-    
-    // 2. 백엔드 폴백
-    _backendFallbackCount++;
-    final backendResult = await _attemptBackendWarp(imageId, warpParams, apiService);
-    
-    if (backendResult.success) {
-      debugPrint('✅ 백엔드 폴백 성공 (${backendResult.processingTime}ms)');
-    } else {
-      debugPrint('❌ 백엔드 폴백도 실패: ${backendResult.error}');
-    }
-    
-    return backendResult;
+    return WarpAttemptResult.failure(
+      source: 'client',
+      error: '클라이언트 워핑 최대 재시도 실패',
+      attempts: _maxRetries,
+    );
   }
 
-  /// 스마트 프리셋 적용
+  /// 클라이언트 전용 프리셋 적용
   static Future<WarpAttemptResult> smartApplyPreset({
     required Uint8List imageBytes,
-    required String imageId,
     required List<Landmark> landmarks,
     required String presetType,
-    required ApiService apiService,
   }) async {
     _totalAttempts++;
     
-    
-    // 1. 클라이언트 사이드 시도
-    final clientResult = await _attemptClientSidePreset(imageBytes, landmarks, presetType);
-    
-    if (clientResult.success) {
-      _clientSuccessCount++;
-      return clientResult;
+    // 클라이언트 프리셋 시도 (재시도 로직 포함)
+    for (int attempt = 1; attempt <= _maxRetries; attempt++) {
+      final result = await _attemptClientSidePreset(imageBytes, landmarks, presetType);
+      
+      if (result.success) {
+        _clientSuccessCount++;
+        return result;
+      }
+      
+      // 마지막 시도가 아니면 잠시 대기 후 재시도
+      if (attempt < _maxRetries) {
+        await Future.delayed(_retryDelay);
+        debugPrint('🔄 클라이언트 프리셋 재시도 ($attempt/$_maxRetries): ${result.error}');
+      }
     }
     
     _clientFailureCount++;
-    
-    // 2. 백엔드 폴백
-    _backendFallbackCount++;
-    final backendResult = await _attemptBackendPreset(imageId, presetType, apiService);
-    
-    if (backendResult.success) {
-    } else {
-    }
-    
-    return backendResult;
+    return WarpAttemptResult.failure(
+      source: 'client',
+      error: '클라이언트 프리셋 최대 재시도 실패',
+      attempts: _maxRetries,
+    );
   }
 
   /// 클라이언트 사이드 워핑 시도
@@ -96,7 +91,7 @@ class WarpFallbackManager {
     if (!WarpService.isEngineLoaded) {
       return WarpAttemptResult.failure(
         source: 'client',
-        error: '워핑 엔진이 로드되지 않음',
+        error: '워핑 엔진이 로드되지 않음 - 페이지를 새로고침하세요',
       );
     }
 
@@ -133,14 +128,11 @@ class WarpFallbackManager {
         throw Exception('워핑 처리 결과가 null');
       }
 
-      // JavaScript에서 이미 JPEG로 변환된 바이트를 받음
-      final convertedImage = result;
-      
       stopwatch.stop();
 
       return WarpAttemptResult.success(
         source: 'client',
-        resultBytes: convertedImage,
+        resultBytes: result,
         processingTime: stopwatch.elapsedMilliseconds,
       );
 
@@ -163,7 +155,7 @@ class WarpFallbackManager {
     if (!WarpService.isEngineLoaded) {
       return WarpAttemptResult.failure(
         source: 'client',
-        error: '워핑 엔진이 로드되지 않음',
+        error: '워핑 엔진이 로드되지 않음 - 페이지를 새로고침하세요',
       );
     }
 
@@ -193,14 +185,11 @@ class WarpFallbackManager {
         throw Exception('프리셋 처리 결과가 null');
       }
 
-      // JavaScript에서 이미 JPEG로 변환된 바이트를 받음
-      final convertedImage = result;
-      
       stopwatch.stop();
 
       return WarpAttemptResult.success(
         source: 'client',
-        resultBytes: convertedImage,
+        resultBytes: result,
         processingTime: stopwatch.elapsedMilliseconds,
       );
 
@@ -214,115 +203,13 @@ class WarpFallbackManager {
     }
   }
 
-  /// 백엔드 워핑 시도 (재시도 로직 포함)
-  static Future<WarpAttemptResult> _attemptBackendWarp(
-    String imageId,
-    WarpParameters params,
-    ApiService apiService,
-  ) async {
-    for (int attempt = 1; attempt <= _maxRetries; attempt++) {
-      final stopwatch = Stopwatch()..start();
-      
-      try {
-        final request = WarpRequest(
-          imageId: imageId,
-          startX: params.startX,
-          startY: params.startY,
-          endX: params.endX,
-          endY: params.endY,
-          influenceRadius: params.influenceRadius,
-          strength: params.strength,
-          mode: params.mode.value,
-        );
-        
-        final response = await apiService.warpImage(request);
-
-        stopwatch.stop();
-
-        return WarpAttemptResult.success(
-          source: 'backend',
-          resultBytes: response.imageBytes,
-          resultImageId: response.imageId,
-          processingTime: stopwatch.elapsedMilliseconds,
-          attempts: attempt,
-        );
-
-      } catch (e) {
-        stopwatch.stop();
-        
-        if (attempt < _maxRetries) {
-          await Future.delayed(_retryDelay);
-          continue;
-        }
-        
-        return WarpAttemptResult.failure(
-          source: 'backend',
-          error: e.toString(),
-          processingTime: stopwatch.elapsedMilliseconds,
-          attempts: attempt,
-        );
-      }
-    }
-
-    return WarpAttemptResult.failure(
-      source: 'backend',
-      error: '최대 재시도 횟수 초과',
-    );
-  }
-
-  /// 백엔드 프리셋 시도 (재시도 로직 포함)
-  static Future<WarpAttemptResult> _attemptBackendPreset(
-    String imageId,
-    String presetType,
-    ApiService apiService,
-  ) async {
-    for (int attempt = 1; attempt <= _maxRetries; attempt++) {
-      final stopwatch = Stopwatch()..start();
-      
-      try {
-        final response = await apiService.applyPreset(imageId, presetType);
-        stopwatch.stop();
-
-        return WarpAttemptResult.success(
-          source: 'backend',
-          resultBytes: response.imageBytes,
-          resultImageId: response.imageId,
-          processingTime: stopwatch.elapsedMilliseconds,
-          attempts: attempt,
-        );
-
-      } catch (e) {
-        stopwatch.stop();
-        
-        if (attempt < _maxRetries) {
-          await Future.delayed(_retryDelay);
-          continue;
-        }
-        
-        return WarpAttemptResult.failure(
-          source: 'backend',
-          error: e.toString(),
-          processingTime: stopwatch.elapsedMilliseconds,
-          attempts: attempt,
-        );
-      }
-    }
-
-    return WarpAttemptResult.failure(
-      source: 'backend',
-      error: '최대 재시도 횟수 초과',
-    );
-  }
-
-  /// 통계 정보 조회
+  /// 통계 정보 조회 (클라이언트 전용)
   static WarpStatistics getStatistics() {
     return WarpStatistics(
       totalAttempts: _totalAttempts,
       clientSuccessCount: _clientSuccessCount,
       clientFailureCount: _clientFailureCount,
-      backendFallbackCount: _backendFallbackCount,
       clientSuccessRate: _totalAttempts > 0 ? _clientSuccessCount / _totalAttempts : 0,
-      fallbackRate: _totalAttempts > 0 ? _backendFallbackCount / _totalAttempts : 0,
     );
   }
 
@@ -330,9 +217,7 @@ class WarpFallbackManager {
   static void resetStatistics() {
     _clientSuccessCount = 0;
     _clientFailureCount = 0;
-    _backendFallbackCount = 0;
     _totalAttempts = 0;
-    
   }
 
   /// 클라이언트 엔진 건강성 체크
@@ -372,7 +257,7 @@ class WarpFallbackManager {
       } else {
         result.basicFunctionWorking = false;
         result.healthScore = 30;
-        result.recommendation = '워핑 엔진에 문제가 있습니다. 백엔드 워핑 사용을 권장합니다.';
+        result.recommendation = '워핑 엔진에 문제가 있습니다. 페이지를 새로고침하세요.';
       }
 
     } catch (e) {
@@ -384,7 +269,7 @@ class WarpFallbackManager {
     return result;
   }
 
-  /// 자동 최적화 추천
+  /// 자동 최적화 추천 (클라이언트 전용)
   static OptimizationRecommendation getOptimizationRecommendation() {
     final stats = getStatistics();
     final recommendation = OptimizationRecommendation();
@@ -395,15 +280,14 @@ class WarpFallbackManager {
       return recommendation;
     }
 
-    if (stats.clientSuccessRate < 0.5) {
-      recommendation.message = '클라이언트 워핑 성공률이 낮습니다 (${(stats.clientSuccessRate * 100).toStringAsFixed(1)}%). 브라우저 성능을 확인하거나 백엔드 워핑을 우선 사용하세요.';
+    if (stats.clientSuccessRate < 0.7) {
+      recommendation.message = '클라이언트 워핑 성공률이 낮습니다 (${(stats.clientSuccessRate * 100).toStringAsFixed(1)}%). 브라우저 성능을 확인하거나 이미지 크기를 줄여보세요.';
       recommendation.priority = RecommendationPriority.high;
-      recommendation.suggestBackendFirst = true;
-    } else if (stats.clientSuccessRate < 0.8) {
-      recommendation.message = '클라이언트 워핑이 가끔 실패합니다 (${(stats.clientSuccessRate * 100).toStringAsFixed(1)}%). 이미지 크기를 줄이거나 영향 반경을 작게 설정해보세요.';
+    } else if (stats.clientSuccessRate < 0.9) {
+      recommendation.message = '클라이언트 워핑이 가끔 실패합니다 (${(stats.clientSuccessRate * 100).toStringAsFixed(1)}%). 영향 반경을 작게 설정하거나 강도를 낮춰보세요.';
       recommendation.priority = RecommendationPriority.medium;
     } else {
-      recommendation.message = '워핑 성능이 양호합니다 (${(stats.clientSuccessRate * 100).toStringAsFixed(1)}% 성공률). 현재 설정을 유지하세요.';
+      recommendation.message = '워핑 성능이 우수합니다 (${(stats.clientSuccessRate * 100).toStringAsFixed(1)}% 성공률). 현재 설정을 유지하세요.';
       recommendation.priority = RecommendationPriority.low;
     }
 
@@ -435,9 +319,8 @@ class WarpParameters {
 /// 워핑 시도 결과
 class WarpAttemptResult {
   final bool success;
-  final String source; // 'client' 또는 'backend'
+  final String source; // 'client' 전용
   final Uint8List? resultBytes;
-  final String? resultImageId;
   final int processingTime;
   final String? error;
   final int attempts;
@@ -446,7 +329,6 @@ class WarpAttemptResult {
     required this.success,
     required this.source,
     this.resultBytes,
-    this.resultImageId,
     this.processingTime = 0,
     this.error,
     this.attempts = 1,
@@ -455,7 +337,6 @@ class WarpAttemptResult {
   factory WarpAttemptResult.success({
     required String source,
     required Uint8List resultBytes,
-    String? resultImageId,
     int processingTime = 0,
     int attempts = 1,
   }) {
@@ -463,7 +344,6 @@ class WarpAttemptResult {
       success: true,
       source: source,
       resultBytes: resultBytes,
-      resultImageId: resultImageId,
       processingTime: processingTime,
       attempts: attempts,
     );
@@ -485,22 +365,18 @@ class WarpAttemptResult {
   }
 }
 
-/// 워핑 통계
+/// 워핑 통계 (클라이언트 전용)
 class WarpStatistics {
   final int totalAttempts;
   final int clientSuccessCount;
   final int clientFailureCount;
-  final int backendFallbackCount;
   final double clientSuccessRate;
-  final double fallbackRate;
 
   WarpStatistics({
     required this.totalAttempts,
     required this.clientSuccessCount,
     required this.clientFailureCount,
-    required this.backendFallbackCount,
     required this.clientSuccessRate,
-    required this.fallbackRate,
   });
 
   Map<String, dynamic> toJson() {
@@ -508,9 +384,7 @@ class WarpStatistics {
       'totalAttempts': totalAttempts,
       'clientSuccessCount': clientSuccessCount,
       'clientFailureCount': clientFailureCount,
-      'backendFallbackCount': backendFallbackCount,
       'clientSuccessRate': clientSuccessRate,
-      'fallbackRate': fallbackRate,
     };
   }
 }
@@ -536,13 +410,11 @@ class EngineHealthResult {
 class OptimizationRecommendation {
   String message = '';
   RecommendationPriority priority = RecommendationPriority.low;
-  bool suggestBackendFirst = false;
 
   Map<String, dynamic> toJson() {
     return {
       'message': message,
       'priority': priority.name,
-      'suggestBackendFirst': suggestBackendFirst,
     };
   }
 }

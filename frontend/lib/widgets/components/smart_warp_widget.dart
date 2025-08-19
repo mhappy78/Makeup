@@ -5,7 +5,6 @@ import 'dart:math' as math;
 import '../../models/app_state.dart';
 import '../../models/face_regions.dart';
 import '../../services/warp_fallback_manager.dart';
-import '../../services/api_service.dart';
 import '../../services/warp_coordinator.dart';
 import '../analysis/beauty_score_visualizer.dart';
 
@@ -73,9 +72,8 @@ class SmartWarpWidgetState extends State<SmartWarpWidget>
   /// 스마트 워핑 적용
   Future<void> _applySmartWarp(Offset start, Offset end) async {
     final appState = context.read<AppState>();
-    final apiService = context.read<ApiService>();
     
-    if (appState.currentImage == null || appState.currentImageId == null) {
+    if (appState.currentImage == null) {
       return;
     }
 
@@ -109,31 +107,20 @@ class SmartWarpWidgetState extends State<SmartWarpWidget>
       // 히스토리 저장
       appState.saveToHistory();
 
-      // 스마트 워핑 실행
+      // 스마트 워핑 실행 (클라이언트 전용)
       final result = await WarpFallbackManager.smartApplyWarp(
         imageBytes: appState.currentImage!,
-        imageId: appState.currentImageId!,
         warpParams: warpParams,
-        apiService: apiService,
       );
 
       setState(() {
         _processingSource = result.source;
-        _statusMessage = result.source == 'client' 
-            ? '클라이언트 처리 완료' 
-            : '백엔드 처리 완료';
+        _statusMessage = '클라이언트 워핑 완료';
       });
 
       if (result.success) {
-        // 성공 시 상태 업데이트
-        if (result.source == 'client') {
-          appState.setCurrentImage(result.resultBytes!);
-        } else {
-          appState.updateImageFromWarp(
-            result.resultBytes!,
-            result.resultImageId!,
-          );
-        }
+        // 클라이언트 워핑 성공 - 이미지 업데이트
+        appState.setCurrentImage(result.resultBytes!);
 
         // 성공 애니메이션
         _rippleController.forward().then((_) {
@@ -178,10 +165,8 @@ class SmartWarpWidgetState extends State<SmartWarpWidget>
   /// 스마트 프리셋 적용
   Future<void> applySmartPreset(String presetType) async {
     final appState = context.read<AppState>();
-    final apiService = context.read<ApiService>();
     
     if (appState.currentImage == null || 
-        appState.currentImageId == null ||
         appState.landmarks.isEmpty) {
       return;
     }
@@ -197,10 +182,8 @@ class SmartWarpWidgetState extends State<SmartWarpWidget>
 
       final result = await WarpFallbackManager.smartApplyPreset(
         imageBytes: appState.currentImage!,
-        imageId: appState.currentImageId!,
         landmarks: appState.landmarks,
         presetType: presetType,
-        apiService: apiService,
       );
 
       setState(() {
@@ -209,14 +192,8 @@ class SmartWarpWidgetState extends State<SmartWarpWidget>
       });
 
       if (result.success) {
-        if (result.source == 'client') {
-          appState.setCurrentImage(result.resultBytes!);
-        } else {
-          appState.updateImageFromPreset(
-            result.resultBytes!,
-            result.resultImageId!,
-          );
-        }
+        // 클라이언트 프리셋 성공 - 이미지 업데이트
+        appState.setCurrentImage(result.resultBytes!);
 
         _rippleController.forward().then((_) {
           _rippleController.reset();
@@ -713,7 +690,7 @@ class SmartWarpWidgetState extends State<SmartWarpWidget>
             style: TextStyle(color: Colors.white, fontSize: 9),
           ),
           Text(
-            '백엔드 폴백률: ${(stats.fallbackRate * 100).toStringAsFixed(1)}%',
+            '총 처리 횟수: ${stats.totalAttempts}회',
             style: TextStyle(color: Colors.white, fontSize: 9),
           ),
         ],

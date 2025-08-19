@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/app_state.dart';
-import '../../services/api_service.dart';
+import 'dart:html' as html;
 import '../components/before_after_comparison.dart';
 
 /// 워핑 컨트롤 위젯
@@ -573,24 +573,26 @@ class WarpControlsWidget extends StatelessWidget {
 
   Future<void> _downloadImage(BuildContext context) async {
     final appState = context.read<AppState>();
-    final apiService = context.read<ApiService>();
     
-    if (appState.currentImageId == null) return;
+    if (appState.currentImage == null) return;
     
     try {
       appState.setLoading(true);
       
-      await apiService.downloadImage(appState.currentImageId!);
-      
-      // 웹에서는 브라우저 다운로드 트리거
-      // 실제 구현에서는 html 패키지를 사용해야 함
+      // 클라이언트에서 직접 다운로드 (백엔드 없이)
+      final blob = html.Blob([appState.currentImage!]);
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement(href: url)
+        ..setAttribute('download', 'beautygen_result_\${DateTime.now().millisecondsSinceEpoch}.jpg')
+        ..click();
+      html.Url.revokeObjectUrl(url);
       
       appState.setLoading(false);
       
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('이미지 다운로드 준비 완료!'),
+            content: Text('이미지 다운로드 완료!'),
             backgroundColor: Colors.green,
           ),
         );

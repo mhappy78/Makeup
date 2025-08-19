@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import 'dart:math' as math;
 import '../../models/app_state.dart' show AppState, Landmark, WarpMode;
 import '../../models/face_regions.dart';
-import '../../services/api_service.dart';
 import '../../services/mediapipe_service.dart';
 import '../../services/warp_fallback_manager.dart';
 import '../../services/warp_coordinator.dart';
@@ -747,7 +746,6 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
     
     try {
       // 프론트엔드 워핑 시스템 사용
-      final apiService = context.read<ApiService>();
       final warpParams = WarpParameters(
         startX: coordinates['startX']!,
         startY: coordinates['startY']!,
@@ -760,19 +758,12 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
       
       final warpResult = await WarpFallbackManager.smartApplyWarp(
         imageBytes: appState.currentImage!,
-        imageId: appState.currentImageId ?? '',
         warpParams: warpParams,
-        apiService: apiService,
       );
       
       if (warpResult.success && warpResult.resultBytes != null) {
-        // 백엔드에서 처리된 경우 새로운 이미지 ID와 함께 업데이트
-        if (warpResult.source == 'backend' && warpResult.resultImageId != null) {
-          appState.updateCurrentImageWithId(warpResult.resultBytes!, warpResult.resultImageId!);
-        } else {
-          // 프론트엔드에서 처리된 경우 이미지만 업데이트
-          appState.updateCurrentImage(warpResult.resultBytes!);
-        }
+        // 클라이언트에서 처리된 결과 - 이미지만 업데이트
+        appState.updateCurrentImage(warpResult.resultBytes!);
         
         // 랜드마크 다시 검출 (프론트엔드 MediaPipe 사용)
         if (appState.currentImage != null) {

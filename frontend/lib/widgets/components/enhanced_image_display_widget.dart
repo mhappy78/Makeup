@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../../models/app_state.dart';
 import '../../services/warp_service.dart';
-import '../../services/api_service.dart';
 import '../image_processing/client_side_warp_widget.dart';
 import '../analysis/beauty_score_visualizer.dart';
 
@@ -92,12 +91,11 @@ class _EnhancedImageDisplayWidgetState extends State<EnhancedImageDisplayWidget>
     await _applyBackendWarp(start, end);
   }
 
-  /// 백엔드 워핑 처리 (기존 로직)
+  /// 클라이언트 전용 워핑 처리 (백엔드 대체)
   Future<void> _applyBackendWarp(Offset start, Offset end) async {
     final appState = context.read<AppState>();
-    final apiService = context.read<ApiService>();
     
-    if (appState.currentImageId == null) return;
+    if (appState.currentImage == null) return;
 
     try {
       appState.setWarpLoading(true);

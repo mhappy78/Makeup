@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'config/app_config.dart';
 import 'screens/home_screen.dart';
-import 'services/api_service.dart';
 import 'models/app_state.dart';
 
 void main() {
@@ -17,7 +16,6 @@ class FaceSimulatorApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AppState()),
-        Provider<ApiService>(create: (_) => ApiService()),
       ],
       child: MaterialApp(
         title: AppConfig.appName,

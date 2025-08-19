@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/app_state.dart';
-import '../../services/api_service.dart';
 import '../../services/warp_coordinator.dart';
 import '../../services/warp_fallback_manager.dart';
 import 'dart:html' as html;
@@ -657,27 +656,16 @@ class _LandmarkControlsWidgetState extends State<LandmarkControlsWidget> {
       // 특정 프리셋만 로딩 상태로 설정 + 진행 상황 표시
       appState.setPresetLoading(presetType, progress);
       
-      // 프론트엔드 프리셋 시스템 사용
-      final apiService = context.read<ApiService>();
+      // 프론트엔드 프리셋 시스템 사용 (클라이언트 전용)
       final presetResult = await WarpFallbackManager.smartApplyPreset(
         imageBytes: appState.currentImage!,
-        imageId: appState.currentImageId ?? '',
         landmarks: appState.landmarks,
         presetType: presetType,
-        apiService: apiService,
       );
       
       if (presetResult.success && presetResult.resultBytes != null) {
-        // 백엔드에서 처리된 경우 새로운 이미지 ID와 함께 업데이트
-        if (presetResult.source == 'backend' && presetResult.resultImageId != null) {
-          appState.updateImageFromPreset(
-            presetResult.resultBytes!,
-            presetResult.resultImageId!,
-          );
-        } else {
-          // 프론트엔드에서 처리된 경우 이미지만 업데이트
-          appState.updateCurrentImage(presetResult.resultBytes!);
-        }
+        // 클라이언트에서 처리된 결과 - 이미지만 업데이트
+        appState.updateCurrentImage(presetResult.resultBytes!);
         
       } else {
         throw Exception(presetResult.error ?? '프리셋 적용 실패');
