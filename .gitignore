@@ -37,3 +37,7 @@ frontend/web/build/
 backend/__pycache__/
 backend/temp_images/
 backend/.env
+
+# Frontend environment files
+frontend/.env
+*.env

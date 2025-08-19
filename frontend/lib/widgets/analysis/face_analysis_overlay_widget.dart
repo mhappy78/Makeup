@@ -612,7 +612,7 @@ class FaceAnalysisOverlayPainter extends CustomPainter {
     try {
       if (landmarks.isEmpty || index >= landmarks.length) return null;
       final landmark = landmarks[index];
-      // Landmark 객체의 x, y 속성 사용
+      // MediaPipe에서 이미 픽셀 좌표로 변환됨 - 정규화하여 반환 (Offset.dx, .dy 사용을 위해)
       return Offset(landmark.x / imageWidth, landmark.y / imageHeight);
     } catch (e) {
       return null;
@@ -620,10 +620,12 @@ class FaceAnalysisOverlayPainter extends CustomPainter {
   }
   
   double _convertToScreenX(double normalizedX, Offset imageOffset, Size imageDisplaySize) {
+    // 정규화된 좌표(0~1)를 화면 표시 좌표로 변환
     return imageOffset.dx + (normalizedX * imageDisplaySize.width);
   }
   
   double _convertToScreenY(double normalizedY, Offset imageOffset, Size imageDisplaySize) {
+    // 정규화된 좌표(0~1)를 화면 표시 좌표로 변환
     return imageOffset.dy + (normalizedY * imageDisplaySize.height);
   }
 

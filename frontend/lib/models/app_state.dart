@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'dart:typed_data';
 import 'dart:math' as math;
 import 'face_regions.dart';
-import '../services/api_service.dart';
+import '../services/mediapipe_service.dart';
+import '../services/openai_service.dart';
 
 // 애니메이션 상수들
 class AnimationConstants {
@@ -176,6 +176,7 @@ class AppState extends ChangeNotifier {
   
   // 이미지 설정 (새 이미지 업로드 시)
   void setImage(Uint8List imageData, String imageId, int width, int height) {
+    debugPrint('🖼️ 이미지 설정: ${width}x${height}, ID: $imageId');
     _currentImage = imageData;
     _originalImage = Uint8List.fromList(imageData); // 원본 이미지 복사 저장
     _currentImageId = imageId;
@@ -277,8 +278,10 @@ class AppState extends ChangeNotifier {
   ];
 
   // 랜드마크 설정 및 자동 애니메이션 시작
-  void setLandmarks(List<Landmark> landmarks, {bool resetAnalysis = true}) {
-    debugPrint('🔍 setLandmarks 호출됨: 랜드마크 ${landmarks.length}개, resetAnalysis=$resetAnalysis, 현재탭=$_currentTabIndex, 재분석중=$_isReAnalyzing');
+  void setLandmarks(List<Landmark> landmarks, {bool resetAnalysis = true, String? source}) {
+    if (source == 'default_fallback') {
+      debugPrint('⚠️ 경고: 기본 랜드마크 사용 중! MediaPipe 실패');
+    }
     
     _landmarks = landmarks;
     
@@ -297,13 +300,9 @@ class AppState extends ChangeNotifier {
     
     // 분석 탭(index 0)에서만 자동 애니메이션 시작, 또는 재분석 중일 때도 시작
     final shouldStartAnimation = landmarks.isNotEmpty && (_currentTabIndex == 0 || _isReAnalyzing) && resetAnalysis;
-    debugPrint('🎬 애니메이션 시작 조건 확인: shouldStart=$shouldStartAnimation (랜드마크유무=${landmarks.isNotEmpty}, 탭조건=${_currentTabIndex == 0 || _isReAnalyzing}, 리셋조건=$resetAnalysis)');
     
     if (shouldStartAnimation) {
-      debugPrint('🎬 자동 애니메이션 시작!');
       _startAutoAnimation();
-    } else {
-      debugPrint('❌ 애니메이션 시작 조건 불만족');
     }
   }
   
@@ -342,13 +341,9 @@ class AppState extends ChangeNotifier {
   
   // 자동 애니메이션 시작
   Future<void> _startAutoAnimation() async {
-    debugPrint('🎬 _startAutoAnimation 시작');
-    
     _isAutoAnimationMode = true;
     _currentAnimationIndex = 0;
     _showLandmarks = true; // 자동으로 랜드마크 표시 켜기
-    
-    debugPrint('🎬 애니메이션 모드 설정: isAutoAnimationMode=$_isAutoAnimationMode, showLandmarks=$_showLandmarks');
     
     // 모든 부위를 표시 상태로 설정
     for (final regionKey in _animationSequence) {
@@ -395,18 +390,12 @@ class AppState extends ChangeNotifier {
       _currentAnimationIndex = i;
       final regionKey = _animationSequence[i];
       
-      debugPrint('🎬 부위 애니메이션 시작: $regionKey (${i+1}/${_animationSequence.length})');
-      
       // 애니메이션이 있는 모든 부위 재생
       await _playRegionAnimation(regionKey);
-      
-      debugPrint('🎬 부위 애니메이션 완료: $regionKey');
       
       // 각 애니메이션 사이에 짧은 대기 시간
       await Future.delayed(const Duration(milliseconds: 500));
     }
-    
-    debugPrint('🎬 _playAnimationSequence 완료');
   }
   
   // 개별 부위 애니메이션 재생
@@ -598,21 +587,19 @@ class AppState extends ChangeNotifier {
         saveToHistory();
         _currentImage = Uint8List.fromList(_originalImage!);
         
-        // 원본 이미지를 Backend에 새 ID로 업로드
-        final apiService = ApiService();
-        final uploadResponse = await apiService.uploadImage(_originalImage!, 'restored_original.jpg');
-        _currentImageId = uploadResponse.imageId;
+        // 프론트엔드 전용: 로컬 이미지 ID 생성 (백엔드 업로드 없음)
+        _currentImageId = 'frontend_original_${DateTime.now().millisecondsSinceEpoch}';
         
-        // print('원본 복원: 새 ID로 업로드 완료 - ${_currentImageId}');
+        debugPrint('✅ 원본 복원 완료 - 로컬 ID: $_currentImageId');
         
         notifyListeners();
       } catch (e) {
-        // print('원본 복원 실패: $e');
+        debugPrint('❌ 원본 복원 실패: $e');
         // 실패해도 Frontend 이미지는 원본으로 복원
         notifyListeners();
       }
     } else {
-      // print('원본 복원 실패: 원본 이미지가 없습니다');
+      debugPrint('❌ 원본 복원 실패: 원본 이미지가 없습니다');
     }
   }
   
@@ -1040,11 +1027,9 @@ class AppState extends ChangeNotifier {
   // 뷰티 분석 계산
   void _calculateBeautyAnalysis() {
     if (_landmarks.isEmpty) return;
-    // print('_calculateBeautyAnalysis 호출됨: _originalBeautyAnalysis=${_originalBeautyAnalysis != null}, _isReAnalyzing=$_isReAnalyzing');
     
     // 워핑 중이거나 재진단 중이 아닌 경우 뷰티 분석 건너뜀
     if (_originalBeautyAnalysis != null && !_isReAnalyzing && _currentTabIndex != 0) {
-      // print('워핑 중 뷰티 분석 건너뜀: 탭=${_currentTabIndex}, 재진단중=${_isReAnalyzing}');
       return;
     }
 
@@ -1110,7 +1095,7 @@ class AppState extends ChangeNotifier {
 
   // 얼굴 비율 계산
   double _calculateFaceProportions() {
-    if (_landmarks.length < 468) return 75.0;
+    if (_landmarks.length < 400) return 75.0; // Support both 468 and 478 landmarks
 
     try {
       // 얼굴 길이/너비 비율 (1.618이 황금비율)
@@ -1128,7 +1113,7 @@ class AppState extends ChangeNotifier {
 
   // 얼굴 대칭성 계산
   double _calculateFacialSymmetry() {
-    if (_landmarks.length < 468) return 75.0;
+    if (_landmarks.length < 400) return 75.0; // Support both 468 and 478 landmarks
 
     try {
       // 주요 대칭점들 비교
@@ -1155,7 +1140,7 @@ class AppState extends ChangeNotifier {
 
   // 황금비율 분석
   double _calculateGoldenRatio() {
-    if (_landmarks.length < 468) return 75.0;
+    if (_landmarks.length < 400) return 75.0; // Support both 468 and 478 landmarks
 
     try {
       // 얼굴의 1/3 비율 분석
@@ -1185,7 +1170,7 @@ class AppState extends ChangeNotifier {
 
   // 눈 분석
   Map<String, dynamic> _calculateEyeAnalysis() {
-    if (_landmarks.length < 468) return {'score': 75.0};
+    if (_landmarks.length < 400) return {'score': 75.0}; // Support both 468 and 478 landmarks
 
     try {
       // 눈 크기와 모양 분석
@@ -1213,7 +1198,7 @@ class AppState extends ChangeNotifier {
 
   // 코 분석
   Map<String, dynamic> _calculateNoseAnalysis() {
-    if (_landmarks.length < 468) return {'score': 75.0};
+    if (_landmarks.length < 400) return {'score': 75.0}; // Support both 468 and 478 landmarks
 
     try {
       final noseTip = _landmarks[2];
@@ -1241,7 +1226,7 @@ class AppState extends ChangeNotifier {
 
   // 입술 분석
   Map<String, dynamic> _calculateLipAnalysis() {
-    if (_landmarks.length < 468) return {'score': 75.0};
+    if (_landmarks.length < 400) return {'score': 75.0}; // Support both 468 and 478 landmarks
 
     try {
       final upperLip = _landmarks[13];
@@ -1269,7 +1254,7 @@ class AppState extends ChangeNotifier {
 
   // 턱선 분석
   Map<String, dynamic> _calculateJawlineAnalysis() {
-    if (_landmarks.length < 468) return {'score': 75.0};
+    if (_landmarks.length < 400) return {'score': 75.0}; // Support both 468 and 478 landmarks
 
     try {
       // 기존 턱곡률 계산 로직 활용
@@ -1577,31 +1562,30 @@ class AppState extends ChangeNotifier {
       // 4. 잠시 대기 (UI 업데이트 보장)
       await Future.delayed(const Duration(milliseconds: 300));
       
-      // 4. 변형된 이미지에 대한 새로운 랜드마크 요청
-      final apiService = ApiService();
-      
-      // 현재 이미지가 프론트엔드에서 워핑된 경우, 백엔드에 다시 업로드
-      String imageIdForAnalysis = _currentImageId!;
-      if (_currentImage != null) {
-        try {
-          debugPrint('🔄 재진단을 위해 변형된 이미지를 백엔드에 업로드 중...');
-          final uploadResponse = await apiService.uploadImage(
-            _currentImage!, 
-            'reanalysis_${DateTime.now().millisecondsSinceEpoch}.jpg'
-          );
-          imageIdForAnalysis = uploadResponse.imageId;
-          debugPrint('✅ 변형된 이미지 업로드 완료: $imageIdForAnalysis');
-        } catch (e) {
-          debugPrint('⚠️ 이미지 업로드 실패, 기존 ID 사용: $e');
-          // 업로드 실패 시 기존 ID 사용
-        }
+      // 4. 변형된 이미지에 대한 새로운 랜드마크 요청 (프론트엔드 MediaPipe 사용)
+      if (_currentImage == null) {
+        throw Exception('현재 이미지가 없습니다');
       }
       
-      final landmarkResponse = await apiService.getFaceLandmarks(imageIdForAnalysis);
+      debugPrint('🔍 프론트엔드 MediaPipe로 변형된 이미지 랜드마크 검출 시작...');
+      
+      // 프론트엔드 MediaPipe로 랜드마크 검출
+      final landmarkResult = await MediaPipeService.detectFaceLandmarks(_currentImage!);
+      
+      if (landmarkResult == null || landmarkResult['landmarks'] == null) {
+        throw Exception('변형된 이미지에서 얼굴을 찾을 수 없습니다');
+      }
+      
+      // MediaPipe 결과를 Landmark 객체로 변환
+      final rawLandmarks = landmarkResult['landmarks'] as List<List<double>>;
+      final landmarks = MediaPipeService.convertToLandmarks(rawLandmarks);
+      
+      debugPrint('✅ 프론트엔드에서 ${landmarks.length}개 랜드마크 검출 완료');
       
       // 5. 새로운 랜드마크 설정 (뷰티 분석 및 GPT 분석 자동 시작됨)
-      setLandmarks(landmarkResponse.landmarks, resetAnalysis: true);
-      debugPrint('🔍 재분석: 랜드마크 설정 완료, 뷰티 분석 및 GPT 분석이 자동으로 시작됩니다.');
+      final source = landmarkResult['source'] ?? 'unknown';
+      setLandmarks(landmarks, resetAnalysis: true, source: source);
+      debugPrint('🔍 재분석: 랜드마크 설정 완료 (소스: $source), 뷰티 분석 및 GPT 분석이 자동으로 시작됩니다.');
       
     } catch (e) {
       setError('재진단 실패: $e');
@@ -1622,33 +1606,32 @@ class AppState extends ChangeNotifier {
     }
     
     try {
-      // print('기초 뷰티스코어 GPT 분석 시작');
+      debugPrint('🤖 프론트엔드 GPT 분석 시작...');
       _isGptAnalyzing = true;
       notifyListeners(); // GPT 분석 시작 알림
       
-      final apiService = ApiService();
-      
-      // 기초 뷰티스코어에 대한 단일 분석 요청
-      final analysisResult = await apiService.analyzeInitialBeautyScore(_beautyAnalysis);
+      // 프론트엔드 OpenAI 서비스 사용
+      final analysisResult = await OpenAIService.analyzeInitialBeautyScore(
+        beautyAnalysis: _beautyAnalysis,
+      );
       
       // GPT 분석이 여전히 활성 상태인 경우에만 결과 적용 (중복 방지)
       if (_isGptAnalyzing) {
         // GPT 분석 결과를 뷰티 분석에 추가
         _beautyAnalysis['gptAnalysis'] = {
-          'analysisText': analysisResult.analysisText,
-          'recommendations': analysisResult.recommendations,
+          'analysisText': analysisResult['analysis'],
+          'recommendations': analysisResult['recommendations'],
           'isInitialAnalysis': true,
         };
         
-        // print('🔍 GPT 분석 완료 - 최신 결과 적용');
-        // print('기초 뷰티스코어 GPT 분석 완료');
+        debugPrint('✅ 프론트엔드 GPT 분석 완료');
         notifyListeners(); // GPT 분석 완료 즉시 UI 업데이트
       } else {
-        // print('🔍 GPT 분석 완료 - 중복 응답 무시');
+        debugPrint('🔍 GPT 분석 완료 - 중복 응답 무시');
       }
       
     } catch (e) {
-      // print('기초 뷰티스코어 GPT 분석 실패: $e');
+      debugPrint('❌ 프론트엔드 GPT 분석 실패: $e');
       // 실패해도 기본 분석은 유지
     } finally {
       _isGptAnalyzing = false;
@@ -1660,32 +1643,37 @@ class AppState extends ChangeNotifier {
     if (_originalBeautyAnalysis == null || _beautyAnalysis.isEmpty) return;
     
     try {
-      debugPrint('GPT 분석 시작');
+      debugPrint('🤖 프론트엔드 GPT 비교 분석 시작...');
       _isGptAnalyzing = true;
       notifyListeners(); // GPT 분석 시작 알림
       
-      final apiService = ApiService();
+      // 점수 변화량 계산
+      final scoreChanges = <String, dynamic>{};
+      final originalOverall = _originalBeautyAnalysis!['overallScore'] ?? 0.0;
+      final currentOverall = _beautyAnalysis['overallScore'] ?? 0.0;
+      scoreChanges['전체점수'] = currentOverall - originalOverall;
       
-      // GPT 분석 요청
-      final comparisonResult = await apiService.analyzeBeautyComparison(
-        _originalBeautyAnalysis!,
-        _beautyAnalysis,
+      // 프론트엔드 OpenAI 서비스 사용
+      final comparisonResult = await OpenAIService.analyzeBeautyComparison(
+        beforeAnalysis: _originalBeautyAnalysis!,
+        afterAnalysis: _beautyAnalysis,
+        scoreChanges: scoreChanges,
       );
       
       // 비교 결과를 뷰티 분석에 추가
       _beautyAnalysis['comparison'] = {
-        'overallChange': comparisonResult.overallChange,
-        'scoreChanges': comparisonResult.scoreChanges,
-        'recommendations': comparisonResult.recommendations,
-        'analysisText': comparisonResult.analysisText,
+        'overallChange': scoreChanges['전체점수'],
+        'scoreChanges': scoreChanges,
+        'recommendations': comparisonResult['recommendations'],
+        'analysisText': comparisonResult['analysis'],
         'isReAnalysis': true,
       };
       
-      debugPrint('GPT 분석 완료');
+      debugPrint('✅ 프론트엔드 GPT 비교 분석 완료');
       notifyListeners(); // GPT 분석 완료 즉시 UI 업데이트
       
     } catch (e) {
-      debugPrint('GPT 분석 실패: $e');
+      debugPrint('❌ 프론트엔드 GPT 비교 분석 실패: $e');
       setError('재진단 GPT 분석 실패: $e');
     } finally {
       _isReAnalyzing = false;

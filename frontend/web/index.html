@@ -120,8 +120,14 @@
     const serviceWorkerVersion = null;
   </script>
   
+  <!-- MediaPipe JavaScript 라이브러리 - 안정된 버전 -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/face_mesh.js" crossorigin="anonymous"></script>
+
   <!-- BeautyGen 워핑 엔진 (Flutter 초기화 전에 로드) -->
   <script src="js/warp_engine.js"></script>
+  
+  <!-- BeautyGen MediaPipe 엔진 -->
+  <script src="js/mediapipe_engine.js"></script>
   
   <!-- This script adds the flutter initialization JS code -->
   <script src="flutter.js" defer></script>

@@ -890,6 +890,16 @@ class AnimatedFaceRegionsPainter extends CustomPainter {
       imageDisplaySize = Size(containerSize.height * imageAspectRatio, containerSize.height);
       imageOffset = Offset((containerSize.width - imageDisplaySize.width) / 2, 0);
     }
+    
+    // 디버깅: 좌표계 정보 출력
+    if (landmarks.isNotEmpty) {
+      debugPrint('🎯 좌표계 디버깅: imageSize=($imageWidth x $imageHeight), containerSize=(${containerSize.width} x ${containerSize.height})');
+      debugPrint('🎯 displaySize=(${imageDisplaySize.width} x ${imageDisplaySize.height}), offset=(${imageOffset.dx}, ${imageOffset.dy})');
+      debugPrint('🎯 첫번째 랜드마크: (${landmarks[0].x}, ${landmarks[0].y})');
+      final screenX = imageOffset.dx + (landmarks[0].x / imageWidth) * imageDisplaySize.width;
+      final screenY = imageOffset.dy + (landmarks[0].y / imageHeight) * imageDisplaySize.height;
+      debugPrint('🎯 변환된 화면 좌표: ($screenX, $screenY)');
+    }
 
     // 각 부위별로 랜드마크와 선 그리기
     for (final entry in FaceRegions.regions.entries) {
@@ -931,6 +941,7 @@ class AnimatedFaceRegionsPainter extends CustomPainter {
         for (final index in regionData.indices) {
           if (index < landmarks.length) {
             final landmark = landmarks[index];
+            // MediaPipe에서 이미 픽셀 좌표로 변환됨 - 화면 표시용으로 스케일링
             final screenX = imageOffset.dx + (landmark.x / imageWidth) * imageDisplaySize.width;
             final screenY = imageOffset.dy + (landmark.y / imageHeight) * imageDisplaySize.height;
             
@@ -1055,6 +1066,7 @@ class AnimatedFaceRegionsPainter extends CustomPainter {
             final currentLandmark = landmarks[currentIndex];
             final nextLandmark = landmarks[nextIndex];
             
+            // MediaPipe에서 이미 픽셀 좌표로 변환됨 - 화면 표시용으로 스케일링
             final currentX = imageOffset.dx + (currentLandmark.x / imageWidth) * imageDisplaySize.width;
             final currentY = imageOffset.dy + (currentLandmark.y / imageHeight) * imageDisplaySize.height;
             final nextX = imageOffset.dx + (nextLandmark.x / imageWidth) * imageDisplaySize.width;
@@ -1084,6 +1096,7 @@ class AnimatedFaceRegionsPainter extends CustomPainter {
           final index = points[i];
           if (index < landmarks.length) {
             final landmark = landmarks[index];
+            // MediaPipe에서 이미 픽셀 좌표로 변환됨 - 화면 표시용으로 스케일링
             final screenX = imageOffset.dx + (landmark.x / imageWidth) * imageDisplaySize.width;
             final screenY = imageOffset.dy + (landmark.y / imageHeight) * imageDisplaySize.height;
             
@@ -1104,6 +1117,7 @@ class AnimatedFaceRegionsPainter extends CustomPainter {
     for (final index in points) {
       if (index < landmarks.length) {
         final landmark = landmarks[index];
+        // MediaPipe에서 이미 픽셀 좌표로 변환됨 - 화면 표시용으로 스케일링
         final screenX = imageOffset.dx + (landmark.x / imageWidth) * imageDisplaySize.width;
         final screenY = imageOffset.dy + (landmark.y / imageHeight) * imageDisplaySize.height;
         screenPoints.add(Offset(screenX, screenY));

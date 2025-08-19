@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/app_state.dart';
 import '../../services/warp_benchmark.dart';
+import '../../services/warp_service.dart';
 
 /// 워핑 성능 벤치마크 위젯 (디버그 전용)
 class WarpBenchmarkWidget extends StatefulWidget {

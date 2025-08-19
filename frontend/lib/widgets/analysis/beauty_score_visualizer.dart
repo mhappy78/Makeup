@@ -211,13 +211,17 @@ class BeautyScoreVisualizer {
   /// 랜드마크의 화면 X 좌표 계산
   double _getLandmarkScreenX(int index, Offset imageOffset, Size imageDisplaySize) {
     if (index >= landmarks.length) return 0;
-    return imageOffset.dx + (landmarks[index].x / imageWidth) * imageDisplaySize.width;
+    // MediaPipe에서 픽셀 좌표로 변환됨 - 이미지 표시 영역에 맞게 스케일링
+    final normalizedX = landmarks[index].x / imageWidth;  // 0~1 정규화
+    return imageOffset.dx + (normalizedX * imageDisplaySize.width);
   }
   
   /// 랜드마크의 화면 Y 좌표 계산  
   double _getLandmarkScreenY(int index, Offset imageOffset, Size imageDisplaySize) {
     if (index >= landmarks.length) return 0;
-    return imageOffset.dy + (landmarks[index].y / imageHeight) * imageDisplaySize.height;
+    // MediaPipe에서 픽셀 좌표로 변환됨 - 이미지 표시 영역에 맞게 스케일링
+    final normalizedY = landmarks[index].y / imageHeight;  // 0~1 정규화
+    return imageOffset.dy + (normalizedY * imageDisplaySize.height);
   }
   
   /// 선 스타일 페인트 생성

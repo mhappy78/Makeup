@@ -44,6 +44,10 @@ class ImageProcessor {
       if (landmark is Map<String, dynamic>) {
         x = (landmark['x'] as num).toDouble();
         y = (landmark['y'] as num).toDouble();
+      } else if (landmark is List) {
+        // JSArray나 List<double> 형태인 경우 ([x, y])
+        x = (landmark[0] as num).toDouble();
+        y = (landmark[1] as num).toDouble();
       } else {
         // Landmark 객체인 경우
         final landmarkObj = landmark as dynamic;

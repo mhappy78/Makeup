@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'dart:typed_data';
 import '../../models/app_state.dart';
 import '../../utils/image_processor.dart';
-import '../../services/api_service.dart';
+import '../../services/mediapipe_service.dart';
 
 /// 얼굴 가이드라인이 있는 카메라 촬영 위젯
 class CameraCaptureWidget extends StatefulWidget {
@@ -107,9 +107,8 @@ class _CameraCaptureWidgetState extends State<CameraCaptureWidget>
       final image = await _controller!.takePicture();
       final bytes = await image.readAsBytes();
       
-      // AppState와 ApiService 가져오기
+      // AppState 가져오기
       final appState = context.read<AppState>();
-      final apiService = ApiService();
       
       // 로딩 상태 표시
       if (mounted) {
@@ -123,19 +122,27 @@ class _CameraCaptureWidgetState extends State<CameraCaptureWidget>
       }
       
       try {
-        // 1. 임시 이미지 업로드
-        final uploadResponse = await apiService.uploadImage(bytes, 'camera_capture.jpg');
+        debugPrint('🔍 프론트엔드에서 카메라 이미지 처리 시작...');
         
-        // 2. 얼굴 랜드마크 자동 검출
-        final landmarkResponse = await apiService.getFaceLandmarks(uploadResponse.imageId);
+        // 1. 프론트엔드 MediaPipe로 얼굴 랜드마크 검출
+        final landmarkResult = await MediaPipeService.detectFaceLandmarks(bytes);
         
-        // 3. 얼굴 기반 이미지 처리 (크롭)
+        if (landmarkResult == null || landmarkResult['landmarks'] == null) {
+          throw Exception('얼굴을 찾을 수 없습니다. 얼굴이 명확히 보이는 각도로 다시 촬영해주세요.');
+        }
+
+        final rawLandmarks = landmarkResult['landmarks'] as List<List<double>>;
+        debugPrint('✅ 프론트엔드에서 ${rawLandmarks.length}개 랜드마크 검출 완료');
+        
+        // 2. 얼굴 기반 이미지 처리 (크롭)
         final processedBytes = await ImageProcessor.processImageWithFaceDetection(
           bytes, 
-          landmarkResponse.landmarks.cast<dynamic>(),
+          rawLandmarks.cast<dynamic>(),
         );
         
-        // 4. AppState에 처리된 이미지 설정
+        debugPrint('✅ 프론트엔드 카메라 이미지 처리 완료');
+        
+        // 3. AppState에 처리된 이미지 설정
         appState.setCurrentImage(processedBytes);
         
         // 로딩 다이얼로그 닫기
