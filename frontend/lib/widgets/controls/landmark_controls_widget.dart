@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../models/app_state.dart';
 import '../../services/api_service.dart';
 import '../../services/warp_coordinator.dart';
+import '../../services/warp_fallback_manager.dart';
 import 'dart:html' as html;
 import 'dart:math' as math;
 import '../components/before_after_comparison.dart';
@@ -651,33 +652,48 @@ class _LandmarkControlsWidgetState extends State<LandmarkControlsWidget> {
 
   Future<void> _applyPresetWithProgress(BuildContext context, String presetType, int progress) async {
     final appState = context.read<AppState>();
-    final apiService = context.read<ApiService>();
     
-    if (appState.currentImageId == null) return;
+    if (appState.currentImage == null || appState.landmarks.isEmpty) return;
     
     try {
       // 특정 프리셋만 로딩 상태로 설정 + 진행 상황 표시
       appState.setPresetLoading(presetType, progress);
       
-      // API를 통해 프리셋 적용
-      final response = await apiService.applyPreset(
-        appState.currentImageId!,
-        presetType,
+      // 프론트엔드 프리셋 시스템 사용
+      final apiService = context.read<ApiService>();
+      final presetResult = await WarpFallbackManager.smartApplyPreset(
+        imageBytes: appState.currentImage!,
+        imageId: appState.currentImageId ?? '',
+        landmarks: appState.landmarks,
+        presetType: presetType,
+        apiService: apiService,
       );
       
-      // 상태 업데이트 (부드러운 전환을 위해 프리셋 전용 메서드 사용)
-      appState.updateImageFromPreset(
-        response.imageBytes,
-        response.imageId,
-      );
+      if (presetResult.success && presetResult.resultBytes != null) {
+        // 백엔드에서 처리된 경우 새로운 이미지 ID와 함께 업데이트
+        if (presetResult.source == 'backend' && presetResult.resultImageId != null) {
+          appState.updateImageFromPreset(
+            presetResult.resultBytes!,
+            presetResult.resultImageId!,
+          );
+        } else {
+          // 프론트엔드에서 처리된 경우 이미지만 업데이트
+          appState.updateCurrentImage(presetResult.resultBytes!);
+        }
+        
+        debugPrint('✅ 프리셋 적용 완료 - 타입: $presetType, 소스: ${presetResult.source}, 처리시간: ${presetResult.processingTime}ms');
+      } else {
+        throw Exception(presetResult.error ?? '프리셋 적용 실패');
+      }
       
-      // 로딩 상태 즉시 해제 (지연 제거)
+      // 로딩 상태 즉시 해제
       appState.setPresetLoading(null);
       
     } catch (e) {
       // 에러 시에도 즉시 로딩 상태 해제
       appState.setPresetLoading(null);
       appState.setError('프리셋 적용 실패: $e');
+      debugPrint('❌ 프리셋 적용 실패: $e');
     }
   }
 

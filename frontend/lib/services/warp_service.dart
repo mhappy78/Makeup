@@ -119,13 +119,22 @@ class WarpService {
       // 랜드마크를 JavaScript 배열 형식으로 변환
       final landmarkArray = landmarks.map((landmark) => [landmark.x, landmark.y]).toList();
       
+      debugPrint('Dart에서 전송할 랜드마크 데이터: ${landmarkArray.length}개');
+      debugPrint('첫 번째 랜드마크: ${landmarkArray.isNotEmpty ? landmarkArray[0] : 'none'}');
+      debugPrint('마지막 랜드마크: ${landmarkArray.isNotEmpty ? landmarkArray[landmarkArray.length - 1] : 'none'}');
+      
+      // JavaScript Array로 명시적으로 변환
+      final jsLandmarkArray = js.JsArray.from(
+        landmarkArray.map((landmark) => js.JsArray.from(landmark)).toList()
+      );
+      
       final stopwatch = Stopwatch()..start();
       
       final result = js.context.callMethod(_jsPresetFunction, [
         imageBytes,
         width,
         height,
-        landmarkArray,
+        jsLandmarkArray,
         presetType,
       ]);
 

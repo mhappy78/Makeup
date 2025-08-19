@@ -269,28 +269,28 @@ class WarpEngine {
     applyPreset(landmarks, presetType) {
         const PRESET_CONFIGS = {
             'lower_jaw': {
-                strength: 0.05,
+                strength: 0.005,  // 0.5%로 조정
                 influenceRatio: 0.4,
                 pullRatio: 0.1,
                 faceSizeLandmarks: [234, 447],
                 targetLandmarks: [150, 379, 4]
             },
             'middle_jaw': {
-                strength: 0.05,
+                strength: 0.005,  // 0.5%로 조정
                 influenceRatio: 0.65,
                 pullRatio: 0.1,
                 faceSizeLandmarks: [234, 447],
                 targetLandmarks: [172, 397, 4]
             },
             'cheek': {
-                strength: 0.05,
+                strength: 0.005,  // 0.5%로 조정
                 influenceRatio: 0.65,
                 pullRatio: 0.1,
                 faceSizeLandmarks: [234, 447],
                 targetLandmarks: [215, 435, 4]
             },
             'front_protusion': {
-                strength: 0.3,
+                strength: 0.03,  // 3%로 조정
                 influenceRatio: 0.1,
                 pullRatio: 0.1,
                 faceSizeLandmarks: [234, 447],
@@ -298,7 +298,7 @@ class WarpEngine {
                 ellipseRatio: 1.3
             },
             'back_slit': {
-                strength: 0.5,
+                strength: 0.03,  // 3%로 조정
                 influenceRatio: 0.1,
                 pullRatio: 0.1,
                 faceSizeLandmarks: [234, 447],
