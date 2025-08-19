@@ -41,7 +41,6 @@ class _HomeScreenState extends State<HomeScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final appState = context.read<AppState>();
       appState.setCurrentTabIndex(0); // 분석 탭으로 명시적 설정
-      debugPrint('🏠 홈 스크린 초기화 완료: 탭 인덱스 0으로 설정');
     });
   }
 

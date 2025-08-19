@@ -24,7 +24,7 @@ class OpenAIService {
   static Future<Map<String, dynamic>> analyzeBeautyComparison({
     required Map<String, dynamic> beforeAnalysis,
     required Map<String, dynamic> afterAnalysis,
-    required Map<String, dynamic> scoreChanges,
+    required Map<String, double> scoreChanges,
   }) async {
     if (!hasApiKey) {
       throw Exception('OpenAI API 키가 설정되지 않았습니다');
@@ -132,7 +132,7 @@ class OpenAIService {
   static String _buildComparisonPrompt(
     Map<String, dynamic> before,
     Map<String, dynamic> after,
-    Map<String, dynamic> changes,
+    Map<String, double> changes,
   ) {
     return '''
 뷰티 점수 변화 분석을 수행해주세요.

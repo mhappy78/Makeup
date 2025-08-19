@@ -240,7 +240,6 @@ class _ImageUploadWidgetState extends State<ImageUploadWidget> {
     appState.setLoading(true);
 
     try {
-      debugPrint('🔍 프론트엔드에서 카메라 이미지 처리 시작...');
       
       // 1. 프론트엔드 MediaPipe로 얼굴 랜드마크 검출
       final landmarkResult = await MediaPipeService.detectFaceLandmarks(imageBytes);
@@ -252,7 +251,6 @@ class _ImageUploadWidgetState extends State<ImageUploadWidget> {
       final rawLandmarks = landmarkResult['landmarks'] as List<List<double>>;
       final landmarks = MediaPipeService.convertToLandmarks(rawLandmarks);
       
-      debugPrint('✅ 프론트엔드에서 ${landmarks.length}개 랜드마크 검출 완료');
       
       // 2. 얼굴 기반 이미지 처리 (크롭 + 밝기 보정)
       final processedBytes = await ImageProcessor.processImageWithFaceDetection(
@@ -280,7 +278,6 @@ class _ImageUploadWidgetState extends State<ImageUploadWidget> {
         );
         
         appState.setLandmarks(finalLandmarks, source: source);
-        debugPrint('✅ 처리된 이미지에서 ${finalLandmarks.length}개 랜드마크 재검출 완료 (소스: $source)');
       } else {
         // 재검출 실패 시 원래 이미지 크기와 랜드마크 사용
         appState.setImage(
@@ -292,11 +289,9 @@ class _ImageUploadWidgetState extends State<ImageUploadWidget> {
         
         final source = landmarkResult['source'] ?? 'unknown';
         appState.setLandmarks(landmarks, source: source);
-        debugPrint('⚠️ 처리된 이미지 재검출 실패, 원래 랜드마크 사용 (소스: $source)');
       }
 
       appState.setLoading(false);
-      debugPrint('✅ 프론트엔드 카메라 이미지 처리 완료');
       
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -347,7 +342,6 @@ class _ImageUploadWidgetState extends State<ImageUploadWidget> {
     appState.setLoading(true);
 
     try {
-      debugPrint('🔍 프론트엔드에서 파일 이미지 처리 시작...');
       
       // 1. 프론트엔드 MediaPipe로 얼굴 랜드마크 검출
       final landmarkResult = await MediaPipeService.detectFaceLandmarks(imageBytes);
@@ -359,7 +353,6 @@ class _ImageUploadWidgetState extends State<ImageUploadWidget> {
       final rawLandmarks = landmarkResult['landmarks'] as List<List<double>>;
       final landmarks = MediaPipeService.convertToLandmarks(rawLandmarks);
       
-      debugPrint('✅ 프론트엔드에서 ${landmarks.length}개 랜드마크 검출 완료');
       
       // 2. 얼굴 기반 이미지 처리 (크롭 + 밝기 보정)
       final processedBytes = await ImageProcessor.processImageWithFaceDetection(
@@ -387,7 +380,6 @@ class _ImageUploadWidgetState extends State<ImageUploadWidget> {
         );
         
         appState.setLandmarks(finalLandmarks, source: source);
-        debugPrint('✅ 처리된 이미지에서 ${finalLandmarks.length}개 랜드마크 재검출 완료 (소스: $source)');
       } else {
         // 재검출 실패 시 원래 이미지 크기와 랜드마크 사용
         appState.setImage(
@@ -399,11 +391,9 @@ class _ImageUploadWidgetState extends State<ImageUploadWidget> {
         
         final source = landmarkResult['source'] ?? 'unknown';
         appState.setLandmarks(landmarks, source: source);
-        debugPrint('⚠️ 처리된 이미지 재검출 실패, 원래 랜드마크 사용 (소스: $source)');
       }
 
       appState.setLoading(false);
-      debugPrint('✅ 프론트엔드 파일 이미지 처리 완료');
       
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

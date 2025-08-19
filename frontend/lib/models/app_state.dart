@@ -176,7 +176,6 @@ class AppState extends ChangeNotifier {
   
   // 이미지 설정 (새 이미지 업로드 시)
   void setImage(Uint8List imageData, String imageId, int width, int height) {
-    debugPrint('🖼️ 이미지 설정: ${width}x${height}, ID: $imageId');
     _currentImage = imageData;
     _originalImage = Uint8List.fromList(imageData); // 원본 이미지 복사 저장
     _currentImageId = imageId;
@@ -280,7 +279,6 @@ class AppState extends ChangeNotifier {
   // 랜드마크 설정 및 자동 애니메이션 시작
   void setLandmarks(List<Landmark> landmarks, {bool resetAnalysis = true, String? source}) {
     if (source == 'default_fallback') {
-      debugPrint('⚠️ 경고: 기본 랜드마크 사용 중! MediaPipe 실패');
     }
     
     _landmarks = landmarks;
@@ -350,40 +348,29 @@ class AppState extends ChangeNotifier {
       _regionVisibility.setVisible(regionKey, true);
     }
     
-    debugPrint('🎬 애니메이션 시퀀스 부위 설정 완료: ${_animationSequence.length}개 부위');
     
     // 애니메이션 진행률 초기화
     _animationProgress.clear();
     
     notifyListeners();
-    debugPrint('🎬 첫 번째 notifyListeners 호출 완료');
     
     // 시퀀스 애니메이션 시작
-    debugPrint('🎬 시퀀스 애니메이션 시작');
     await _playAnimationSequence();
-    
-    debugPrint('🎬 시퀀스 애니메이션 완료');
     
     // 애니메이션 종료 후 뷰티 스코어 계산 및 표시
     _calculateBeautyAnalysis();
     _showBeautyScore = true;
     _startBeautyScoreAnimation();
     
-    debugPrint('🎬 뷰티 스코어 계산 및 표시 설정 완료');
-    
     _isAutoAnimationMode = false;
     notifyListeners();
-    
-    debugPrint('🎬 _startAutoAnimation 완료');
   }
   
   // 애니메이션 시퀀스 재생
   Future<void> _playAnimationSequence() async {
-    debugPrint('🎬 _playAnimationSequence 시작: ${_animationSequence.length}개 부위');
     
     for (int i = 0; i < _animationSequence.length; i++) {
       if (!_isAutoAnimationMode) {
-        debugPrint('🎬 애니메이션 모드 중단됨 at index $i');
         break;
       }
       
@@ -590,16 +577,13 @@ class AppState extends ChangeNotifier {
         // 프론트엔드 전용: 로컬 이미지 ID 생성 (백엔드 업로드 없음)
         _currentImageId = 'frontend_original_${DateTime.now().millisecondsSinceEpoch}';
         
-        debugPrint('✅ 원본 복원 완료 - 로컬 ID: $_currentImageId');
         
         notifyListeners();
       } catch (e) {
-        debugPrint('❌ 원본 복원 실패: $e');
         // 실패해도 Frontend 이미지는 원본으로 복원
         notifyListeners();
       }
     } else {
-      debugPrint('❌ 원본 복원 실패: 원본 이미지가 없습니다');
     }
   }
   
@@ -927,7 +911,6 @@ class AppState extends ChangeNotifier {
     
     // 재진단 중이라면 GPT 분석을 계속 진행
     if (_isReAnalyzing && _originalBeautyAnalysis != null) {
-      debugPrint('재진단 중 애니메이션 강제 완료: GPT 분석 진행');
       _performGptAnalysis();
     }
   }
@@ -936,7 +919,6 @@ class AppState extends ChangeNotifier {
   void setCurrentTabIndex(int index) {
     // 재진단 중일 때 다른 탭으로 전환하면 재진단 취소
     if (_isReAnalyzing && index != 0) {
-      debugPrint('재진단 중 다른 탭으로 전환: 재진단 취소');
       _isReAnalyzing = false;
       completeAllAnimations();
     }
@@ -1046,16 +1028,16 @@ class AppState extends ChangeNotifier {
       final lipAnalysis = _calculateLipAnalysis();
       final jawlineAnalysis = _calculateJawlineAnalysis();
 
-      // 종합 점수 계산 (시각화 기반)
+      // 종합 점수 계산 (시각화 기반) - 타입 안전성 보장
       final overallScore = _calculateOverallBeautyScoreFromVisualization(
-        verticalScore: verticalAnalysis['score'] ?? 75.0,
-        horizontalScore: horizontalAnalysis['score'] ?? 75.0,
-        lowerFaceScore: lowerFaceAnalysis['score'] ?? 75.0,
+        verticalScore: (verticalAnalysis['score'] as num?)?.toDouble() ?? 75.0,
+        horizontalScore: (horizontalAnalysis['score'] as num?)?.toDouble() ?? 75.0,
+        lowerFaceScore: (lowerFaceAnalysis['score'] as num?)?.toDouble() ?? 75.0,
         symmetry: facialSymmetry,
-        eyeScore: eyeAnalysis['score'] ?? 70.0,
-        noseScore: noseAnalysis['score'] ?? 70.0,
-        lipScore: lipAnalysis['score'] ?? 70.0,
-        jawScore: jawlineAnalysis['score'] ?? 70.0,
+        eyeScore: (eyeAnalysis['score'] as num?)?.toDouble() ?? 70.0,
+        noseScore: (noseAnalysis['score'] as num?)?.toDouble() ?? 70.0,
+        lipScore: (lipAnalysis['score'] as num?)?.toDouble() ?? 70.0,
+        jawScore: (jawlineAnalysis['score'] as num?)?.toDouble() ?? 70.0,
       );
 
       _beautyAnalysis = {
@@ -1535,7 +1517,6 @@ class AppState extends ChangeNotifier {
   // 상태 리셋
   // 뷰티 점수 재진단 (프리셋/프리스타일에서 호출)
   Future<void> startReAnalysis() async {
-    debugPrint('startReAnalysis 호출됨: _originalBeautyAnalysis=${_originalBeautyAnalysis != null}, _isReAnalyzing=$_isReAnalyzing, _currentImageId=$_currentImageId');
     if (_originalBeautyAnalysis == null || _isReAnalyzing || _currentImageId == null) return;
     
     _isReAnalyzing = true;
@@ -1648,9 +1629,9 @@ class AppState extends ChangeNotifier {
       notifyListeners(); // GPT 분석 시작 알림
       
       // 점수 변화량 계산
-      final scoreChanges = <String, dynamic>{};
-      final originalOverall = _originalBeautyAnalysis!['overallScore'] ?? 0.0;
-      final currentOverall = _beautyAnalysis['overallScore'] ?? 0.0;
+      final scoreChanges = <String, double>{};
+      final originalOverall = (_originalBeautyAnalysis!['overallScore'] as num?)?.toDouble() ?? 0.0;
+      final currentOverall = (_beautyAnalysis['overallScore'] as num?)?.toDouble() ?? 0.0;
       scoreChanges['전체점수'] = currentOverall - originalOverall;
       
       // 프론트엔드 OpenAI 서비스 사용

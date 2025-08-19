@@ -107,13 +107,10 @@ class MediaPipeEngine {
      */
     onResults(results) {
         try {
-            console.log('🔍 MediaPipe onResults 호출됨:', results);
-            console.log('🔍 multiFaceLandmarks 개수:', results.multiFaceLandmarks ? results.multiFaceLandmarks.length : 0);
             
             this.isProcessing = false;
 
             if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
-                console.log('❌ 얼굴 랜드마크를 찾을 수 없습니다');
                 if (this.currentReject) {
                     this.currentReject(new Error('얼굴을 찾을 수 없습니다'));
                 }
@@ -125,9 +122,6 @@ class MediaPipeEngine {
             const imageWidth = results.image.width;
             const imageHeight = results.image.height;
             
-            // MediaPipe 이미지 크기 디버깅
-            console.log(`🎯 MediaPipe 이미지 크기: ${imageWidth}x${imageHeight}`);
-            console.log(`🎯 첫 랜드마크 원본: (${faceLandmarks[0].x}, ${faceLandmarks[0].y})`);
 
             // 468개 랜드마크 좌표 추출
             const landmarks = faceLandmarks.map(landmark => [
@@ -135,8 +129,6 @@ class MediaPipeEngine {
                 landmark.y * imageHeight
             ]);
             
-            console.log(`🎯 첫 랜드마크 변환후: (${landmarks[0][0]}, ${landmarks[0][1]})`);
-            console.log(`✅ MediaPipe 검출 완룄: ${landmarks.length}개 랜드마크`);
 
             if (this.currentResolve) {
                 this.currentResolve({
@@ -253,9 +245,7 @@ window.mediaPipeEngine = new MediaPipeEngine();
 // 이미지 바이트에서 랜드마크 검출
 window.detectFaceLandmarks = async function(imageBytes) {
     try {
-        console.log('🔍 프론트엔드 랜드마크 검출 시작...');
         const result = await window.mediaPipeEngine.detectLandmarksFromBytes(imageBytes);
-        console.log('✅ 프론트엔드 랜드마크 검출 완료:', result.landmarks.length, '개');
         return {
             landmarks: result.landmarks,
             imageWidth: result.imageWidth,
@@ -263,7 +253,7 @@ window.detectFaceLandmarks = async function(imageBytes) {
             source: 'frontend_mediapipe'
         };
     } catch (error) {
-        console.error('❌ 프론트엔드 랜드마크 검출 실패:', error);
+        console.error('❌ 랜드마크 검출 실패:', error);
         throw error;
     }
 };

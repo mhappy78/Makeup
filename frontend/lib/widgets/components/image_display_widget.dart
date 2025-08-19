@@ -6,6 +6,7 @@ import 'dart:math' as math;
 import '../../models/app_state.dart' show AppState, Landmark, WarpMode;
 import '../../models/face_regions.dart';
 import '../../services/api_service.dart';
+import '../../services/mediapipe_service.dart';
 import '../../services/warp_fallback_manager.dart';
 import '../../services/warp_coordinator.dart';
 import '../analysis/beauty_score_visualizer.dart';
@@ -779,11 +780,16 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
           appState.updateCurrentImage(warpResult.resultBytes!);
         }
         
-        // 랜드마크 다시 검출 (백엔드 API 사용)
-        if (appState.currentImageId != null) {
+        // 랜드마크 다시 검출 (프론트엔드 MediaPipe 사용)
+        if (appState.currentImage != null) {
           try {
-            final landmarkResponse = await apiService.getFaceLandmarks(appState.currentImageId!);
-            appState.setLandmarks(landmarkResponse.landmarks, resetAnalysis: false);
+            final landmarkResult = await MediaPipeService.detectFaceLandmarks(appState.currentImage!);
+            if (landmarkResult != null && landmarkResult['landmarks'] != null) {
+              final rawLandmarks = landmarkResult['landmarks'] as List<List<double>>;
+              final landmarks = MediaPipeService.convertToLandmarks(rawLandmarks);
+              final source = landmarkResult['source'] ?? 'frontend_mediapipe';
+              appState.setLandmarks(landmarks, resetAnalysis: false, source: source);
+            }
           } catch (e) {
             debugPrint('랜드마크 검출 실패: $e');
             // 랜드마크 검출 실패는 무시하고 워핑 결과만 적용
@@ -891,15 +897,6 @@ class AnimatedFaceRegionsPainter extends CustomPainter {
       imageOffset = Offset((containerSize.width - imageDisplaySize.width) / 2, 0);
     }
     
-    // 디버깅: 좌표계 정보 출력
-    if (landmarks.isNotEmpty) {
-      debugPrint('🎯 좌표계 디버깅: imageSize=($imageWidth x $imageHeight), containerSize=(${containerSize.width} x ${containerSize.height})');
-      debugPrint('🎯 displaySize=(${imageDisplaySize.width} x ${imageDisplaySize.height}), offset=(${imageOffset.dx}, ${imageOffset.dy})');
-      debugPrint('🎯 첫번째 랜드마크: (${landmarks[0].x}, ${landmarks[0].y})');
-      final screenX = imageOffset.dx + (landmarks[0].x / imageWidth) * imageDisplaySize.width;
-      final screenY = imageOffset.dy + (landmarks[0].y / imageHeight) * imageDisplaySize.height;
-      debugPrint('🎯 변환된 화면 좌표: ($screenX, $screenY)');
-    }
 
     // 각 부위별로 랜드마크와 선 그리기
     for (final entry in FaceRegions.regions.entries) {

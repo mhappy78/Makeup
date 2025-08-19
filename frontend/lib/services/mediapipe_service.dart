@@ -97,7 +97,6 @@ class MediaPipeService {
           
       // 좌표계 디버깅을 위한 첫 번째 랜드마크 좌표
       if (landmarks.isNotEmpty) {
-        debugPrint('🎯 MediaPipe 랜드마크: (${landmarks[0][0]}, ${landmarks[0][1]}) / 이미지크기: ${result['imageWidth']}x${result['imageHeight']}');
       }
       
       return {
@@ -181,7 +180,6 @@ class MediaPipeService {
       landmarks.add([x, y]);
     }
     
-    debugPrint('🎯 기본 랜드마크: (${landmarks[0][0]}, ${landmarks[0][1]}) / 이미지크기: ${imageWidth}x${imageHeight}');
     
     return {
       'landmarks': landmarks,
@@ -212,7 +210,6 @@ class MediaPipeService {
     try {
       final stopwatch = Stopwatch()..start();
       
-      debugPrint('🔍 ImageData MediaPipe 랜드마크 검출 시작 (${width}x${height})...');
       
       // JavaScript 함수 호출 (Promise 처리)
       final jsPromise = js.context.callMethod(_jsDetectFromImageDataFunction, [
@@ -223,14 +220,12 @@ class MediaPipeService {
       final result = await _promiseToFuture(jsPromise);
       
       stopwatch.stop();
-      debugPrint('⚡ ImageData MediaPipe 처리 시간: ${stopwatch.elapsedMilliseconds}ms');
 
       if (result != null) {
         final landmarks = (result['landmarks'] as List)
             .map((landmark) => [(landmark[0] as num).toDouble(), (landmark[1] as num).toDouble()])
             .toList();
             
-        debugPrint('✅ ImageData MediaPipe 완료: ${landmarks.length}개 랜드마크');
         
         return {
           'landmarks': landmarks,
@@ -240,7 +235,6 @@ class MediaPipeService {
           'processingTime': stopwatch.elapsedMilliseconds,
         };
       } else {
-        debugPrint('ImageData MediaPipe 처리 결과가 null입니다');
         return null;
       }
     } catch (e, stackTrace) {
@@ -271,7 +265,6 @@ class MediaPipeService {
       if (isEngineLoaded) {
         final status = getEngineStatus();
         if (status != null && status['isInitialized'] == true) {
-          debugPrint('✅ MediaPipe 엔진 초기화 완료');
           return true;
         }
       }
@@ -279,7 +272,6 @@ class MediaPipeService {
       await Future.delayed(const Duration(milliseconds: 200));
     }
     
-    debugPrint('❌ MediaPipe 엔진 초기화 시간 초과 (${timeoutSeconds}초)');
     return false;
   }
 

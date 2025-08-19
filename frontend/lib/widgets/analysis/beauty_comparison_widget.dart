@@ -125,20 +125,20 @@ class BeautyComparisonWidget extends StatelessWidget {
                     ),
                     const Spacer(),
                     Flexible(
-                      child: _buildOverallChangeChip(context, comparison['overallChange'] as String),
+                      child: _buildOverallChangeChip(context, _safeConvertToString(comparison['overallChange'])),
                     ),
                   ],
                 ),
                 
                 const SizedBox(height: 16),
                 
-                // 점수 변화 표시
-                _buildScoreChanges(context, comparison['scoreChanges'] as Map<String, double>),
+                // 점수 변화 표시 - 안전한 타입 변환
+                _buildScoreChanges(context, _safeConvertScoreChanges(comparison['scoreChanges'])),
                 
                 const SizedBox(height: 16),
                 
-                // GPT 분석 텍스트
-                if (comparison['analysisText'] != null && (comparison['analysisText'] as String).isNotEmpty) ...[
+                // GPT 분석 텍스트 - 안전한 변환
+                if (comparison['analysisText'] != null && _safeConvertToString(comparison['analysisText']).isNotEmpty) ...[
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -165,7 +165,7 @@ class BeautyComparisonWidget extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 8),
-                        _buildRichAnalysisText(context, comparison['analysisText'] as String),
+                        _buildRichAnalysisText(context, _safeConvertToString(comparison['analysisText'])),
                       ],
                     ),
                   ),
@@ -524,6 +524,46 @@ class BeautyComparisonWidget extends StatelessWidget {
           fontSize: 14,
         );
     }
+  }
+
+  /// scoreChanges를 안전하게 Map<String, double>로 변환
+  Map<String, double> _safeConvertScoreChanges(dynamic scoreChanges) {
+    if (scoreChanges == null) return <String, double>{};
+    
+    if (scoreChanges is Map<String, double>) {
+      return scoreChanges;
+    }
+    
+    if (scoreChanges is Map<String, dynamic>) {
+      final result = <String, double>{};
+      scoreChanges.forEach((key, value) {
+        if (value is num) {
+          result[key] = value.toDouble();
+        } else if (value is String) {
+          final parsed = double.tryParse(value);
+          if (parsed != null) {
+            result[key] = parsed;
+          }
+        }
+      });
+      return result;
+    }
+    
+    return <String, double>{};
+  }
+
+  /// 값을 안전하게 String으로 변환
+  String _safeConvertToString(dynamic value) {
+    if (value == null) return '';
+    if (value is String) return value;
+    if (value is num) {
+      if (value == value.round()) {
+        return value.round().toString();
+      } else {
+        return value.toStringAsFixed(1);
+      }
+    }
+    return value.toString();
   }
 }
 
