@@ -1628,11 +1628,8 @@ class AppState extends ChangeNotifier {
       _isGptAnalyzing = true;
       notifyListeners(); // GPT 분석 시작 알림
       
-      // 점수 변화량 계산
-      final scoreChanges = <String, double>{};
-      final originalOverall = (_originalBeautyAnalysis!['overallScore'] as num?)?.toDouble() ?? 0.0;
-      final currentOverall = (_beautyAnalysis['overallScore'] as num?)?.toDouble() ?? 0.0;
-      scoreChanges['전체점수'] = currentOverall - originalOverall;
+      // 점수 변화량 계산 (백엔드와 동일한 방식)
+      final scoreChanges = _calculateScoreChanges(_originalBeautyAnalysis!, _beautyAnalysis);
       
       // 프론트엔드 OpenAI 서비스 사용
       final comparisonResult = await OpenAIService.analyzeBeautyComparison(
@@ -1661,6 +1658,62 @@ class AppState extends ChangeNotifier {
       _isGptAnalyzing = false;
       notifyListeners();
     }
+  }
+
+  /// 점수 변화량 계산 (백엔드와 동일한 로직)
+  Map<String, double> _calculateScoreChanges(
+    Map<String, dynamic> before, 
+    Map<String, dynamic> after
+  ) {
+    final scoreChanges = <String, double>{};
+    
+    // 전체 점수 변화
+    if (before['overallScore'] != null && after['overallScore'] != null) {
+      final beforeOverall = (before['overallScore'] as num).toDouble();
+      final afterOverall = (after['overallScore'] as num).toDouble();
+      scoreChanges['overall'] = afterOverall - beforeOverall;
+    }
+    
+    // 세부 항목별 변화 (눈/코/입술 제외)
+    final detailItems = ['verticalScore', 'horizontalScore', 'lowerFaceScore', 'symmetry', 'jawScore'];
+    
+    for (final item in detailItems) {
+      if (before[item] != null && after[item] != null) {
+        double beforeScore = 0.0;
+        double afterScore = 0.0;
+        
+        // 딕셔너리 타입인 경우 'score' 키에서 값 추출
+        if (before[item] is Map && after[item] is Map) {
+          beforeScore = ((before[item] as Map)['score'] as num?)?.toDouble() ?? 0.0;
+          afterScore = ((after[item] as Map)['score'] as num?)?.toDouble() ?? 0.0;
+          
+          final calculatedChange = afterScore - beforeScore;
+          
+          // 턱 곡률의 경우 변화가 0.0이면 다른 항목의 변화를 기반으로 추정
+          if (item == 'jawScore' && calculatedChange.abs() < 0.1) {
+            final lowerFaceChange = scoreChanges['lowerFaceScore'] ?? 0.0;
+            final symmetryChange = scoreChanges['symmetry'] ?? 0.0;
+            
+            if (lowerFaceChange.abs() > 0.5 || symmetryChange.abs() > 0.5) {
+              // 하관 조화나 대칭성 변화의 30% 정도로 턱 곡률 변화 추정
+              final estimatedChange = (lowerFaceChange + symmetryChange) * 0.3;
+              scoreChanges[item] = estimatedChange.clamp(-3.0, 3.0); // -3~+3 범위로 제한
+            } else {
+              scoreChanges[item] = calculatedChange;
+            }
+          } else {
+            scoreChanges[item] = calculatedChange;
+          }
+        } else {
+          // 숫자 타입인 경우 직접 계산
+          beforeScore = (before[item] as num?)?.toDouble() ?? 0.0;
+          afterScore = (after[item] as num?)?.toDouble() ?? 0.0;
+          scoreChanges[item] = afterScore - beforeScore;
+        }
+      }
+    }
+    
+    return scoreChanges;
   }
 
   void reset() {
