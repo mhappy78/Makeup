@@ -27,3 +27,13 @@ venv/
 .pub/
 /build/
 .filecache
+
+# Frontend build files
+frontend/build/
+frontend/.dart_tool/
+frontend/web/build/
+
+# Backend cache and temporary files
+backend/__pycache__/
+backend/temp_images/
+backend/.env
