@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:math' as math;
@@ -7,6 +8,7 @@ import '../widgets/components/image_display_widget.dart';
 import '../widgets/controls/warp_controls_widget.dart';
 import '../widgets/controls/landmark_controls_widget.dart';
 import '../widgets/analysis/face_regions_widget.dart';
+import '../widgets/debug/warp_engine_status.dart';
 
 /// 메인 홈 스크린
 class HomeScreen extends StatefulWidget {
@@ -33,6 +35,13 @@ class _HomeScreenState extends State<HomeScreen>
       
       // 현재 탭 인덱스 업데이트
       appState.setCurrentTabIndex(_tabController.index);
+    });
+    
+    // 앱 시작 시 초기 탭 인덱스 명시적 설정
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final appState = context.read<AppState>();
+      appState.setCurrentTabIndex(0); // 분석 탭으로 명시적 설정
+      debugPrint('🏠 홈 스크린 초기화 완료: 탭 인덱스 0으로 설정');
     });
   }
 
@@ -116,6 +125,13 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ),
               
+              // 디버그 위젯 (우측 하단)
+              if (kDebugMode)
+                const Positioned(
+                  bottom: 16,
+                  right: 16,
+                  child: WarpEngineStatusWidget(),
+                ),
               
             ],
           );
@@ -145,7 +161,7 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const ClipRRect(
+                  child: ClipRRect(
                     borderRadius: BorderRadius.all(Radius.circular(12)),
                     child: ImageDisplayWidget(),
                   ),
@@ -202,7 +218,7 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const ClipRRect(
+                  child: ClipRRect(
                     borderRadius: BorderRadius.all(Radius.circular(12)),
                     child: ImageDisplayWidget(),
                   ),

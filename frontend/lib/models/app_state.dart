@@ -243,6 +243,16 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
   
+  void updateImageFromWarp(Uint8List imageData, String imageId) {
+    _addToHistory(); // 히스토리에 현재 이미지 추가
+    
+    // 새 이미지로 업데이트 (원본은 유지)
+    _currentImage = imageData;
+    _currentImageId = imageId;
+    
+    notifyListeners();
+  }
+  
   // 워핑 결과 이미지와 새로운 ID로 현재 이미지 업데이트
   void updateCurrentImageWithId(Uint8List imageData, String newImageId) {
     _addToHistory(); // 히스토리에 현재 이미지 추가
@@ -268,6 +278,8 @@ class AppState extends ChangeNotifier {
 
   // 랜드마크 설정 및 자동 애니메이션 시작
   void setLandmarks(List<Landmark> landmarks, {bool resetAnalysis = true}) {
+    debugPrint('🔍 setLandmarks 호출됨: 랜드마크 ${landmarks.length}개, resetAnalysis=$resetAnalysis, 현재탭=$_currentTabIndex, 재분석중=$_isReAnalyzing');
+    
     _landmarks = landmarks;
     
     // resetAnalysis가 true일 때만 완료 상태 초기화 (새 이미지 업로드 시)
@@ -284,8 +296,14 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     
     // 분석 탭(index 0)에서만 자동 애니메이션 시작, 또는 재분석 중일 때도 시작
-    if (landmarks.isNotEmpty && (_currentTabIndex == 0 || _isReAnalyzing) && resetAnalysis) {
+    final shouldStartAnimation = landmarks.isNotEmpty && (_currentTabIndex == 0 || _isReAnalyzing) && resetAnalysis;
+    debugPrint('🎬 애니메이션 시작 조건 확인: shouldStart=$shouldStartAnimation (랜드마크유무=${landmarks.isNotEmpty}, 탭조건=${_currentTabIndex == 0 || _isReAnalyzing}, 리셋조건=$resetAnalysis)');
+    
+    if (shouldStartAnimation) {
+      debugPrint('🎬 자동 애니메이션 시작!');
       _startAutoAnimation();
+    } else {
+      debugPrint('❌ 애니메이션 시작 조건 불만족');
     }
   }
   
@@ -324,45 +342,71 @@ class AppState extends ChangeNotifier {
   
   // 자동 애니메이션 시작
   Future<void> _startAutoAnimation() async {
+    debugPrint('🎬 _startAutoAnimation 시작');
+    
     _isAutoAnimationMode = true;
     _currentAnimationIndex = 0;
     _showLandmarks = true; // 자동으로 랜드마크 표시 켜기
+    
+    debugPrint('🎬 애니메이션 모드 설정: isAutoAnimationMode=$_isAutoAnimationMode, showLandmarks=$_showLandmarks');
     
     // 모든 부위를 표시 상태로 설정
     for (final regionKey in _animationSequence) {
       _regionVisibility.setVisible(regionKey, true);
     }
     
+    debugPrint('🎬 애니메이션 시퀀스 부위 설정 완료: ${_animationSequence.length}개 부위');
+    
     // 애니메이션 진행률 초기화
     _animationProgress.clear();
     
     notifyListeners();
+    debugPrint('🎬 첫 번째 notifyListeners 호출 완료');
     
     // 시퀀스 애니메이션 시작
+    debugPrint('🎬 시퀀스 애니메이션 시작');
     await _playAnimationSequence();
+    
+    debugPrint('🎬 시퀀스 애니메이션 완료');
     
     // 애니메이션 종료 후 뷰티 스코어 계산 및 표시
     _calculateBeautyAnalysis();
     _showBeautyScore = true;
     _startBeautyScoreAnimation();
     
+    debugPrint('🎬 뷰티 스코어 계산 및 표시 설정 완료');
+    
     _isAutoAnimationMode = false;
     notifyListeners();
+    
+    debugPrint('🎬 _startAutoAnimation 완료');
   }
   
   // 애니메이션 시퀀스 재생
   Future<void> _playAnimationSequence() async {
+    debugPrint('🎬 _playAnimationSequence 시작: ${_animationSequence.length}개 부위');
+    
     for (int i = 0; i < _animationSequence.length; i++) {
-      if (!_isAutoAnimationMode) break;
+      if (!_isAutoAnimationMode) {
+        debugPrint('🎬 애니메이션 모드 중단됨 at index $i');
+        break;
+      }
       
       _currentAnimationIndex = i;
       final regionKey = _animationSequence[i];
+      
+      debugPrint('🎬 부위 애니메이션 시작: $regionKey (${i+1}/${_animationSequence.length})');
+      
       // 애니메이션이 있는 모든 부위 재생
       await _playRegionAnimation(regionKey);
+      
+      debugPrint('🎬 부위 애니메이션 완료: $regionKey');
       
       // 각 애니메이션 사이에 짧은 대기 시간
       await Future.delayed(const Duration(milliseconds: 500));
     }
+    
+    debugPrint('🎬 _playAnimationSequence 완료');
   }
   
   // 개별 부위 애니메이션 재생

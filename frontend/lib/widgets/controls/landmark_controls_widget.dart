@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/app_state.dart';
 import '../../services/api_service.dart';
+import '../../services/warp_coordinator.dart';
 import 'dart:html' as html;
 import 'dart:math' as math;
 import '../components/before_after_comparison.dart';
@@ -578,6 +580,50 @@ class _LandmarkControlsWidgetState extends State<LandmarkControlsWidget> {
   Future<void> _applyPresetWithSettings(BuildContext context, String presetType) async {
     final appState = context.read<AppState>();
     final shots = appState.presetSettings[presetType] ?? 100;
+    
+    // 스마트 워핑이 가능한지 확인
+    if (WarpCoordinator.isSmartWarpAvailable) {
+      debugPrint('🚀 스마트 워핑으로 프리셋 적용: $presetType');
+      
+      // 프리셋 시각화 표시
+      appState.showPresetVisualizationFor(presetType);
+      
+      // 설정된 샷 수만큼 반복 적용
+      final baseShots = presetType.contains('protusion') || presetType.contains('slit') ? 1 : 100;
+      final iterations = (shots / baseShots).round();
+      
+      // 레이저 효과 표시 (이터래이션 수 전달)
+      appState.activateLaserEffect(presetType, iterations);
+      
+      try {
+        for (int i = 0; i < iterations; i++) {
+          // 스마트 워핑으로 프리셋 적용
+          final success = await WarpCoordinator.applyPreset(presetType);
+          
+          if (!success) {
+            debugPrint('⚠️ 스마트 워핑 실패, 백엔드로 폴백');
+            // 백엔드 폴백
+            await _applyPresetWithProgress(context, presetType, (i + 1) * baseShots);
+          }
+          
+          if (i < iterations - 1) {
+            // 마지막이 아니면 0.5초 대기
+            await Future.delayed(const Duration(milliseconds: 500));
+          }
+        }
+        
+        // 카운터 업데이트
+        appState.incrementPresetCounter(presetType, shots);
+        return;
+        
+      } catch (e) {
+        debugPrint('❌ 스마트 워핑 에러: $e');
+        // 에러 발생 시 백엔드로 폴백
+      }
+    }
+    
+    // 백엔드 폴백 (기존 로직)
+    debugPrint('🔄 백엔드 워핑으로 프리셋 적용: $presetType');
     
     // 프리셋 시각화 표시
     appState.showPresetVisualizationFor(presetType);

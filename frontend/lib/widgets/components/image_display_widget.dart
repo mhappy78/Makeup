@@ -6,6 +6,8 @@ import 'dart:math' as math;
 import '../../models/app_state.dart' show AppState, Landmark, WarpMode;
 import '../../models/face_regions.dart';
 import '../../services/api_service.dart';
+import '../../services/warp_fallback_manager.dart';
+import '../../services/warp_coordinator.dart';
 import '../analysis/beauty_score_visualizer.dart';
 
 // 시각화 상수들
@@ -49,6 +51,20 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
   double _baseScaleValue = 1.0; // 스케일 제스처의 기준값
   bool _isPanMode = false; // 팬 모드 여부
   bool _isShiftPressed = false; // Shift 키 눌림 상태
+  
+  @override
+  void initState() {
+    super.initState();
+    // WarpCoordinator에 등록하여 frontend warping 활성화
+    WarpCoordinator.registerImageDisplayWidget(this);
+  }
+
+  @override
+  void dispose() {
+    // WarpCoordinator에서 등록 해제
+    WarpCoordinator.unregisterImageDisplayWidget();
+    super.dispose();
+  }
   
   // 공통 이미지 표시 영역 계산 메서드
   Map<String, dynamic> _getImageDisplayInfo(BoxConstraints constraints, AppState appState) {
@@ -612,34 +628,11 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
     if (imageCoordinates == null) return;
 
     try {
-      // 워핑 로딩 상태 시작 (전체 화면 로딩 대신)
-      appState.setWarpLoading(true);
-      final apiService = context.read<ApiService>();
-
-      final warpRequest = WarpRequest(
-        imageId: appState.currentImageId!,
-        startX: imageCoordinates['startX']!,
-        startY: imageCoordinates['startY']!,
-        endX: imageCoordinates['endX']!,
-        endY: imageCoordinates['endY']!,
-        influenceRadius: appState.getInfluenceRadiusPixels(),
-        strength: appState.warpStrength,
-        mode: appState.warpMode.value,
-      );
-
-      final response = await apiService.warpImage(warpRequest);
-      
-      // 히스토리에 현재 상태 저장
-      appState.saveToHistory();
-      
-      // 새 이미지로 업데이트
-      appState.updateCurrentImageWithId(response.imageBytes, response.imageId);
-      
+      // 프론트엔드 워핑 시스템 사용
+      await _applyWarp(appState, imageCoordinates);
     } catch (e) {
-      appState.setError('워핑 실패: $e');
-    } finally {
-      // 워핑 로딩 상태 종료
-      appState.setWarpLoading(false);
+      debugPrint('워핑 적용 실패: $e');
+      appState.setError('변형 적용 실패: $e');
     }
   }
 
@@ -749,39 +742,62 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
   }
 
   Future<void> _applyWarp(AppState appState, Map<String, double> coordinates) async {
-    if (appState.currentImageId == null) return;
+    if (appState.currentImage == null) return;
     
     // 워핑 작업 전에 히스토리 저장
     appState.saveToHistory();
     
-    // 워핑 로딩 상태 시작 (전체 화면 로딩 대신)
+    // 워핑 로딩 상태 시작
     appState.setWarpLoading(true);
     
     try {
+      // 프론트엔드 워핑 시스템 사용
       final apiService = context.read<ApiService>();
-      final warpRequest = WarpRequest(
-        imageId: appState.currentImageId!,
+      final warpParams = WarpParameters(
         startX: coordinates['startX']!,
         startY: coordinates['startY']!,
         endX: coordinates['endX']!,
         endY: coordinates['endY']!,
         influenceRadius: appState.getInfluenceRadiusPixels(),
         strength: appState.warpStrength,
-        mode: appState.warpMode.value,
+        mode: appState.warpMode,
       );
       
-      final warpResponse = await apiService.warpImage(warpRequest);
-      final imageBytes = warpResponse.imageBytes;
+      final warpResult = await WarpFallbackManager.smartApplyWarp(
+        imageBytes: appState.currentImage!,
+        imageId: appState.currentImageId ?? '',
+        warpParams: warpParams,
+        apiService: apiService,
+      );
       
-      // 변형된 이미지로 현재 이미지와 ID 업데이트 (새로운 이미지 ID 사용)
-      appState.updateCurrentImageWithId(imageBytes, warpResponse.imageId);
-      
-      // 새로운 이미지 ID로 랜드마크 다시 검출 (분석 상태는 유지)
-      final landmarkResponse = await apiService.getFaceLandmarks(warpResponse.imageId);
-      appState.setLandmarks(landmarkResponse.landmarks, resetAnalysis: false);
+      if (warpResult.success && warpResult.resultBytes != null) {
+        // 백엔드에서 처리된 경우 새로운 이미지 ID와 함께 업데이트
+        if (warpResult.source == 'backend' && warpResult.resultImageId != null) {
+          appState.updateCurrentImageWithId(warpResult.resultBytes!, warpResult.resultImageId!);
+        } else {
+          // 프론트엔드에서 처리된 경우 이미지만 업데이트
+          appState.updateCurrentImage(warpResult.resultBytes!);
+        }
+        
+        // 랜드마크 다시 검출 (백엔드 API 사용)
+        if (appState.currentImageId != null) {
+          try {
+            final landmarkResponse = await apiService.getFaceLandmarks(appState.currentImageId!);
+            appState.setLandmarks(landmarkResponse.landmarks, resetAnalysis: false);
+          } catch (e) {
+            debugPrint('랜드마크 검출 실패: $e');
+            // 랜드마크 검출 실패는 무시하고 워핑 결과만 적용
+          }
+        }
+        
+        debugPrint('✅ 워핑 완료 - 소스: ${warpResult.source}, 처리시간: ${warpResult.processingTime}ms');
+      } else {
+        throw Exception(warpResult.error ?? '프론트엔드 워핑 실패');
+      }
       
     } catch (e) {
       appState.setError('변형 적용 실패: $e');
+      debugPrint('워핑 에러: $e');
     } finally {
       // 워핑 로딩 상태 종료
       appState.setWarpLoading(false);
