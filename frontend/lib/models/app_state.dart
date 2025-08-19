@@ -1579,7 +1579,25 @@ class AppState extends ChangeNotifier {
       
       // 4. 변형된 이미지에 대한 새로운 랜드마크 요청
       final apiService = ApiService();
-      final landmarkResponse = await apiService.getFaceLandmarks(_currentImageId!);
+      
+      // 현재 이미지가 프론트엔드에서 워핑된 경우, 백엔드에 다시 업로드
+      String imageIdForAnalysis = _currentImageId!;
+      if (_currentImage != null) {
+        try {
+          debugPrint('🔄 재진단을 위해 변형된 이미지를 백엔드에 업로드 중...');
+          final uploadResponse = await apiService.uploadImage(
+            _currentImage!, 
+            'reanalysis_${DateTime.now().millisecondsSinceEpoch}.jpg'
+          );
+          imageIdForAnalysis = uploadResponse.imageId;
+          debugPrint('✅ 변형된 이미지 업로드 완료: $imageIdForAnalysis');
+        } catch (e) {
+          debugPrint('⚠️ 이미지 업로드 실패, 기존 ID 사용: $e');
+          // 업로드 실패 시 기존 ID 사용
+        }
+      }
+      
+      final landmarkResponse = await apiService.getFaceLandmarks(imageIdForAnalysis);
       
       // 5. 새로운 랜드마크 설정 (뷰티 분석 및 GPT 분석 자동 시작됨)
       setLandmarks(landmarkResponse.landmarks, resetAnalysis: true);
